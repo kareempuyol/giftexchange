@@ -173,6 +173,21 @@ def init_schema():
               CONSTRAINT fk_matches_receiver FOREIGN KEY (receiver_id) REFERENCES participants(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """,
+            """
+            CREATE TABLE IF NOT EXISTS notifications (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              user_id INT NOT NULL,
+              event_id INT NULL,
+              match_id INT NULL,
+              type VARCHAR(40) NOT NULL,
+              title VARCHAR(160) NOT NULL,
+              message TEXT,
+              read_at DATETIME NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              INDEX idx_notifications_user (user_id),
+              CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """,
         ]
     else:
         statements = [
@@ -263,6 +278,19 @@ def init_schema():
               gift_review TEXT,
               gift_photo_url TEXT,
               matched_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS notifications (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              event_id INTEGER,
+              match_id INTEGER,
+              type TEXT NOT NULL,
+              title TEXT NOT NULL,
+              message TEXT,
+              read_at TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
             """,
         ]

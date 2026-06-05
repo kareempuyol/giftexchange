@@ -136,6 +136,16 @@ def fetch_event(db, code):
     return row
 
 
+def create_notification(db, user_id, event_id, match_id, type_name, title, message):
+    db.execute(
+        """
+        INSERT INTO notifications (user_id, event_id, match_id, type, title, message)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (user_id, event_id, match_id, type_name, title, message),
+    )
+
+
 def current_user_row(db, user_id):
     row = db.get("SELECT * FROM users WHERE id = ?", (user_id,))
     if not row:
@@ -238,6 +248,19 @@ def api_gift_post(row):
         "rating": row.get("gift_rating"),
         "review": row.get("gift_review") or "",
         "photoUrl": row.get("gift_photo_url") or "",
+    }
+
+
+def api_notification(row):
+    return {
+        "id": row["id"],
+        "eventCode": row.get("event_code") or "",
+        "matchId": row.get("match_id"),
+        "type": row.get("type") or "",
+        "title": row.get("title") or "",
+        "message": row.get("message") or "",
+        "read": bool(row.get("read_at")),
+        "createdAt": str(row.get("created_at") or ""),
     }
 
 
@@ -1141,8 +1164,87 @@ def update_received_gift(user, code):
             )
             if cur.rowcount == 0:
                 return fail("Match not found")
-            row = db.get("SELECT * FROM matches WHERE id = ?", (match_id,))
+            row = db.get(
+                """
+                SELECT m.*, giver.user_id AS giver_user_id, receiver.user_id AS receiver_user_id,
+                       ru.display_name AS receiver_display_name, ru.username AS receiver_username
+                FROM matches m
+                JOIN participants giver ON giver.id = m.giver_id
+                JOIN participants receiver ON receiver.id = m.receiver_id
+                JOIN users ru ON ru.id = receiver.user_id
+                WHERE m.id = ?
+                """,
+                (match_id,),
+            )
+            create_notification(
+                db,
+                row["giver_user_id"],
+                event["id"],
+                row["id"],
+                "gift_posted",
+                f"{row.get('receiver_display_name') or row.get('receiver_username')} 已晒礼物",
+                "TA 已收到你的礼物，并完成了晒图评价。",
+            )
             return ok(api_gift_post(row), "Gift post saved")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/gift-wall")
+@login_required
+def gift_wall(user, code):
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            participant = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            is_creator = event["creator_id"] == user["userId"]
+            if not is_creator and not participant:
+                return fail("No permission", 403)
+            counts = db.get(
+                """
+                SELECT COUNT(*) AS total,
+                       SUM(CASE WHEN received_at IS NOT NULL AND gift_photo_url IS NOT NULL AND gift_photo_url <> '' THEN 1 ELSE 0 END) AS posted
+                FROM matches
+                WHERE event_id = ?
+                """,
+                (event["id"],),
+            )
+            total = int(counts.get("total") or 0)
+            posted = int(counts.get("posted") or 0)
+            unlocked = total > 0 and total == posted
+            rows = []
+            if unlocked:
+                rows = db.all(
+                    """
+                    SELECT m.id, m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
+                           gu.username AS giver_username, gu.display_name AS giver_display_name,
+                           ru.username AS receiver_username, ru.display_name AS receiver_display_name
+                    FROM matches m
+                    JOIN participants gp ON gp.id = m.giver_id
+                    JOIN participants rp ON rp.id = m.receiver_id
+                    JOIN users gu ON gu.id = gp.user_id
+                    JOIN users ru ON ru.id = rp.user_id
+                    WHERE m.event_id = ?
+                    ORDER BY m.received_at DESC
+                    """,
+                    (event["id"],),
+                )
+            return ok(
+                {
+                    "unlocked": unlocked,
+                    "posted": posted,
+                    "total": total,
+                    "items": [
+                        {
+                            "matchId": row["id"],
+                            "giverName": row.get("giver_display_name") or row["giver_username"],
+                            "receiverName": row.get("receiver_display_name") or row["receiver_username"],
+                            "giftPost": api_gift_post(row),
+                        }
+                        for row in rows
+                    ],
+                }
+            )
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -1212,7 +1314,66 @@ def update_shipment(user, code):
             if cur.rowcount == 0:
                 return fail("Match not found")
 
-            row = db.get("SELECT * FROM matches WHERE id = ?", (match_id,))
+            row = db.get(
+                """
+                SELECT m.*, receiver.user_id AS receiver_user_id, gu.display_name AS giver_display_name, gu.username AS giver_username
+                FROM matches m
+                JOIN participants giver ON giver.id = m.giver_id
+                JOIN participants receiver ON receiver.id = m.receiver_id
+                JOIN users gu ON gu.id = giver.user_id
+                WHERE m.id = ?
+                """,
+                (match_id,),
+            )
+            if status != "pending":
+                create_notification(
+                    db,
+                    row["receiver_user_id"],
+                    event["id"],
+                    row["id"],
+                    "shipment_sent",
+                    "你的礼物已发货",
+                    f"{row.get('giver_display_name') or row.get('giver_username')} 已填写快递信息，请留意收件。",
+                )
             return ok(api_shipment(row), "Shipment saved")
     except ValueError as exc:
         return fail(str(exc), 404)
+
+
+@api.route("/notifications")
+@login_required
+def notifications(user):
+    with DB() as db:
+        rows = db.all(
+            """
+            SELECT n.*, e.code AS event_code
+            FROM notifications n
+            LEFT JOIN events e ON e.id = n.event_id
+            WHERE n.user_id = ?
+            ORDER BY n.created_at DESC
+            LIMIT 50
+            """,
+            (user["userId"],),
+        )
+        unread = db.get("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND read_at IS NULL", (user["userId"],))["count"]
+        return ok({"items": [api_notification(row) for row in rows], "unread": unread})
+
+
+@api.route("/notifications/read", methods=["POST"])
+@login_required
+def read_notifications(user):
+    data = body()
+    ids = data.get("ids") or []
+    with DB() as db:
+        if ids:
+            for item_id in ids:
+                db.execute(
+                    "UPDATE notifications SET read_at = COALESCE(read_at, CURRENT_TIMESTAMP) WHERE id = ? AND user_id = ?",
+                    (item_id, user["userId"]),
+                )
+        else:
+            db.execute(
+                "UPDATE notifications SET read_at = COALESCE(read_at, CURRENT_TIMESTAMP) WHERE user_id = ?",
+                (user["userId"],),
+            )
+        return ok(None, "Notifications marked read")
