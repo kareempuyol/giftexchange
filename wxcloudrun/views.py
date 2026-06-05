@@ -86,6 +86,11 @@ def health():
     return ok({"status": "ok", "timestamp": now_iso()})
 
 
+@site.route("/api-health")
+def platform_health():
+    return ok({"status": "ok", "timestamp": now_iso()})
+
+
 @site.route("/")
 def index():
     return render_template("index.html")

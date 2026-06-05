@@ -28,6 +28,7 @@ class DB:
         if self.engine == "mysql":
             import pymysql
 
+            ensure_mysql_database()
             self.conn = pymysql.connect(**_mysql_config(), cursorclass=pymysql.cursors.DictCursor)
         else:
             db_path = Path(os.getenv("DB_PATH", Path(__file__).resolve().parent.parent / "data" / "gift_exchange.db"))
@@ -182,3 +183,20 @@ def init_schema():
     with DB() as db:
         for statement in statements:
             db.execute(statement)
+
+
+def ensure_mysql_database():
+    config = _mysql_config()
+    database = config.pop("database")
+
+    import pymysql
+
+    conn = pymysql.connect(**config, cursorclass=pymysql.cursors.DictCursor)
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                f"CREATE DATABASE IF NOT EXISTS `{database}` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            )
+        conn.commit()
+    finally:
+        conn.close()
