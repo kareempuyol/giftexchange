@@ -78,6 +78,10 @@ def init_schema():
               password TEXT NOT NULL,
               display_name VARCHAR(120),
               avatar_url TEXT,
+              phone VARCHAR(50),
+              address TEXT,
+              receiver_name VARCHAR(120),
+              gift_preference TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -139,6 +143,10 @@ def init_schema():
               password TEXT NOT NULL,
               display_name TEXT,
               avatar_url TEXT,
+              phone TEXT,
+              address TEXT,
+              receiver_name TEXT,
+              gift_preference TEXT,
               created_at TEXT DEFAULT CURRENT_TIMESTAMP,
               updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -183,6 +191,21 @@ def init_schema():
     with DB() as db:
         for statement in statements:
             db.execute(statement)
+        run_migrations(db)
+
+
+def run_migrations(db):
+    columns = [
+        ("phone", "VARCHAR(50)" if db.engine == "mysql" else "TEXT"),
+        ("address", "TEXT"),
+        ("receiver_name", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),
+        ("gift_preference", "TEXT"),
+    ]
+    for name, column_type in columns:
+        try:
+            db.execute(f"ALTER TABLE users ADD COLUMN {name} {column_type}")
+        except Exception:
+            pass
 
 
 def ensure_mysql_database():

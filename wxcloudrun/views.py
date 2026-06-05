@@ -29,6 +29,10 @@ def public_user(row):
         "email": row["email"],
         "displayName": row.get("display_name") or row["username"],
         "avatarUrl": row.get("avatar_url"),
+        "phone": row.get("phone") or "",
+        "address": row.get("address") or "",
+        "receiverName": row.get("receiver_name") or "",
+        "giftPreference": row.get("gift_preference") or "",
         "createdAt": str(row.get("created_at") or ""),
     }
 
@@ -61,7 +65,7 @@ def login_required(fn):
     def wrapper(*args, **kwargs):
         user = current_user()
         if not user:
-            return fail("请先登录", 401, -2)
+            return fail("Please sign in first", 401, -2)
         return fn(user, *args, **kwargs)
 
     return wrapper
@@ -77,8 +81,44 @@ def fetch_event(db, code):
         (code,),
     )
     if not row:
-        raise ValueError("活动不存在")
+        raise ValueError("Event not found")
     return row
+
+
+def current_user_row(db, user_id):
+    row = db.get("SELECT * FROM users WHERE id = ?", (user_id,))
+    if not row:
+        raise ValueError("User not found")
+    return row
+
+
+def participant_rows(db, event_id):
+    return db.all(
+        """
+        SELECT p.id, p.user_id, p.nickname, p.created_at, u.username, u.display_name, u.avatar_url
+        FROM participants p JOIN users u ON u.id = p.user_id
+        WHERE p.event_id = ?
+        ORDER BY p.created_at ASC
+        """,
+        (event_id,),
+    )
+
+
+def add_participant(db, event_id, user_id):
+    user_row = current_user_row(db, user_id)
+    nickname = user_row.get("display_name") or user_row["username"]
+    existing = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event_id, user_id))
+    if existing:
+        return existing["id"]
+    cur = db.execute(
+        "INSERT INTO participants (event_id, user_id, nickname) VALUES (?, ?, ?)",
+        (event_id, user_id, nickname),
+    )
+    db.execute(
+        "UPDATE events SET participant_count = participant_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (event_id,),
+    )
+    return cur.lastrowid
 
 
 @api.route("/health")
@@ -114,32 +154,32 @@ def register():
     password = str(data.get("password") or "")
 
     if not username or not email or not password:
-        return fail("用户名、邮箱和密码为必填项")
+        return fail("Username, email and password are required")
     if len(username) < 2 or len(username) > 50:
-        return fail("用户名长度应为 2-50 个字符")
+        return fail("Username length must be 2-50 characters")
     if "@" not in email or "." not in email or len(email) > 254:
-        return fail("邮箱格式不正确")
+        return fail("Invalid email")
     if len(password) < 6 or len(password) > 128:
-        return fail("密码长度应为 6-128 位")
+        return fail("Password length must be 6-128 characters")
     if not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
-        return fail("密码必须包含字母和数字")
+        return fail("Password must contain letters and numbers")
 
     with DB() as db:
         conflicts = []
         if db.get("SELECT id FROM users WHERE username = ?", (username,)):
-            conflicts.append("用户名")
+            conflicts.append("username")
         if db.get("SELECT id FROM users WHERE email = ?", (email,)):
-            conflicts.append("邮箱")
+            conflicts.append("email")
         if conflicts:
-            return fail("和".join(conflicts) + "已被占用", 409)
+            return fail(" and ".join(conflicts) + " already exists", 409)
 
         cur = db.execute(
             "INSERT INTO users (username, email, password, display_name) VALUES (?, ?, ?, ?)",
             (username, email, hash_password(password), username),
         )
         user_id = cur.lastrowid
-        row = db.get("SELECT * FROM users WHERE id = ?", (user_id,))
-        return ok({"token": sign_token(user_id), "user": public_user(row)}, "注册成功", 201)
+        row = current_user_row(db, user_id)
+        return ok({"token": sign_token(user_id), "user": public_user(row)}, "Registered", 201)
 
 
 @api.route("/auth/login", methods=["POST"])
@@ -148,23 +188,73 @@ def login():
     username = str(data.get("username") or "").strip()
     password = str(data.get("password") or "")
     if not username or not password:
-        return fail("用户名和密码为必填项")
+        return fail("Username and password are required")
 
     with DB() as db:
         row = db.get("SELECT * FROM users WHERE username = ?", (username,))
         if not row or not check_password(password, row["password"]):
-            return fail("用户名或密码错误", 401)
-        return ok({"token": sign_token(row["id"]), "user": public_user(row)}, "登录成功")
+            return fail("Invalid username or password", 401)
+        return ok({"token": sign_token(row["id"]), "user": public_user(row)}, "Signed in")
 
 
 @api.route("/auth/me")
 @login_required
 def me(user):
     with DB() as db:
-        row = db.get("SELECT * FROM users WHERE id = ?", (user["userId"],))
-        if not row:
-            return fail("用户不存在", 404)
-        return ok(public_user(row))
+        try:
+            return ok(public_user(current_user_row(db, user["userId"])))
+        except ValueError as exc:
+            return fail(str(exc), 404)
+
+
+@api.route("/profile")
+@login_required
+def get_profile(user):
+    with DB() as db:
+        try:
+            return ok(public_user(current_user_row(db, user["userId"])))
+        except ValueError as exc:
+            return fail(str(exc), 404)
+
+
+@api.route("/profile", methods=["PUT"])
+@login_required
+def update_profile(user):
+    data = body()
+    fields = {
+        "display_name": str(data.get("displayName") or data.get("display_name") or "").strip(),
+        "avatar_url": str(data.get("avatarUrl") or data.get("avatar_url") or "").strip(),
+        "phone": str(data.get("phone") or "").strip(),
+        "address": str(data.get("address") or "").strip(),
+        "receiver_name": str(data.get("receiverName") or data.get("receiver_name") or "").strip(),
+        "gift_preference": str(data.get("giftPreference") or data.get("gift_preference") or "").strip(),
+    }
+    if len(fields["display_name"]) > 120:
+        return fail("Display name is too long")
+    if len(fields["phone"]) > 50:
+        return fail("Phone is too long")
+    if len(fields["address"]) > 500:
+        return fail("Address is too long")
+
+    with DB() as db:
+        db.execute(
+            """
+            UPDATE users
+            SET display_name = ?, avatar_url = ?, phone = ?, address = ?,
+                receiver_name = ?, gift_preference = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                fields["display_name"],
+                fields["avatar_url"],
+                fields["phone"],
+                fields["address"],
+                fields["receiver_name"],
+                fields["gift_preference"],
+                user["userId"],
+            ),
+        )
+        return ok(public_user(current_user_row(db, user["userId"])), "Profile saved")
 
 
 @api.route("/events", methods=["POST"])
@@ -177,21 +267,22 @@ def create_event(user):
     budget = int(data.get("budget") or 0)
 
     if not title:
-        return fail("活动标题为必填项")
+        return fail("Event title is required")
     if len(title) > 100:
-        return fail("活动标题不能超过 100 个字符")
+        return fail("Event title is too long")
     if budget < 0:
-        return fail("预算不能为负数")
+        return fail("Budget cannot be negative")
     if len(note) > 500:
-        return fail("备注不能超过 500 个字符")
+        return fail("Note is too long")
 
     with DB() as db:
         code = str(uuid.uuid4())
-        db.execute(
+        cur = db.execute(
             "INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline) VALUES (?, ?, ?, ?, ?, ?)",
             (code, title, note, budget, user["userId"], draw_date),
         )
-        return ok(api_event(fetch_event(db, code)), "活动创建成功", 201)
+        add_participant(db, cur.lastrowid, user["userId"])
+        return ok(api_event(fetch_event(db, code)), "Event created", 201)
 
 
 @api.route("/events/mine")
@@ -244,9 +335,9 @@ def delete_event(user, code):
     with DB() as db:
         event = db.get("SELECT id FROM events WHERE code = ? AND creator_id = ?", (code, user["userId"]))
         if not event:
-            return fail("活动不存在或无权删除", 403)
+            return fail("Event not found or no permission", 403)
         db.execute("DELETE FROM events WHERE id = ?", (event["id"],))
-        return ok(None, "活动已删除")
+        return ok(None, "Event deleted")
 
 
 @api.route("/events/<code>/join", methods=["POST"])
@@ -255,23 +346,17 @@ def join_event(user, code):
     try:
         with DB() as db:
             event = fetch_event(db, code)
-            if event["creator_id"] == user["userId"]:
-                return fail("你是活动创建者，无需加入")
             if event["status"] != "open":
-                return fail("活动已关闭，无法加入")
+                return fail("Event is closed")
             if db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"])):
-                return fail("你已加入该活动")
-            user_row = db.get("SELECT username, display_name FROM users WHERE id = ?", (user["userId"],))
-            nickname = user_row.get("display_name") or user_row["username"]
-            cur = db.execute(
-                "INSERT INTO participants (event_id, user_id, nickname) VALUES (?, ?, ?)",
-                (event["id"], user["userId"], nickname),
+                return fail("You have already joined this event")
+            participant_id = add_participant(db, event["id"], user["userId"])
+            user_row = current_user_row(db, user["userId"])
+            return ok(
+                {"id": participant_id, "eventCode": code, "userName": user_row.get("display_name") or user_row["username"]},
+                "Joined event",
+                201,
             )
-            db.execute(
-                "UPDATE events SET participant_count = participant_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (event["id"],),
-            )
-            return ok({"id": cur.lastrowid, "eventCode": code, "userName": nickname}, "已加入活动", 201)
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -282,30 +367,20 @@ def leave_event(user, code):
     try:
         with DB() as db:
             event = fetch_event(db, code)
+            if event["creator_id"] == user["userId"]:
+                return fail("Creator cannot leave; delete the event instead")
             if event["status"] != "open":
-                return fail("活动已抽签，无法退出")
+                return fail("Event has already been drawn")
             cur = db.execute("DELETE FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
             if cur.rowcount == 0:
-                return fail("你尚未加入该活动")
+                return fail("You have not joined this event")
             db.execute(
                 "UPDATE events SET participant_count = participant_count - 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND participant_count > 0",
                 (event["id"],),
             )
-            return ok(None, "已退出活动")
+            return ok(None, "Left event")
     except ValueError as exc:
         return fail(str(exc), 404)
-
-
-def participant_rows(db, event_id):
-    return db.all(
-        """
-        SELECT p.id, p.user_id, p.nickname, p.created_at, u.username, u.display_name
-        FROM participants p JOIN users u ON u.id = p.user_id
-        WHERE p.event_id = ?
-        ORDER BY p.created_at ASC
-        """,
-        (event_id,),
-    )
 
 
 @api.route("/events/<code>/participants")
@@ -321,6 +396,7 @@ def participants(_user, code):
                     "userId": row["user_id"],
                     "username": row["username"],
                     "displayName": row.get("display_name") or row["nickname"] or row["username"],
+                    "avatarUrl": row.get("avatar_url"),
                     "nickname": row["nickname"],
                     "joinedAt": str(row.get("created_at") or ""),
                 }
@@ -338,13 +414,13 @@ def draw(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("仅活动创建者可执行抽签", 403)
+                return fail("Only the event creator can draw", 403)
             if event["status"] == "drawn":
-                return fail("该活动已完成抽签")
+                return fail("This event has already been drawn")
 
             rows = participant_rows(db, event["id"])
             if len(rows) < 2:
-                return fail("至少需要 2 人才能抽签")
+                return fail("At least 2 people are required to draw")
             shuffled = rows[:]
             secrets.SystemRandom().shuffle(shuffled)
             db.execute("DELETE FROM matches WHERE event_id = ?", (event["id"],))
@@ -355,15 +431,17 @@ def draw(user, code):
                     "INSERT INTO matches (event_id, giver_id, receiver_id) VALUES (?, ?, ?)",
                     (event["id"], giver["id"], receiver["id"]),
                 )
-                matches.append({
-                    "id": cur.lastrowid,
-                    "giverId": giver["id"],
-                    "giverName": giver.get("display_name") or giver["nickname"] or giver["username"],
-                    "receiverId": receiver["id"],
-                    "receiverName": receiver.get("display_name") or receiver["nickname"] or receiver["username"],
-                })
+                matches.append(
+                    {
+                        "id": cur.lastrowid,
+                        "giverId": giver["id"],
+                        "giverName": giver.get("display_name") or giver["nickname"] or giver["username"],
+                        "receiverId": receiver["id"],
+                        "receiverName": receiver.get("display_name") or receiver["nickname"] or receiver["username"],
+                    }
+                )
             db.execute("UPDATE events SET status = 'drawn', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (event["id"],))
-            return ok(matches, "抽签完成")
+            return ok(matches, "Draw complete")
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -389,13 +467,15 @@ def my_match(user, code):
             )
             if not row:
                 return ok(None)
-            return ok({
-                "matchId": row["id"],
-                "receiverId": row["receiver_user_id"],
-                "receiverName": row["username"],
-                "receiverDisplayName": row.get("display_name") or row["username"],
-                "note": row.get("note") or "",
-            })
+            return ok(
+                {
+                    "matchId": row["id"],
+                    "receiverId": row["receiver_user_id"],
+                    "receiverName": row["username"],
+                    "receiverDisplayName": row.get("display_name") or row["username"],
+                    "note": row.get("note") or "",
+                }
+            )
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -407,16 +487,16 @@ def update_note(user, code):
     match_id = data.get("matchId")
     note = str(data.get("note") or "")
     if not match_id:
-        return fail("缺少 matchId")
+        return fail("matchId is required")
     try:
         with DB() as db:
             event = fetch_event(db, code)
             me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
             if not me:
-                return fail("你不是该活动的参与者", 403)
+                return fail("You are not a participant of this event", 403)
             cur = db.execute("UPDATE matches SET note = ? WHERE id = ? AND giver_id = ?", (note, match_id, me["id"]))
             if cur.rowcount == 0:
-                return fail("未找到匹配记录")
-            return ok(None, "备注已保存")
+                return fail("Match not found")
+            return ok(None, "Note saved")
     except ValueError as exc:
         return fail(str(exc), 404)
