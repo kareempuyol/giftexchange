@@ -78,12 +78,33 @@ def init_schema():
               password TEXT NOT NULL,
               display_name VARCHAR(120),
               avatar_url TEXT,
+              is_admin TINYINT DEFAULT 0,
               phone VARCHAR(50),
               address TEXT,
               receiver_name VARCHAR(120),
               gift_preference TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS app_settings (
+              key_name VARCHAR(80) PRIMARY KEY,
+              value TEXT,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              user_id INT NOT NULL,
+              token_hash VARCHAR(128) UNIQUE NOT NULL,
+              expires_at DATETIME NOT NULL,
+              used_at DATETIME NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              INDEX idx_reset_user (user_id),
+              INDEX idx_reset_token (token_hash),
+              CONSTRAINT fk_reset_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """,
             """
@@ -125,6 +146,12 @@ def init_schema():
               giver_id INT NOT NULL,
               receiver_id INT NOT NULL,
               note TEXT,
+              shipment_status VARCHAR(24) DEFAULT 'pending',
+              carrier VARCHAR(80),
+              tracking_number VARCHAR(120),
+              shipped_at DATETIME NULL,
+              tracking_updated_at DATETIME NULL,
+              tracking_summary TEXT,
               matched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               INDEX idx_matches_event (event_id),
               CONSTRAINT fk_matches_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
@@ -143,12 +170,30 @@ def init_schema():
               password TEXT NOT NULL,
               display_name TEXT,
               avatar_url TEXT,
+              is_admin INTEGER DEFAULT 0,
               phone TEXT,
               address TEXT,
               receiver_name TEXT,
               gift_preference TEXT,
               created_at TEXT DEFAULT CURRENT_TIMESTAMP,
               updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS app_settings (
+              key_name TEXT PRIMARY KEY,
+              value TEXT,
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              token_hash TEXT UNIQUE NOT NULL,
+              expires_at TEXT NOT NULL,
+              used_at TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
             """,
             """
@@ -183,6 +228,12 @@ def init_schema():
               giver_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
               receiver_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
               note TEXT DEFAULT '',
+              shipment_status TEXT DEFAULT 'pending',
+              carrier TEXT,
+              tracking_number TEXT,
+              shipped_at TEXT,
+              tracking_updated_at TEXT,
+              tracking_summary TEXT,
               matched_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
             """,
@@ -195,17 +246,40 @@ def init_schema():
 
 
 def run_migrations(db):
-    columns = [
+    user_columns = [
+        ("is_admin", "TINYINT DEFAULT 0" if db.engine == "mysql" else "INTEGER DEFAULT 0"),
         ("phone", "VARCHAR(50)" if db.engine == "mysql" else "TEXT"),
         ("address", "TEXT"),
         ("receiver_name", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),
         ("gift_preference", "TEXT"),
     ]
-    for name, column_type in columns:
+    match_columns = [
+        ("shipment_status", "VARCHAR(24) DEFAULT 'pending'" if db.engine == "mysql" else "TEXT DEFAULT 'pending'"),
+        ("carrier", "VARCHAR(80)" if db.engine == "mysql" else "TEXT"),
+        ("tracking_number", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),
+        ("shipped_at", "DATETIME NULL" if db.engine == "mysql" else "TEXT"),
+        ("tracking_updated_at", "DATETIME NULL" if db.engine == "mysql" else "TEXT"),
+        ("tracking_summary", "TEXT"),
+    ]
+    for name, column_type in user_columns:
         try:
             db.execute(f"ALTER TABLE users ADD COLUMN {name} {column_type}")
         except Exception:
             pass
+    for name, column_type in match_columns:
+        try:
+            db.execute(f"ALTER TABLE matches ADD COLUMN {name} {column_type}")
+        except Exception:
+            pass
+    try:
+        total = db.get("SELECT COUNT(*) AS count FROM users")["count"]
+        admins = db.get("SELECT COUNT(*) AS count FROM users WHERE is_admin = 1")["count"]
+        if int(total) > 0 and int(admins) == 0:
+            first = db.get("SELECT id FROM users ORDER BY id ASC LIMIT 1")
+            if first:
+                db.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (first["id"],))
+    except Exception:
+        pass
 
 
 def ensure_mysql_database():

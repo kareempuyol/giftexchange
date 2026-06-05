@@ -1,7 +1,11 @@
+import os
 import secrets
+import smtplib
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 from functools import wraps
+from hashlib import sha256
 
 from flask import Blueprint, render_template, request, send_from_directory
 
@@ -12,6 +16,24 @@ from wxcloudrun.response import fail, ok
 
 api = Blueprint("api", __name__, url_prefix="/api")
 site = Blueprint("site", __name__)
+
+SETTING_DEFINITIONS = {
+    "site_name": {"label": "Site name", "default": "Gift Exchange", "type": "text"},
+    "registration_enabled": {"label": "Allow registration", "default": "true", "type": "boolean"},
+    "shipment_tracking_enabled": {"label": "Enable shipment tracking", "default": "false", "type": "boolean"},
+    "tracking_provider": {"label": "Tracking provider", "default": "kdniao", "type": "select"},
+    "kdniao_ebusiness_id": {"label": "KDNiao business ID", "default": "", "type": "secret"},
+    "kdniao_app_key": {"label": "KDNiao app key", "default": "", "type": "secret"},
+    "cors_origin": {"label": "CORS origin", "default": "*", "type": "text"},
+    "password_reset_enabled": {"label": "Enable password reset", "default": "false", "type": "boolean"},
+    "app_base_url": {"label": "App base URL", "default": "", "type": "text"},
+    "smtp_host": {"label": "SMTP host", "default": "", "type": "text"},
+    "smtp_port": {"label": "SMTP port", "default": "587", "type": "text"},
+    "smtp_use_tls": {"label": "SMTP TLS", "default": "true", "type": "boolean"},
+    "smtp_username": {"label": "SMTP username", "default": "", "type": "text"},
+    "smtp_password": {"label": "SMTP password", "default": "", "type": "secret"},
+    "smtp_sender": {"label": "Sender email", "default": "", "type": "text"},
+}
 
 
 def now_iso():
@@ -29,6 +51,7 @@ def public_user(row):
         "email": row["email"],
         "displayName": row.get("display_name") or row["username"],
         "avatarUrl": row.get("avatar_url"),
+        "isAdmin": is_user_admin(row),
         "phone": row.get("phone") or "",
         "address": row.get("address") or "",
         "receiverName": row.get("receiver_name") or "",
@@ -69,6 +92,30 @@ def login_required(fn):
         return fn(user, *args, **kwargs)
 
     return wrapper
+
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(user, *args, **kwargs):
+        with DB() as db:
+            row = current_user_row(db, user["userId"])
+            if not is_user_admin(row):
+                return fail("Admin permission required", 403)
+        return fn(user, *args, **kwargs)
+
+    return login_required(wrapper)
+
+
+def _split_env(name):
+    return {item.strip().lower() for item in os.getenv(name, "").split(",") if item.strip()}
+
+
+def is_user_admin(row):
+    if bool(row.get("is_admin")):
+        return True
+    usernames = _split_env("ADMIN_USERNAMES")
+    emails = _split_env("ADMIN_EMAILS")
+    return row.get("username", "").lower() in usernames or row.get("email", "").lower() in emails
 
 
 def fetch_event(db, code):
@@ -121,6 +168,87 @@ def add_participant(db, event_id, user_id):
     return cur.lastrowid
 
 
+def api_shipment(row):
+    return {
+        "status": row.get("shipment_status") or "pending",
+        "carrier": row.get("carrier") or "",
+        "trackingNumber": row.get("tracking_number") or "",
+        "shippedAt": str(row.get("shipped_at") or ""),
+        "trackingUpdatedAt": str(row.get("tracking_updated_at") or ""),
+        "trackingSummary": row.get("tracking_summary") or "",
+    }
+
+
+def setting_value(db, key):
+    definition = SETTING_DEFINITIONS[key]
+    row = db.get("SELECT value FROM app_settings WHERE key_name = ?", (key,))
+    return row["value"] if row and row.get("value") is not None else os.getenv(key.upper(), definition["default"])
+
+
+def settings_payload(db, include_secrets=False):
+    values = {}
+    for key, definition in SETTING_DEFINITIONS.items():
+        value = setting_value(db, key)
+        if definition["type"] == "secret" and value and not include_secrets:
+            value = "********"
+        values[key] = {"value": value, **definition}
+    return values
+
+
+def save_setting(db, key, value):
+    cur = db.execute("UPDATE app_settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key_name = ?", (value, key))
+    if cur.rowcount == 0:
+        db.execute("INSERT INTO app_settings (key_name, value) VALUES (?, ?)", (key, value))
+
+
+def token_hash(token):
+    return sha256(token.encode("utf-8")).hexdigest()
+
+
+def absolute_app_url(db):
+    configured = setting_value(db, "app_base_url").strip().rstrip("/")
+    if configured:
+        return configured
+    return request.host_url.rstrip("/")
+
+
+def send_reset_email(db, email, reset_url):
+    host = setting_value(db, "smtp_host").strip()
+    sender = setting_value(db, "smtp_sender").strip() or setting_value(db, "smtp_username").strip()
+    if not host or not sender:
+        raise RuntimeError("Email service is not configured")
+
+    port = int(setting_value(db, "smtp_port") or 587)
+    username = setting_value(db, "smtp_username").strip()
+    password = setting_value(db, "smtp_password")
+    use_tls = setting_value(db, "smtp_use_tls").lower() == "true"
+    site_name = setting_value(db, "site_name")
+
+    message = EmailMessage()
+    message["Subject"] = f"{site_name} password reset"
+    message["From"] = sender
+    message["To"] = email
+    message.set_content(
+        "Use the link below to reset your password. The link expires in 30 minutes.\n\n"
+        f"{reset_url}\n\n"
+        "If you did not request this, you can ignore this email."
+    )
+
+    with smtplib.SMTP(host, port, timeout=12) as smtp:
+        if use_tls:
+            smtp.starttls()
+        if username or password:
+            smtp.login(username, password)
+        smtp.send_message(message)
+
+
+def parse_datetime(value):
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
 @api.route("/health")
 def health():
     return ok({"status": "ok", "timestamp": now_iso()})
@@ -165,6 +293,12 @@ def register():
         return fail("Password must contain letters and numbers")
 
     with DB() as db:
+        user_count = db.get("SELECT COUNT(*) AS count FROM users")["count"]
+        registration_enabled = setting_value(db, "registration_enabled").lower() == "true"
+        is_first_user = int(user_count) == 0
+        if not registration_enabled and not is_first_user:
+            return fail("Registration is closed", 403)
+
         conflicts = []
         if db.get("SELECT id FROM users WHERE username = ?", (username,)):
             conflicts.append("username")
@@ -173,9 +307,11 @@ def register():
         if conflicts:
             return fail(" and ".join(conflicts) + " already exists", 409)
 
+        admin_by_env = username.lower() in _split_env("ADMIN_USERNAMES") or email.lower() in _split_env("ADMIN_EMAILS")
+        is_admin = 1 if is_first_user or admin_by_env else 0
         cur = db.execute(
-            "INSERT INTO users (username, email, password, display_name) VALUES (?, ?, ?, ?)",
-            (username, email, hash_password(password), username),
+            "INSERT INTO users (username, email, password, display_name, is_admin) VALUES (?, ?, ?, ?, ?)",
+            (username, email, hash_password(password), username, is_admin),
         )
         user_id = cur.lastrowid
         row = current_user_row(db, user_id)
@@ -195,6 +331,68 @@ def login():
         if not row or not check_password(password, row["password"]):
             return fail("Invalid username or password", 401)
         return ok({"token": sign_token(row["id"]), "user": public_user(row)}, "Signed in")
+
+
+@api.route("/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    data = body()
+    email = str(data.get("email") or "").strip().lower()
+    generic = ok(None, "If the email exists, a reset link will be sent")
+    if not email:
+        return generic
+
+    with DB() as db:
+        if setting_value(db, "password_reset_enabled").lower() != "true":
+            return fail("Password reset is not enabled", 403)
+
+        row = db.get("SELECT id, email FROM users WHERE email = ?", (email,))
+        if not row:
+            return generic
+
+        raw_token = secrets.token_urlsafe(32)
+        expires = datetime.now(timezone.utc) + timedelta(minutes=30)
+        db.execute(
+            "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
+            (row["id"], token_hash(raw_token), expires.isoformat()),
+        )
+        reset_url = f"{absolute_app_url(db)}/reset-password?token={raw_token}"
+        try:
+            send_reset_email(db, row["email"], reset_url)
+        except Exception:
+            db.conn.rollback()
+            return fail("Email service is unavailable", 503)
+        return generic
+
+
+@api.route("/auth/reset-password", methods=["POST"])
+def reset_password():
+    data = body()
+    raw_token = str(data.get("token") or "").strip()
+    password = str(data.get("password") or "")
+    if not raw_token or not password:
+        return fail("Token and password are required")
+    if len(password) < 6 or len(password) > 128:
+        return fail("Password length must be 6-128 characters")
+    if not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
+        return fail("Password must contain letters and numbers")
+
+    with DB() as db:
+        row = db.get(
+            """
+            SELECT id, user_id, expires_at, used_at
+            FROM password_reset_tokens
+            WHERE token_hash = ?
+            """,
+            (token_hash(raw_token),),
+        )
+        if not row or row.get("used_at"):
+            return fail("Reset link is invalid or expired", 400)
+        expires_at = parse_datetime(row["expires_at"])
+        if expires_at < datetime.now(timezone.utc):
+            return fail("Reset link is invalid or expired", 400)
+        db.execute("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (hash_password(password), row["user_id"]))
+        db.execute("UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?", (row["id"],))
+        return ok(None, "Password updated")
 
 
 @api.route("/auth/me")
@@ -255,6 +453,32 @@ def update_profile(user):
             ),
         )
         return ok(public_user(current_user_row(db, user["userId"])), "Profile saved")
+
+
+@api.route("/admin/settings")
+@admin_required
+def admin_settings(_user):
+    with DB() as db:
+        return ok(settings_payload(db))
+
+
+@api.route("/admin/settings", methods=["PUT"])
+@admin_required
+def update_admin_settings(_user):
+    data = body()
+    with DB() as db:
+        for key, definition in SETTING_DEFINITIONS.items():
+            if key not in data:
+                continue
+            value = str(data.get(key) or "").strip()
+            if definition["type"] == "boolean":
+                value = "true" if value.lower() in {"true", "1", "yes", "on"} else "false"
+            if definition["type"] == "secret" and (value == "********" or value == ""):
+                continue
+            if key == "site_name" and len(value) > 80:
+                return fail("Site name is too long")
+            save_setting(db, key, value)
+        return ok(settings_payload(db), "Settings saved")
 
 
 @api.route("/events", methods=["POST"])
@@ -457,7 +681,9 @@ def my_match(user, code):
                 return ok(None)
             row = db.get(
                 """
-                SELECT m.id, m.note, p.user_id AS receiver_user_id, u.username, u.display_name
+                SELECT m.id, m.note, m.shipment_status, m.carrier, m.tracking_number,
+                       m.shipped_at, m.tracking_updated_at, m.tracking_summary,
+                       p.user_id AS receiver_user_id, u.username, u.display_name
                 FROM matches m
                 JOIN participants p ON p.id = m.receiver_id
                 JOIN users u ON u.id = p.user_id
@@ -474,6 +700,7 @@ def my_match(user, code):
                     "receiverName": row["username"],
                     "receiverDisplayName": row.get("display_name") or row["username"],
                     "note": row.get("note") or "",
+                    "shipment": api_shipment(row),
                 }
             )
     except ValueError as exc:
@@ -498,5 +725,54 @@ def update_note(user, code):
             if cur.rowcount == 0:
                 return fail("Match not found")
             return ok(None, "Note saved")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/shipment", methods=["PUT"])
+@login_required
+def update_shipment(user, code):
+    data = body()
+    match_id = data.get("matchId")
+    carrier = str(data.get("carrier") or "").strip()
+    tracking_number = str(data.get("trackingNumber") or data.get("tracking_number") or "").strip()
+    status = str(data.get("status") or "").strip() or ("shipped" if tracking_number else "pending")
+
+    if status not in {"pending", "shipped", "delivered"}:
+        return fail("Invalid shipment status")
+    if not match_id:
+        return fail("matchId is required")
+    if status != "pending" and not tracking_number:
+        return fail("Tracking number is required")
+    if len(carrier) > 80:
+        return fail("Carrier is too long")
+    if len(tracking_number) > 120:
+        return fail("Tracking number is too long")
+
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return fail("You are not a participant of this event", 403)
+
+            cur = db.execute(
+                """
+                UPDATE matches
+                SET shipment_status = ?, carrier = ?, tracking_number = ?,
+                    shipped_at = CASE
+                        WHEN ? = 'pending' THEN NULL
+                        ELSE COALESCE(shipped_at, CURRENT_TIMESTAMP)
+                    END,
+                    tracking_updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND event_id = ? AND giver_id = ?
+                """,
+                (status, carrier, tracking_number, status, match_id, event["id"], me["id"]),
+            )
+            if cur.rowcount == 0:
+                return fail("Match not found")
+
+            row = db.get("SELECT * FROM matches WHERE id = ?", (match_id,))
+            return ok(api_shipment(row), "Shipment saved")
     except ValueError as exc:
         return fail(str(exc), 404)
