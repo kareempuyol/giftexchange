@@ -116,6 +116,7 @@ def init_schema():
               budget_min INT DEFAULT 0,
               creator_id INT NOT NULL,
               status VARCHAR(24) DEFAULT 'open',
+              match_visibility VARCHAR(24) DEFAULT 'private',
               sign_up_deadline VARCHAR(64) DEFAULT '',
               participant_count INT DEFAULT 0,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -209,6 +210,7 @@ def init_schema():
               budget_min INTEGER DEFAULT 0,
               creator_id INTEGER NOT NULL REFERENCES users(id),
               status TEXT DEFAULT 'open',
+              match_visibility TEXT DEFAULT 'private',
               sign_up_deadline TEXT DEFAULT '',
               participant_count INTEGER DEFAULT 0,
               created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -273,6 +275,14 @@ def run_migrations(db):
         ("gift_review", "TEXT"),
         ("gift_photo_url", "MEDIUMTEXT" if db.engine == "mysql" else "TEXT"),
     ]
+    event_columns = [
+        ("match_visibility", "VARCHAR(24) DEFAULT 'private'" if db.engine == "mysql" else "TEXT DEFAULT 'private'"),
+    ]
+    for name, column_type in event_columns:
+        try:
+            db.execute(f"ALTER TABLE events ADD COLUMN {name} {column_type}")
+        except Exception:
+            pass
     for name, column_type in user_columns:
         try:
             db.execute(f"ALTER TABLE users ADD COLUMN {name} {column_type}")

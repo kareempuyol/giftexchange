@@ -68,6 +68,7 @@ def api_event(row):
         "note": row.get("description") or "",
         "drawDate": row.get("sign_up_deadline") or "",
         "status": row["status"],
+        "matchVisibility": row.get("match_visibility") or "private",
         "ownerId": row["creator_id"],
         "ownerName": row.get("owner_username") or "",
         "participantCount": row.get("participant_count") or 0,
@@ -498,6 +499,7 @@ def create_event(user):
     note = str(data.get("note") or "").strip()
     draw_date = str(data.get("drawDate") or "")
     budget = int(data.get("budget") or 0)
+    match_visibility = str(data.get("matchVisibility") or data.get("match_visibility") or "private").strip()
 
     if not title:
         return fail("Event title is required")
@@ -507,12 +509,17 @@ def create_event(user):
         return fail("Budget cannot be negative")
     if len(note) > 500:
         return fail("Note is too long")
+    if match_visibility not in {"private", "public"}:
+        return fail("Invalid match visibility")
 
     with DB() as db:
         code = str(uuid.uuid4())
         cur = db.execute(
-            "INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline) VALUES (?, ?, ?, ?, ?, ?)",
-            (code, title, note, budget, user["userId"], draw_date),
+            """
+            INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline, match_visibility)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (code, title, note, budget, user["userId"], draw_date, match_visibility),
         )
         add_participant(db, cur.lastrowid, user["userId"])
         return ok(api_event(fetch_event(db, code)), "Event created", 201)
@@ -675,6 +682,51 @@ def draw(user, code):
                 )
             db.execute("UPDATE events SET status = 'drawn', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (event["id"],))
             return ok(matches, "Draw complete")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/matches")
+@login_required
+def event_matches(user, code):
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if event["status"] != "drawn":
+                return ok([])
+            participant = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            is_creator = event["creator_id"] == user["userId"]
+            is_public = (event.get("match_visibility") or "private") == "public"
+            if not is_creator and (not is_public or not participant):
+                return fail("Match list is private", 403)
+
+            rows = db.all(
+                """
+                SELECT m.id,
+                       gp.user_id AS giver_user_id, gu.username AS giver_username, gu.display_name AS giver_display_name,
+                       rp.user_id AS receiver_user_id, ru.username AS receiver_username, ru.display_name AS receiver_display_name
+                FROM matches m
+                JOIN participants gp ON gp.id = m.giver_id
+                JOIN users gu ON gu.id = gp.user_id
+                JOIN participants rp ON rp.id = m.receiver_id
+                JOIN users ru ON ru.id = rp.user_id
+                WHERE m.event_id = ?
+                ORDER BY gp.created_at ASC
+                """,
+                (event["id"],),
+            )
+            return ok(
+                [
+                    {
+                        "id": row["id"],
+                        "giverId": row["giver_user_id"],
+                        "giverName": row.get("giver_display_name") or row["giver_username"],
+                        "receiverId": row["receiver_user_id"],
+                        "receiverName": row.get("receiver_display_name") or row["receiver_username"],
+                    }
+                    for row in rows
+                ]
+            )
     except ValueError as exc:
         return fail(str(exc), 404)
 
