@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">礼物互赠蒙德里安风格图标</title>
+  <desc id="desc">以暖珊瑚红、金色、奶油白和深棕黑线构成的抽象礼物图标。</desc>
+  <rect width="512" height="512" rx="96" fill="#FFFAF5"/>
+  <g transform="translate(70 76)">
+    <rect x="0" y="96" width="372" height="268" rx="18" fill="#2D2420"/>
+    <rect x="18" y="114" width="112" height="86" fill="#E8553D"/>
+    <rect x="144" y="114" width="82" height="86" fill="#FFFFFF"/>
+    <rect x="240" y="114" width="114" height="86" fill="#D4A017"/>
+    <rect x="18" y="214" width="70" height="132" fill="#FFFFFF"/>
+    <rect x="102" y="214" width="124" height="132" fill="#F6D7CF"/>
+    <rect x="240" y="214" width="62" height="132" fill="#E8553D"/>
+    <rect x="316" y="214" width="38" height="132" fill="#FFFFFF"/>
+    <rect x="166" y="84" width="46" height="282" fill="#2D2420"/>
+    <rect x="178" y="114" width="22" height="232" fill="#D4A017"/>
+    <rect x="18" y="200" width="354" height="14" fill="#2D2420"/>
+    <path d="M145 92C110 59 112 24 139 10c34-18 64 18 76 83h-48c-8-27-21-44-36-36-13 7-8 26 22 54l-8-19Z" fill="#2D2420"/>
+    <path d="M228 92C236 28 270-7 304 13c27 16 25 53-13 84l-44 6c32-25 42-47 28-55-15-9-30 7-40 54l-7-10Z" fill="#2D2420"/>
+    <path d="M154 88C130 65 130 41 148 31c22-12 42 14 51 57h-45Z" fill="#E8553D"/>
+    <path d="M229 88C237 45 259 22 281 35c18 10 16 35-12 58l-40-5Z" fill="#D4A017"/>
+    <rect x="134" y="78" width="94" height="42" rx="8" fill="#2D2420"/>
+    <rect x="148" y="90" width="66" height="18" fill="#FFFFFF"/>
+  </g>
+</svg>
