@@ -132,6 +132,12 @@ def init_schema():
               event_id INT NOT NULL,
               user_id INT NOT NULL,
               nickname VARCHAR(120) NOT NULL,
+              receiver_name VARCHAR(120),
+              phone VARCHAR(50),
+              address TEXT,
+              preference_likes TEXT,
+              preference_dislikes TEXT,
+              preference_notes TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               UNIQUE KEY uniq_event_user (event_id, user_id),
               INDEX idx_participants_event (event_id),
@@ -223,6 +229,12 @@ def init_schema():
               event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
               user_id INTEGER NOT NULL REFERENCES users(id),
               nickname TEXT NOT NULL,
+              receiver_name TEXT,
+              phone TEXT,
+              address TEXT,
+              preference_likes TEXT,
+              preference_dislikes TEXT,
+              preference_notes TEXT,
               created_at TEXT DEFAULT CURRENT_TIMESTAMP,
               UNIQUE(event_id, user_id)
             )
@@ -278,9 +290,22 @@ def run_migrations(db):
     event_columns = [
         ("match_visibility", "VARCHAR(24) DEFAULT 'private'" if db.engine == "mysql" else "TEXT DEFAULT 'private'"),
     ]
+    participant_columns = [
+        ("receiver_name", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),
+        ("phone", "VARCHAR(50)" if db.engine == "mysql" else "TEXT"),
+        ("address", "TEXT"),
+        ("preference_likes", "TEXT"),
+        ("preference_dislikes", "TEXT"),
+        ("preference_notes", "TEXT"),
+    ]
     for name, column_type in event_columns:
         try:
             db.execute(f"ALTER TABLE events ADD COLUMN {name} {column_type}")
+        except Exception:
+            pass
+    for name, column_type in participant_columns:
+        try:
+            db.execute(f"ALTER TABLE participants ADD COLUMN {name} {column_type}")
         except Exception:
             pass
     for name, column_type in user_columns:

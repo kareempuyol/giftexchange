@@ -143,7 +143,9 @@ def current_user_row(db, user_id):
 def participant_rows(db, event_id):
     return db.all(
         """
-        SELECT p.id, p.user_id, p.nickname, p.created_at, u.username, u.display_name, u.avatar_url
+        SELECT p.id, p.user_id, p.nickname, p.receiver_name, p.phone, p.address,
+               p.preference_likes, p.preference_dislikes, p.preference_notes,
+               p.created_at, u.username, u.display_name, u.avatar_url
         FROM participants p JOIN users u ON u.id = p.user_id
         WHERE p.event_id = ?
         ORDER BY p.created_at ASC
@@ -152,15 +154,62 @@ def participant_rows(db, event_id):
     )
 
 
-def add_participant(db, event_id, user_id):
+def participant_payload(user_row, data=None):
+    data = data or {}
+    return {
+        "receiver_name": str(data.get("receiverName") or data.get("receiver_name") or user_row.get("receiver_name") or user_row.get("display_name") or user_row["username"]).strip(),
+        "phone": str(data.get("phone") or user_row.get("phone") or "").strip(),
+        "address": str(data.get("address") or user_row.get("address") or "").strip(),
+        "preference_likes": str(data.get("preferenceLikes") or data.get("preference_likes") or user_row.get("gift_preference") or "").strip(),
+        "preference_dislikes": str(data.get("preferenceDislikes") or data.get("preference_dislikes") or "").strip(),
+        "preference_notes": str(data.get("preferenceNotes") or data.get("preference_notes") or "").strip(),
+    }
+
+
+def validate_participant_payload(payload):
+    if len(payload["receiver_name"]) > 120:
+        return "Receiver name is too long"
+    if len(payload["phone"]) > 50:
+        return "Phone is too long"
+    if len(payload["address"]) > 500:
+        return "Address is too long"
+    if len(payload["preference_likes"]) > 500:
+        return "Preference is too long"
+    if len(payload["preference_dislikes"]) > 500:
+        return "Dislikes is too long"
+    if len(payload["preference_notes"]) > 500:
+        return "Preference notes is too long"
+    return None
+
+
+def add_participant(db, event_id, user_id, data=None):
     user_row = current_user_row(db, user_id)
     nickname = user_row.get("display_name") or user_row["username"]
+    payload = participant_payload(user_row, data)
+    error = validate_participant_payload(payload)
+    if error:
+        raise ValueError(error)
     existing = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event_id, user_id))
     if existing:
         return existing["id"]
     cur = db.execute(
-        "INSERT INTO participants (event_id, user_id, nickname) VALUES (?, ?, ?)",
-        (event_id, user_id, nickname),
+        """
+        INSERT INTO participants (
+            event_id, user_id, nickname, receiver_name, phone, address,
+            preference_likes, preference_dislikes, preference_notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            event_id,
+            user_id,
+            nickname,
+            payload["receiver_name"],
+            payload["phone"],
+            payload["address"],
+            payload["preference_likes"],
+            payload["preference_dislikes"],
+            payload["preference_notes"],
+        ),
     )
     db.execute(
         "UPDATE events SET participant_count = participant_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -186,6 +235,22 @@ def api_gift_post(row):
         "rating": row.get("gift_rating"),
         "review": row.get("gift_review") or "",
         "photoUrl": row.get("gift_photo_url") or "",
+    }
+
+
+def api_contact(row):
+    return {
+        "receiverName": row.get("receiver_name") or "",
+        "phone": row.get("phone") or "",
+        "address": row.get("address") or "",
+    }
+
+
+def api_preference(row):
+    return {
+        "likes": row.get("preference_likes") or "",
+        "dislikes": row.get("preference_dislikes") or "",
+        "notes": row.get("preference_notes") or "",
     }
 
 
@@ -590,7 +655,24 @@ def join_event(user, code):
                 return fail("Event is closed")
             if db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"])):
                 return fail("You have already joined this event")
-            participant_id = add_participant(db, event["id"], user["userId"])
+            data = body()
+            participant_id = add_participant(db, event["id"], user["userId"], data)
+            if data.get("updateProfile"):
+                payload = participant_payload(current_user_row(db, user["userId"]), data)
+                db.execute(
+                    """
+                    UPDATE users
+                    SET receiver_name = ?, phone = ?, address = ?, gift_preference = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (
+                        payload["receiver_name"],
+                        payload["phone"],
+                        payload["address"],
+                        payload["preference_likes"],
+                        user["userId"],
+                    ),
+                )
             user_row = current_user_row(db, user["userId"])
             return ok(
                 {"id": participant_id, "eventCode": code, "userName": user_row.get("display_name") or user_row["username"]},
@@ -598,7 +680,8 @@ def join_event(user, code):
                 201,
             )
     except ValueError as exc:
-        return fail(str(exc), 404)
+        message = str(exc)
+        return fail(message, 404 if message == "Event not found" else 400)
 
 
 @api.route("/events/<code>/leave", methods=["DELETE"])
@@ -638,6 +721,8 @@ def participants(_user, code):
                     "displayName": row.get("display_name") or row["nickname"] or row["username"],
                     "avatarUrl": row.get("avatar_url"),
                     "nickname": row["nickname"],
+                    "contactComplete": bool(row.get("receiver_name") and row.get("phone") and row.get("address")),
+                    "preferenceComplete": bool(row.get("preference_likes") or row.get("preference_dislikes") or row.get("preference_notes")),
                     "joinedAt": str(row.get("created_at") or ""),
                 }
                 for row in rows
@@ -731,6 +816,49 @@ def event_matches(user, code):
         return fail(str(exc), 404)
 
 
+@api.route("/events/<code>/dashboard")
+@login_required
+def event_dashboard(user, code):
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if event["creator_id"] != user["userId"]:
+                return fail("Only the event creator can view dashboard", 403)
+            participants_data = participant_rows(db, event["id"])
+            rows = db.all(
+                """
+                SELECT p.id AS participant_id, m.id AS match_id, m.shipment_status, m.tracking_number,
+                       m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url
+                FROM participants p
+                LEFT JOIN matches m ON m.receiver_id = p.id AND m.event_id = ?
+                WHERE p.event_id = ?
+                """,
+                (event["id"], event["id"]),
+            )
+            match_by_participant = {row["participant_id"]: row for row in rows}
+            data = []
+            for row in participants_data:
+                match_row = match_by_participant.get(row["id"]) or {}
+                data.append(
+                    {
+                        "participantId": row["id"],
+                        "userId": row["user_id"],
+                        "displayName": row.get("display_name") or row["nickname"] or row["username"],
+                        "avatarUrl": row.get("avatar_url"),
+                        "contactComplete": bool(row.get("receiver_name") and row.get("phone") and row.get("address")),
+                        "preferenceComplete": bool(row.get("preference_likes") or row.get("preference_dislikes") or row.get("preference_notes")),
+                        "hasMatch": bool(match_row.get("match_id")),
+                        "shipmentStatus": match_row.get("shipment_status") or "pending",
+                        "hasTracking": bool(match_row.get("tracking_number")),
+                        "received": bool(match_row.get("received_at")),
+                        "postedGift": bool(match_row.get("gift_rating") or match_row.get("gift_review") or match_row.get("gift_photo_url")),
+                    }
+                )
+            return ok({"participants": data, "count": len(data)})
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
 @api.route("/events/<code>/my-match")
 @login_required
 def my_match(user, code):
@@ -745,6 +873,8 @@ def my_match(user, code):
                 SELECT m.id, m.note, m.shipment_status, m.carrier, m.tracking_number,
                        m.shipped_at, m.tracking_updated_at, m.tracking_summary,
                        m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
+                       p.receiver_name, p.phone, p.address,
+                       p.preference_likes, p.preference_dislikes, p.preference_notes,
                        p.user_id AS receiver_user_id, u.username, u.display_name
                 FROM matches m
                 JOIN participants p ON p.id = m.receiver_id
@@ -764,6 +894,8 @@ def my_match(user, code):
                     "note": row.get("note") or "",
                     "shipment": api_shipment(row),
                     "giftPost": api_gift_post(row),
+                    "contact": api_contact(row),
+                    "preference": api_preference(row),
                 }
             )
     except ValueError as exc:
