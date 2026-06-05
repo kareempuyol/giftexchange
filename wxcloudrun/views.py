@@ -579,14 +579,13 @@ def create_event(user):
 
     with DB() as db:
         code = str(uuid.uuid4())
-        cur = db.execute(
+        db.execute(
             """
             INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline, match_visibility)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (code, title, note, budget, user["userId"], draw_date, match_visibility),
         )
-        add_participant(db, cur.lastrowid, user["userId"])
         return ok(api_event(fetch_event(db, code)), "Event created", 201)
 
 
