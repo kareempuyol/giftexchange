@@ -1297,6 +1297,17 @@ def update_shipment(user, code):
             me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
             if not me:
                 return fail("You are not a participant of this event", 403)
+            old_row = db.get(
+                """
+                SELECT carrier, tracking_number
+                FROM matches
+                WHERE id = ? AND event_id = ? AND giver_id = ?
+                """,
+                (match_id, event["id"], me["id"]),
+            )
+            if not old_row:
+                return fail("Match not found")
+            shipment_changed = (old_row.get("carrier") or "") != carrier or (old_row.get("tracking_number") or "") != tracking_number
 
             cur = db.execute(
                 """
@@ -1325,7 +1336,7 @@ def update_shipment(user, code):
                 """,
                 (match_id,),
             )
-            if status != "pending":
+            if status != "pending" and shipment_changed:
                 create_notification(
                     db,
                     row["receiver_user_id"],
