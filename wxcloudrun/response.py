@@ -1,18 +1,9 @@
-import json
-
-from flask import Response
+from flask import jsonify
 
 
-def make_succ_empty_response():
-    data = json.dumps({'code': 0, 'data': {}})
-    return Response(data, mimetype='application/json')
+def ok(data=None, message="ok", status=200):
+    return jsonify({"code": 0, "data": data, "message": message}), status
 
 
-def make_succ_response(data):
-    data = json.dumps({'code': 0, 'data': data})
-    return Response(data, mimetype='application/json')
-
-
-def make_err_response(err_msg):
-    data = json.dumps({'code': -1, 'errorMsg': err_msg})
-    return Response(data, mimetype='application/json')
+def fail(message, status=400, code=-1):
+    return jsonify({"code": code, "data": None, "message": message}), status

@@ -1,24 +1,27 @@
+import os
+
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-import pymysql
-import config
 
-# 因MySQLDB不支持Python3，使用pymysql扩展库代替MySQLDB库
-pymysql.install_as_MySQLdb()
+from wxcloudrun.database import init_schema
+from wxcloudrun.views import api, site
 
-# 初始化web应用
-app = Flask(__name__, instance_relative_config=True)
-app.config['DEBUG'] = config.DEBUG
 
-# 设定数据库链接
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://{}:{}@{}/flask_demo'.format(config.username, config.password,
-                                                                             config.db_address)
+def create_app():
+    flask_app = Flask(__name__)
+    flask_app.register_blueprint(site)
+    flask_app.register_blueprint(api)
 
-# 初始化DB操作对象
-db = SQLAlchemy(app)
+    @flask_app.after_request
+    def add_cors_headers(response):
+        origin = os.getenv("CORS_ORIGIN", "*")
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Vary"] = "Origin"
+        return response
 
-# 加载控制器
-from wxcloudrun import views
+    init_schema()
+    return flask_app
 
-# 加载配置
-app.config.from_object('config')
+
+app = create_app()
