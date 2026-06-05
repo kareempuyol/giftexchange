@@ -72,6 +72,9 @@ def api_event(row):
         "ownerId": row["creator_id"],
         "ownerName": row.get("owner_username") or "",
         "participantCount": row.get("participant_count") or 0,
+        "coverImage": row.get("cover_image") or "",
+        "isPublic": bool(row.get("is_public")) if row.get("is_public") is not None else True,
+        "maxParticipants": row.get("max_participants"),
         "createdAt": str(row.get("created_at") or ""),
         "updatedAt": str(row.get("updated_at") or ""),
     }
@@ -565,6 +568,9 @@ def create_event(user):
     draw_date = str(data.get("drawDate") or "")
     budget = int(data.get("budget") or 0)
     match_visibility = str(data.get("matchVisibility") or data.get("match_visibility") or "private").strip()
+    is_public = bool(data.get("isPublic")) if data.get("isPublic") is not None else True
+    max_participants = data.get("maxParticipants")
+    cover_image = str(data.get("coverImage") or "").strip()
 
     if not title:
         return fail("Event title is required")
@@ -576,15 +582,28 @@ def create_event(user):
         return fail("Note is too long")
     if match_visibility not in {"private", "public"}:
         return fail("Invalid match visibility")
+    if max_participants is not None:
+        try:
+            max_participants = int(max_participants)
+        except (ValueError, TypeError):
+            return fail("Invalid max participants")
+        if max_participants < 2:
+            return fail("Max participants must be at least 2")
+        if max_participants > 999:
+            return fail("Max participants is too large")
+    if len(cover_image) > 350000:
+        return fail("Cover image is too large")
 
     with DB() as db:
         code = str(uuid.uuid4())
         db.execute(
             """
-            INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline, match_visibility)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline,
+                                match_visibility, is_public, max_participants, cover_image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (code, title, note, budget, user["userId"], draw_date, match_visibility),
+            (code, title, note, budget, user["userId"], draw_date, match_visibility,
+             1 if is_public else 0, max_participants, cover_image),
         )
         return ok(api_event(fetch_event(db, code)), "Event created", 201)
 
@@ -623,7 +642,154 @@ def joined_events(user):
         return ok([api_event(row) for row in rows])
 
 
+@api.route("/events/public")
+@login_required
+def public_events(_user):
+    search = str(request.args.get("search", "")).strip() or None
+    sort = str(request.args.get("sort", "newest")).strip()
+    filter_type = str(request.args.get("filter", "all")).strip()
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        per_page = max(1, min(50, int(request.args.get("per_page", "20"))))
+    except (ValueError, TypeError):
+        per_page = 20
+
+    if sort not in ("newest", "hottest"):
+        sort = "newest"
+    if filter_type not in ("all", "not_full"):
+        filter_type = "all"
+
+    with DB() as db:
+        conditions = ["e.status = 'open'", "e.is_public = 1"]
+        params = []
+
+        if search:
+            conditions.append("(e.name LIKE ? OR u.username LIKE ? OR e.code = ?)")
+            params.extend([f"%{search}%", f"%{search}%", search])
+
+        if filter_type == "not_full":
+            conditions.append("(e.max_participants IS NULL OR e.participant_count < e.max_participants)")
+
+        where = " AND ".join(conditions)
+        order = "ORDER BY e.participant_count DESC, e.created_at DESC" if sort == "hottest" else "ORDER BY e.created_at DESC"
+
+        events = db.all(
+            f"""
+            SELECT e.*, u.username AS owner_username
+            FROM events e JOIN users u ON u.id = e.creator_id
+            WHERE {where}
+            {order}
+            LIMIT ? OFFSET ?
+            """,
+            params + [per_page, (page - 1) * per_page],
+        )
+
+        total_row = db.get(
+            f"""
+            SELECT COUNT(*) AS count
+            FROM events e JOIN users u ON u.id = e.creator_id
+            WHERE {where}
+            """,
+            params,
+        )
+        total = total_row["count"] if total_row else 0
+
+        return ok({
+            "events": [api_event(row) for row in events],
+            "total": total,
+            "page": page,
+            "perPage": per_page,
+        })
+
+
 @api.route("/events/<code>")
+@login_required
+def event_detail(_user, code):
+    try:
+        with DB() as db:
+            return ok(api_event(fetch_event(db, code)))
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>", methods=["PATCH"])
+@login_required
+def edit_event(user, code):
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if event["creator_id"] != user["userId"]:
+                return fail("Only the event creator can edit", 403)
+
+            data = body()
+            fields = {}
+            params = []
+
+            if "title" in data:
+                title = str(data["title"] or "").strip()
+                if not title:
+                    return fail("Event title cannot be empty")
+                if len(title) > 100:
+                    return fail("Event title is too long")
+                fields["name"] = title
+                params.append(title)
+
+            if "coverImage" in data:
+                cover = str(data["coverImage"] or "").strip()
+                if len(cover) > 350000:
+                    return fail("Cover image is too large")
+                fields["cover_image"] = cover
+                params.append(cover)
+
+            if "drawDate" in data:
+                draw = str(data["drawDate"] or "")
+                if draw:
+                    try:
+                        dt = parse_datetime(draw)
+                        if dt <= datetime.now(timezone.utc):
+                            return fail("Deadline must be in the future")
+                    except Exception:
+                        return fail("Invalid date format")
+                fields["sign_up_deadline"] = draw
+                params.append(draw)
+
+            if "maxParticipants" in data:
+                max_p = data["maxParticipants"]
+                if max_p is not None:
+                    try:
+                        max_p = int(max_p)
+                    except (ValueError, TypeError):
+                        return fail("Invalid max participants")
+                    if max_p < 2:
+                        return fail("Max participants must be at least 2")
+                    if max_p > 999:
+                        return fail("Max participants is too large")
+                    current_count = int(event.get("participant_count") or 0)
+                    if max_p < current_count:
+                        return fail(f"Cannot set max below current participant count ({current_count})")
+                fields["max_participants"] = max_p
+                params.append(max_p)
+
+            if "isPublic" in data:
+                is_public = bool(data["isPublic"])
+                fields["is_public"] = 1 if is_public else 0
+                params.append(1 if is_public else 0)
+
+            if not fields:
+                return fail("No fields to update")
+
+            assignments = ", ".join(f"{col} = ?" for col in fields)
+            params.append(code)
+            db.execute(
+                f"UPDATE events SET {assignments}, updated_at = CURRENT_TIMESTAMP WHERE code = ?",
+                params,
+            )
+            return ok(api_event(fetch_event(db, code)), "Event updated")
+    except ValueError as exc:
+        return fail(str(exc), 404)
 @login_required
 def event_detail(_user, code):
     try:
@@ -652,6 +818,9 @@ def join_event(user, code):
             event = fetch_event(db, code)
             if event["status"] != "open":
                 return fail("Event is closed")
+            max_ppl = event.get("max_participants")
+            if max_ppl is not None and int(event.get("participant_count") or 0) >= int(max_ppl):
+                return fail("Event is full")
             if db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"])):
                 return fail("You have already joined this event")
             data = body()

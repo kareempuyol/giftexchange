@@ -8,8 +8,8 @@ from wxcloudrun.views import api, site
 
 def create_app():
     flask_app = Flask(__name__)
-    flask_app.register_blueprint(site)
     flask_app.register_blueprint(api)
+    flask_app.register_blueprint(site)
 
     @flask_app.after_request
     def add_cors_headers(response):
