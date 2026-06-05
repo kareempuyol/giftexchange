@@ -179,6 +179,15 @@ def api_shipment(row):
     }
 
 
+def api_gift_post(row):
+    return {
+        "receivedAt": str(row.get("received_at") or ""),
+        "rating": row.get("gift_rating"),
+        "review": row.get("gift_review") or "",
+        "photoUrl": row.get("gift_photo_url") or "",
+    }
+
+
 def setting_value(db, key):
     definition = SETTING_DEFINITIONS[key]
     row = db.get("SELECT value FROM app_settings WHERE key_name = ?", (key,))
@@ -683,6 +692,7 @@ def my_match(user, code):
                 """
                 SELECT m.id, m.note, m.shipment_status, m.carrier, m.tracking_number,
                        m.shipped_at, m.tracking_updated_at, m.tracking_summary,
+                       m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
                        p.user_id AS receiver_user_id, u.username, u.display_name
                 FROM matches m
                 JOIN participants p ON p.id = m.receiver_id
@@ -701,8 +711,93 @@ def my_match(user, code):
                     "receiverDisplayName": row.get("display_name") or row["username"],
                     "note": row.get("note") or "",
                     "shipment": api_shipment(row),
+                    "giftPost": api_gift_post(row),
                 }
             )
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/received-gift")
+@login_required
+def received_gift(user, code):
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return ok(None)
+            row = db.get(
+                """
+                SELECT m.id, m.note, m.shipment_status, m.carrier, m.tracking_number,
+                       m.shipped_at, m.tracking_updated_at, m.tracking_summary,
+                       m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
+                       p.user_id AS giver_user_id, u.username, u.display_name
+                FROM matches m
+                JOIN participants p ON p.id = m.giver_id
+                JOIN users u ON u.id = p.user_id
+                WHERE m.event_id = ? AND m.receiver_id = ?
+                """,
+                (event["id"], me["id"]),
+            )
+            if not row:
+                return ok(None)
+            return ok(
+                {
+                    "matchId": row["id"],
+                    "giverId": row["giver_user_id"],
+                    "giverName": row["username"],
+                    "giverDisplayName": row.get("display_name") or row["username"],
+                    "note": row.get("note") or "",
+                    "shipment": api_shipment(row),
+                    "giftPost": api_gift_post(row),
+                }
+            )
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/received-gift", methods=["PUT"])
+@login_required
+def update_received_gift(user, code):
+    data = body()
+    match_id = data.get("matchId")
+    rating = data.get("rating")
+    review = str(data.get("review") or "").strip()
+    photo_url = str(data.get("photoUrl") or data.get("photo_url") or "").strip()
+
+    if not match_id:
+        return fail("matchId is required")
+    try:
+        rating_value = int(rating)
+    except Exception:
+        return fail("Rating is required")
+    if rating_value < 1 or rating_value > 5:
+        return fail("Rating must be 1-5")
+    if len(review) > 500:
+        return fail("Review is too long")
+    if len(photo_url) > 350000:
+        return fail("Photo is too large")
+
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return fail("You are not a participant of this event", 403)
+            cur = db.execute(
+                """
+                UPDATE matches
+                SET received_at = COALESCE(received_at, CURRENT_TIMESTAMP),
+                    gift_rating = ?, gift_review = ?, gift_photo_url = ?
+                WHERE id = ? AND event_id = ? AND receiver_id = ?
+                """,
+                (rating_value, review, photo_url, match_id, event["id"], me["id"]),
+            )
+            if cur.rowcount == 0:
+                return fail("Match not found")
+            row = db.get("SELECT * FROM matches WHERE id = ?", (match_id,))
+            return ok(api_gift_post(row), "Gift post saved")
     except ValueError as exc:
         return fail(str(exc), 404)
 

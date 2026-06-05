@@ -152,6 +152,10 @@ def init_schema():
               shipped_at DATETIME NULL,
               tracking_updated_at DATETIME NULL,
               tracking_summary TEXT,
+              received_at DATETIME NULL,
+              gift_rating INT,
+              gift_review TEXT,
+              gift_photo_url MEDIUMTEXT,
               matched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               INDEX idx_matches_event (event_id),
               CONSTRAINT fk_matches_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
@@ -234,6 +238,10 @@ def init_schema():
               shipped_at TEXT,
               tracking_updated_at TEXT,
               tracking_summary TEXT,
+              received_at TEXT,
+              gift_rating INTEGER,
+              gift_review TEXT,
+              gift_photo_url TEXT,
               matched_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
             """,
@@ -260,6 +268,10 @@ def run_migrations(db):
         ("shipped_at", "DATETIME NULL" if db.engine == "mysql" else "TEXT"),
         ("tracking_updated_at", "DATETIME NULL" if db.engine == "mysql" else "TEXT"),
         ("tracking_summary", "TEXT"),
+        ("received_at", "DATETIME NULL" if db.engine == "mysql" else "TEXT"),
+        ("gift_rating", "INT" if db.engine == "mysql" else "INTEGER"),
+        ("gift_review", "TEXT"),
+        ("gift_photo_url", "MEDIUMTEXT" if db.engine == "mysql" else "TEXT"),
     ]
     for name, column_type in user_columns:
         try:
