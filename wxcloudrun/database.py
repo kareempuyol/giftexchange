@@ -119,7 +119,7 @@ def init_schema():
               match_visibility VARCHAR(24) DEFAULT 'private',
               sign_up_deadline VARCHAR(64) DEFAULT '',
               participant_count INT DEFAULT 0,
-              cover_image TEXT DEFAULT '',
+              cover_image TEXT,
               is_public TINYINT DEFAULT 1,
               max_participants INT DEFAULT NULL,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -295,7 +295,7 @@ def run_migrations(db):
     ]
     event_columns = [
         ("match_visibility", "VARCHAR(24) DEFAULT 'private'" if db.engine == "mysql" else "TEXT DEFAULT 'private'"),
-        ("cover_image", "TEXT DEFAULT ''"),
+        ("cover_image", "TEXT" if db.engine == "mysql" else "TEXT DEFAULT ''"),
         ("is_public", "BOOLEAN DEFAULT TRUE" if db.engine == "mysql" else "INTEGER DEFAULT 1"),
         ("max_participants", "INT DEFAULT NULL" if db.engine == "mysql" else "INTEGER DEFAULT NULL"),
     ]

@@ -790,13 +790,6 @@ def edit_event(user, code):
             return ok(api_event(fetch_event(db, code)), "Event updated")
     except ValueError as exc:
         return fail(str(exc), 404)
-@login_required
-def event_detail(_user, code):
-    try:
-        with DB() as db:
-            return ok(api_event(fetch_event(db, code)))
-    except ValueError as exc:
-        return fail(str(exc), 404)
 
 
 @api.route("/events/<code>", methods=["DELETE"])
