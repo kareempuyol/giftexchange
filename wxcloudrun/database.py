@@ -326,6 +326,7 @@ def run_migrations(db):
         ("cover_image", "TEXT" if db.engine == "mysql" else "TEXT DEFAULT ''"),
         ("is_public", "BOOLEAN DEFAULT TRUE" if db.engine == "mysql" else "INTEGER DEFAULT 1"),
         ("max_participants", "INT DEFAULT NULL" if db.engine == "mysql" else "INTEGER DEFAULT NULL"),
+        ("short_code", "VARCHAR(16)" if db.engine == "mysql" else "TEXT"),
     ]
     participant_columns = [
         ("receiver_name", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),
@@ -362,6 +363,25 @@ def run_migrations(db):
             first = db.get("SELECT id FROM users ORDER BY id ASC LIMIT 1")
             if first:
                 db.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (first["id"],))
+    except Exception:
+        pass
+
+    # 存量活动补齐短码（v2 新增 short_code 列后，旧数据无短码）
+    try:
+        import random
+        import string
+
+        missing = db.all("SELECT id FROM events WHERE short_code IS NULL OR short_code = ''")
+        if missing:
+            alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # 去掉易混淆 0/O/1/I
+            used = {row["short_code"] for row in db.all("SELECT short_code FROM events WHERE short_code IS NOT NULL")}
+            for row in missing:
+                for _ in range(20):
+                    candidate = "".join(random.SystemRandom().choice(alphabet) for _ in range(6))
+                    if candidate not in used:
+                        used.add(candidate)
+                        db.execute("UPDATE events SET short_code = ? WHERE id = ?", (candidate, row["id"]))
+                        break
     except Exception:
         pass
 

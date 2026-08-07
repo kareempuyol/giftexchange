@@ -59,6 +59,19 @@ export default function EventDetailPage() {
     }
   }
 
+  // 复制邀请链接：用短码生成分享 URL，未登录用户点开会先看到登录页
+  const copyInviteLink = async () => {
+    const shareCode = event?.shortCode || code
+    const inviteUrl = `${window.location.origin}/events/${shareCode}`
+    try {
+      await navigator.clipboard.writeText(inviteUrl)
+      toast('邀请链接已复制！')
+    } catch {
+      // 剪贴板不可用（如非 HTTPS）时退化为选中提示
+      toast(`邀请链接：${inviteUrl}`, 'info')
+    }
+  }
+
   if (loading) return <div className="page-loading">加载中…</div>
   if (!event) return <div className="page-container">活动不存在</div>
 
@@ -77,6 +90,23 @@ export default function EventDetailPage() {
           {event.isPublic ? <Badge tone="info">公开活动</Badge> : <Badge tone="warning">私密活动</Badge>}
           {isOwner && <Badge tone="gold">我是组织者</Badge>}
         </div>
+
+        {/* 邀请区：短码 + 复制链接 */}
+        {event.shortCode && (
+          <div className="invite-box">
+            <div className="invite-info">
+              <span className="invite-label">邀请码</span>
+              <span className="invite-code">{event.shortCode}</span>
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ width: 'auto', flexShrink: 0 }}
+              onClick={copyInviteLink}
+            >
+              📋 复制邀请链接
+            </button>
+          </div>
+        )}
 
         {event.note && <p style={{ color: 'var(--gift-text-secondary)', marginBottom: 12 }}>{event.note}</p>}
 

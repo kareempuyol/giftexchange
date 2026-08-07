@@ -81,6 +81,7 @@ export interface User {
 
 export interface EventInfo {
   code: string
+  shortCode: string
   title: string
   budget: number
   note: string

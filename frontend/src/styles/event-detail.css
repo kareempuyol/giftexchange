@@ -38,6 +38,36 @@
   border-bottom: none;
 }
 
+/* 邀请区：短码 + 复制链接 */
+.invite-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gift-space-md);
+  background: var(--gift-brand-light);
+  border: 1.5px dashed var(--gift-brand);
+  border-radius: var(--gift-radius-md);
+  padding: var(--gift-space-md) var(--gift-space-lg);
+  margin-bottom: var(--gift-space-lg);
+  flex-wrap: wrap;
+}
+.invite-info {
+  display: flex;
+  align-items: center;
+  gap: var(--gift-space-md);
+}
+.invite-label {
+  font-size: var(--gift-font-xs);
+  color: var(--gift-text-secondary);
+}
+.invite-code {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: var(--gift-font-xl);
+  font-weight: var(--gift-font-bold);
+  letter-spacing: 3px;
+  color: var(--gift-brand);
+}
+
 /* ===== 弹窗 ===== */
 .modal-overlay {
   position: fixed;

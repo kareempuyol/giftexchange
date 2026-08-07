@@ -63,6 +63,7 @@ def public_user(row):
 def api_event(row):
     return {
         "code": row["code"],
+        "shortCode": row.get("short_code") or "",
         "title": row["name"],
         "budget": row.get("budget_min") or 0,
         "note": row.get("description") or "",
@@ -122,7 +123,22 @@ def is_user_admin(row):
     return row.get("username", "").lower() in usernames or row.get("email", "").lower() in emails
 
 
+# 短码生成：6 位大写字母数字，去掉易混淆字符（0/O/1/I）
+SHORT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def generate_short_code(db, length=6):
+    for _ in range(20):
+        candidate = "".join(secrets.SystemRandom().choice(SHORT_CODE_ALPHABET) for _ in range(length))
+        exists = db.get("SELECT id FROM events WHERE short_code = ?", (candidate,))
+        if not exists:
+            return candidate
+    # 极端冲突情况：退化为 uuid 前缀
+    return str(uuid.uuid4())[:8].upper()
+
+
 def fetch_event(db, code):
+    # 兼容查询：先按原始 code（uuid），再按短码
     row = db.get(
         """
         SELECT e.*, u.username AS owner_username
@@ -131,6 +147,15 @@ def fetch_event(db, code):
         """,
         (code,),
     )
+    if not row and code and len(code) <= 16:
+        row = db.get(
+            """
+            SELECT e.*, u.username AS owner_username
+            FROM events e JOIN users u ON u.id = e.creator_id
+            WHERE e.short_code = ?
+            """,
+            (code,),
+        )
     if not row:
         raise ValueError("Event not found")
     return row
@@ -619,14 +644,15 @@ def create_event(user):
 
     with DB() as db:
         code = str(uuid.uuid4())
+        short_code = generate_short_code(db)
         db.execute(
             """
             INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline,
-                                match_visibility, is_public, max_participants, cover_image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                match_visibility, is_public, max_participants, cover_image, short_code)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (code, title, note, budget, user["userId"], draw_date, match_visibility,
-             1 if is_public else 0, max_participants, cover_image),
+             1 if is_public else 0, max_participants, cover_image, short_code),
         )
         return ok(api_event(fetch_event(db, code)), "Event created", 201)
 
