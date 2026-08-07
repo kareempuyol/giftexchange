@@ -1,0 +1,109 @@
+import { useState } from 'react'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
+import { ApiError } from '../api/client'
+
+export default function RegisterPage() {
+  const { register } = useAuth()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!username || !email || !password) {
+      setError('请填写所有字段')
+      return
+    }
+    if (password !== confirm) {
+      setError('两次输入的密码不一致')
+      return
+    }
+    setSubmitting(true)
+    setError('')
+    try {
+      await register(username, email, password)
+      const from = params.get('from')
+      navigate(from ? `/${from}` : '/events', { replace: true })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : '注册失败，请稍后重试')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-brand">
+          <div className="auth-logo">🎁</div>
+          <h1 className="auth-title">互送礼物</h1>
+          <p className="auth-slogan">和朋友们交换惊喜</p>
+        </div>
+
+        <h2 className="auth-subtitle">注册</h2>
+        <p className="form-hint" style={{ marginBottom: 16 }}>加入礼物互赠的乐趣</p>
+
+        <form onSubmit={onSubmit}>
+          <div className="form-group">
+            <input
+              className="form-input"
+              placeholder="用户名"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <div className="form-hint">至少 2 个字符</div>
+          </div>
+          <div className="form-group">
+            <input
+              className="form-input"
+              type="email"
+              placeholder="邮箱"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <div className="form-hint">用于登录和找回密码</div>
+          </div>
+          <div className="form-group">
+            <input
+              className="form-input"
+              type="password"
+              placeholder="密码"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <div className="form-hint">至少 6 位，需包含字母和数字</div>
+          </div>
+          <div className="form-group">
+            <input
+              className="form-input"
+              type="password"
+              placeholder="确认密码"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+            {confirm && password !== confirm && (
+              <div className="form-error">两次输入的密码不一致</div>
+            )}
+          </div>
+
+          {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+
+          <button className="btn btn-primary" type="submit" disabled={submitting}>
+            {submitting ? '注册中…' : '注册'}
+          </button>
+        </form>
+
+        <div className="auth-footer">
+          <span>已有账号？</span>
+          <Link to="/login">立即登录</Link>
+        </div>
+      </div>
+    </div>
+  )
+}

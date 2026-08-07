@@ -1,0 +1,249 @@
+/* 全局基础样式 —— 全部引用 design tokens */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  font-family: var(--gift-font-family);
+  font-size: var(--gift-font-md);
+  color: var(--gift-text-primary);
+  background-color: var(--gift-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--gift-brand);
+  text-decoration: none;
+  transition: color var(--gift-motion-fast) var(--gift-ease);
+}
+a:hover {
+  color: var(--gift-brand-hover);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: var(--gift-font-md);
+  color: var(--gift-text-primary);
+}
+
+/* ===== 通用布局 ===== */
+.page-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--gift-space-lg) var(--gift-space-lg) var(--gift-space-xxl);
+}
+
+.page-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  color: var(--gift-text-secondary);
+  font-size: var(--gift-font-md);
+}
+
+/* ===== 卡片 ===== */
+.gift-card {
+  background: var(--gift-card);
+  border: 1px solid var(--gift-border);
+  border-radius: var(--gift-radius-card);
+  box-shadow: var(--gift-shadow-card);
+  padding: var(--gift-space-xl);
+}
+
+/* ===== 按钮 ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gift-space-sm);
+  height: var(--gift-btn-height);
+  padding: 0 var(--gift-space-xl);
+  border: none;
+  border-radius: var(--gift-radius-btn);
+  font-size: var(--gift-font-md);
+  font-weight: var(--gift-font-medium);
+  transition: all var(--gift-motion-normal) var(--gift-ease);
+  width: 100%;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--gift-brand);
+  color: var(--gift-text-on-primary);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--gift-brand-hover);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--gift-brand-active);
+}
+.btn-secondary {
+  background: var(--gift-bg-muted);
+  color: var(--gift-text-primary);
+  border: 1px solid var(--gift-border);
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--gift-border-strong);
+  background: var(--gift-warm-200);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--gift-brand);
+}
+.btn-sm {
+  height: var(--gift-btn-height-sm);
+  padding: 0 var(--gift-space-lg);
+  font-size: var(--gift-font-sm);
+  border-radius: var(--gift-radius-pill);
+}
+
+/* ===== 表单 ===== */
+.form-group {
+  margin-bottom: var(--gift-space-lg);
+}
+.form-label {
+  display: block;
+  margin-bottom: var(--gift-space-sm);
+  font-size: var(--gift-font-sm);
+  font-weight: var(--gift-font-medium);
+  color: var(--gift-text-primary);
+}
+.form-input {
+  width: 100%;
+  height: var(--gift-input-height);
+  padding: 0 var(--gift-space-lg);
+  border: 1.5px solid var(--gift-border);
+  border-radius: var(--gift-radius-md);
+  background: var(--gift-card);
+  transition: border-color var(--gift-motion-fast) var(--gift-ease);
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--gift-brand);
+}
+.form-input.has-error {
+  border-color: var(--gift-error);
+}
+.form-textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: var(--gift-space-md) var(--gift-space-lg);
+  border: 1.5px solid var(--gift-border);
+  border-radius: var(--gift-radius-md);
+  background: var(--gift-card);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--gift-motion-fast) var(--gift-ease);
+}
+.form-textarea:focus {
+  border-color: var(--gift-brand);
+}
+.form-error {
+  margin-top: var(--gift-space-sm);
+  font-size: var(--gift-font-xs);
+  color: var(--gift-error);
+}
+.form-hint {
+  margin-top: var(--gift-space-xs);
+  font-size: var(--gift-font-xs);
+  color: var(--gift-text-secondary);
+}
+
+/* ===== 标签/徽章 ===== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--gift-radius-pill);
+  font-size: var(--gift-font-xs);
+  font-weight: var(--gift-font-medium);
+}
+.badge-success { background: var(--gift-success-bg); color: var(--gift-success); }
+.badge-warning { background: var(--gift-warning-bg); color: var(--gift-warning); }
+.badge-error { background: var(--gift-error-bg); color: var(--gift-error); }
+.badge-info { background: var(--gift-info-bg); color: var(--gift-info); }
+.badge-gold { background: var(--gift-brand-light); color: var(--gift-brand); }
+
+/* ===== 页头 ===== */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--gift-space-xl);
+}
+.page-title {
+  font-size: var(--gift-font-xl);
+  font-weight: var(--gift-font-bold);
+  color: var(--gift-text-primary);
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+  text-align: center;
+  padding: var(--gift-space-xxl) var(--gift-space-lg);
+  color: var(--gift-text-secondary);
+}
+.empty-state .empty-title {
+  font-size: var(--gift-font-lg);
+  font-weight: var(--gift-font-medium);
+  margin-bottom: var(--gift-space-sm);
+}
+
+/* ===== Toast 提示 ===== */
+.toast-container {
+  position: fixed;
+  top: var(--gift-space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--gift-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gift-space-sm);
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  padding: var(--gift-space-md) var(--gift-space-xl);
+  border-radius: var(--gift-radius-pill);
+  background: var(--gift-warm-800);
+  color: var(--gift-white);
+  font-size: var(--gift-font-sm);
+  box-shadow: var(--gift-shadow-raised);
+  animation: toast-in var(--gift-motion-normal) var(--gift-ease);
+}
+.toast-error {
+  background: var(--gift-error);
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 640px) {
+  .page-container {
+    padding: var(--gift-space-md);
+  }
+  .gift-card {
+    padding: var(--gift-space-lg);
+  }
+}

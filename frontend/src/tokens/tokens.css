@@ -1,0 +1,105 @@
+/**
+ * Design Tokens — CSS 变量版
+ * 与 src/tokens/index.ts 同源（TS 供 JS 逻辑使用，CSS 变量供样式使用）
+ * 修改时保持两边同步
+ */
+:root {
+  /* ===== 原始色值 ===== */
+  --gift-coral-50: #FFF1EE;
+  --gift-coral-100: #FFE0D9;
+  --gift-coral-200: #FFC4B8;
+  --gift-coral-300: #FBA492;
+  --gift-coral-400: #F57F68;
+  --gift-coral-500: #E8553D;
+  --gift-coral-600: #D44028;
+  --gift-coral-700: #B5341F;
+  --gift-coral-800: #8F2A1A;
+  --gift-coral-900: #6B2216;
+
+  --gift-warm-50: #FFFAF5;
+  --gift-warm-100: #F7F3ED;
+  --gift-warm-200: #F0EBE4;
+  --gift-warm-300: #E8DFD5;
+  --gift-warm-400: #D5C9BB;
+  --gift-warm-500: #7A6B5D;
+  --gift-warm-600: #5C5046;
+  --gift-warm-700: #3D2E2A;
+  --gift-warm-800: #2C211E;
+  --gift-warm-900: #1A1311;
+
+  --gift-gold: #D4A017;
+  --gift-success: #2DA05A;
+  --gift-warning: #E8930C;
+  --gift-error: #D84040;
+  --gift-info: #4A7FB5;
+  --gift-white: #FFFFFF;
+  --gift-overlay: rgba(26, 19, 17, 0.5);
+
+  /* ===== 语义色 ===== */
+  --gift-bg: #FFFAF5;
+  --gift-bg-muted: #F7F3ED;
+  --gift-card: #FFFFFF;
+  --gift-border: #E8DFD5;
+  --gift-border-strong: #D5C9BB;
+  --gift-text-primary: #3D2E2A;
+  --gift-text-secondary: #7A6B5D;
+  --gift-text-on-primary: #FFFFFF;
+  --gift-text-disabled: #D5C9BB;
+  --gift-brand: #E8553D;
+  --gift-brand-hover: #D44028;
+  --gift-brand-active: #B5341F;
+  --gift-brand-light: #FFF1EE;
+  --gift-success-bg: #E7F5EC;
+  --gift-warning-bg: #FDF3E3;
+  --gift-error-bg: #FCEBEB;
+  --gift-info-bg: #EAF1F8;
+
+  /* ===== 圆角 ===== */
+  --gift-radius-sm: 8px;
+  --gift-radius-md: 12px;
+  --gift-radius-card: 16px;
+  --gift-radius-btn: 26px;
+  --gift-radius-pill: 999px;
+
+  /* ===== 阴影 ===== */
+  --gift-shadow-card: 0 2px 8px rgba(61, 46, 42, 0.06);
+  --gift-shadow-raised: 0 4px 16px rgba(61, 46, 42, 0.10);
+  --gift-shadow-modal: 0 8px 32px rgba(26, 19, 17, 0.18);
+
+  /* ===== 间距 ===== */
+  --gift-space-xs: 4px;
+  --gift-space-sm: 8px;
+  --gift-space-md: 12px;
+  --gift-space-lg: 16px;
+  --gift-space-xl: 24px;
+  --gift-space-xxl: 32px;
+
+  /* ===== 字体 ===== */
+  --gift-font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  --gift-font-xs: 12px;
+  --gift-font-sm: 14px;
+  --gift-font-md: 16px;
+  --gift-font-lg: 20px;
+  --gift-font-xl: 24px;
+  --gift-font-title: 28px;
+  --gift-font-normal: 400;
+  --gift-font-medium: 500;
+  --gift-font-bold: 600;
+
+  /* ===== 动效 ===== */
+  --gift-motion-fast: 0.15s;
+  --gift-motion-normal: 0.25s;
+  --gift-motion-slow: 0.4s;
+  --gift-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== 控件 ===== */
+  --gift-btn-height: 52px;
+  --gift-btn-height-sm: 40px;
+  --gift-input-height: 48px;
+
+  /* ===== 层级 ===== */
+  --gift-z-base: 1;
+  --gift-z-sticky: 100;
+  --gift-z-modal: 1000;
+  --gift-z-toast: 1100;
+}

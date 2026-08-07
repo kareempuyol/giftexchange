@@ -1,0 +1,65 @@
+/* 活动详情页 */
+.event-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--gift-space-md);
+  margin-top: var(--gift-space-sm);
+}
+.event-meta-grid > div {
+  background: var(--gift-bg-muted);
+  border-radius: var(--gift-radius-md);
+  padding: var(--gift-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.meta-label {
+  font-size: var(--gift-font-xs);
+  color: var(--gift-text-secondary);
+}
+.meta-value {
+  font-size: var(--gift-font-md);
+  font-weight: var(--gift-font-medium);
+}
+
+.section-title {
+  font-size: var(--gift-font-lg);
+  font-weight: var(--gift-font-bold);
+}
+
+.participant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--gift-space-md) var(--gift-space-sm);
+  border-bottom: 1px solid var(--gift-border);
+}
+.participant-row:last-child {
+  border-bottom: none;
+}
+
+/* ===== 弹窗 ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--gift-overlay);
+  z-index: var(--gift-z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gift-space-lg);
+}
+.modal {
+  background: var(--gift-card);
+  border-radius: var(--gift-radius-card);
+  box-shadow: var(--gift-shadow-modal);
+  padding: var(--gift-space-xl);
+  width: 100%;
+  max-width: 400px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal h3 {
+  font-size: var(--gift-font-lg);
+  font-weight: var(--gift-font-bold);
+}

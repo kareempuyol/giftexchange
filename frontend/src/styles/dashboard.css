@@ -1,0 +1,55 @@
+/* 管理台样式 */
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--gift-space-md);
+  margin-bottom: var(--gift-space-xl);
+}
+.stat-card {
+  background: var(--gift-card);
+  border: 1px solid var(--gift-border);
+  border-radius: var(--gift-radius-card);
+  box-shadow: var(--gift-shadow-card);
+  padding: var(--gift-space-lg);
+  text-align: center;
+}
+.stat-num {
+  font-size: var(--gift-font-title);
+  font-weight: var(--gift-font-bold);
+  color: var(--gift-brand);
+}
+.stat-label {
+  font-size: var(--gift-font-xs);
+  color: var(--gift-text-secondary);
+  margin-top: 2px;
+}
+
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--gift-font-sm);
+}
+.dash-table th {
+  text-align: left;
+  padding: var(--gift-space-sm);
+  color: var(--gift-text-secondary);
+  font-weight: var(--gift-font-medium);
+  border-bottom: 2px solid var(--gift-border);
+}
+.dash-table td {
+  padding: var(--gift-space-sm);
+  border-bottom: 1px solid var(--gift-border);
+}
+.dash-table tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 640px) {
+  .dash-table {
+    font-size: var(--gift-font-xs);
+  }
+  .dash-table th:nth-child(3),
+  .dash-table td:nth-child(3) {
+    display: none;
+  }
+}
