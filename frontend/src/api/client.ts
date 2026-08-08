@@ -62,9 +62,35 @@ export const api = {
   patch: <T = any>(path: string, data?: any) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(data ?? {}) }),
   delete: <T = any>(path: string) => request<T>(path, { method: 'DELETE' }),
+  /** 图片上传：multipart/form-data，字段名 file。返回 { url }（相对 URL） */
+  upload: async <T = UploadResult>(path: string, file: File): Promise<T> => {
+    const form = new FormData()
+    form.append('file', file)
+    const headers: Record<string, string> = {}
+    const token = getToken()
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    // 注意：不设置 Content-Type，让浏览器自动带 multipart boundary
+    const resp = await fetch(`/api${path}`, { method: 'POST', body: form, headers })
+    let body: ApiResult<T>
+    try {
+      body = await resp.json()
+    } catch {
+      throw new ApiError(`服务响应异常 (${resp.status})`, -1, resp.status)
+    }
+    if (body.code !== 0) {
+      if (resp.status === 401) setToken(null)
+      throw new ApiError(body.message || '上传失败', body.code, resp.status)
+    }
+    return body.data
+  },
 }
 
 // ===== 类型定义（与后端 API 对齐） =====
+/** POST /api/upload 返回：图片相对 URL（先传后引用） */
+export interface UploadResult {
+  url: string
+}
+
 export interface User {
   id: number
   username: string

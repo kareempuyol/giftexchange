@@ -1,0 +1,26 @@
+/* ===== 图片上传 ImageUpload ===== */
+/* 全部使用 Design Tokens（--gift-*），不硬编码颜色/间距/圆角 */
+
+.iu-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gift-space-sm);
+}
+
+.iu-input {
+  display: none;
+}
+
+.iu-preview {
+  max-width: 260px;
+  max-height: 180px;
+  border: 1px solid var(--gift-border);
+  border-radius: var(--gift-radius-md);
+  box-shadow: var(--gift-shadow-card);
+  object-fit: cover;
+}
+
+.iu-error {
+  margin: 0;
+}

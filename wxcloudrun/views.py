@@ -7,6 +7,7 @@ from email.message import EmailMessage
 from functools import wraps
 from hashlib import sha256
 import json
+from pathlib import Path
 
 from flask import Blueprint, render_template, request, send_from_directory
 
@@ -496,6 +497,55 @@ def vite_assets(filename):
     return send_from_directory("static/assets", filename)
 
 
+# ===== 图片上传（阶段二G：先传后引用，未来兼容 wx.uploadFile） =====
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp"}
+# 业务图片字段新格式：存 URL（≤2000）；兼容旧格式：data: 开头的 base64（≤350000）
+MAX_IMAGE_REF_URL = 2000
+MAX_IMAGE_REF_BASE64 = 350000
+
+
+def uploads_dir():
+    base = os.getenv("UPLOAD_DIR") or str(Path(__file__).resolve().parent.parent / "data" / "uploads")
+    Path(base).mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def image_ref_valid(value):
+    """图片字段校验：先传后引用。新值应为 /uploads/ 相对 URL；旧 base64（data: 开头）继续兼容。"""
+    if value.startswith("data:"):
+        return len(value) <= MAX_IMAGE_REF_BASE64
+    return len(value) <= MAX_IMAGE_REF_URL
+
+
+@api.route("/upload", methods=["POST"])
+@login_required
+def upload_image(_user):
+    file = request.files.get("file")
+    if file is None or not file.filename:
+        return fail("No file provided")
+    ext = os.path.splitext(file.filename)[1].lower().lstrip(".")
+    if ext not in ALLOWED_IMAGE_EXTS:
+        return fail("Only image files are allowed (png/jpg/jpeg/gif/webp)")
+    content_type = (file.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        return fail("Only image files are allowed (png/jpg/jpeg/gif/webp)")
+    content = file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        return fail("File too large (max 5MB)")
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    with open(os.path.join(uploads_dir(), filename), "wb") as fh:
+        fh.write(content)
+    return ok({"url": f"/uploads/{filename}"}, "Uploaded", 201)
+
+
+@site.route("/uploads/<filename>")
+def uploads_file(filename):
+    # send_from_directory 自带 safe_join，防路径穿越；<filename> 转换器不含斜杠
+    return send_from_directory(uploads_dir(), filename)
+
+
 @site.route("/<path:_path>")
 def spa_fallback(_path):
     return render_template("index.html")
@@ -742,7 +792,7 @@ def create_event(user):
             return fail("Max participants must be at least 2")
         if max_participants > 999:
             return fail("Max participants is too large")
-    if len(cover_image) > 350000:
+    if cover_image and not image_ref_valid(cover_image):
         return fail("Cover image is too large")
 
     with DB() as db:
@@ -891,7 +941,7 @@ def edit_event(user, code):
 
             if "coverImage" in data:
                 cover = str(data["coverImage"] or "").strip()
-                if len(cover) > 350000:
+                if cover and not image_ref_valid(cover):
                     return fail("Cover image is too large")
                 fields["cover_image"] = cover
                 params.append(cover)
@@ -1150,7 +1200,11 @@ def draw(user, code):
                         "receiverName": receiver.get("display_name") or receiver["nickname"] or receiver["username"],
                     }
                 )
-            db.execute("UPDATE events SET status = 'drawn', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (event["id"],))
+            cur_status = db.execute("UPDATE events SET status = 'drawn', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'open'", (event["id"],))
+            if cur_status.rowcount == 0:
+                # 并发安全：条件更新只允许 open→drawn 一次；rowcount=0 说明并发下已被其他请求抽过，
+                # 此时 matches 是并发获胜者的结果，绝不能删除
+                return fail("Draw already completed", 409)
             send_draw_notifications(db, event["id"], rows)
             return ok(matches, "Draw complete")
     except ValueError as exc:
@@ -1347,7 +1401,7 @@ def update_received_gift(user, code):
         return fail("Rating must be 1-5")
     if len(review) > 500:
         return fail("Review is too long")
-    if len(photo_url) > 350000:
+    if photo_url and not image_ref_valid(photo_url):
         return fail("Photo is too large")
 
     try:

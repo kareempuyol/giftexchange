@@ -330,6 +330,10 @@ def run_migrations(db):
         ("address", "TEXT"),
         ("receiver_name", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),
         ("gift_preference", "TEXT"),
+        # 微信小程序架构预留：仅加列，不做登录逻辑（阶段二G）
+        ("openid", "VARCHAR(64)" if db.engine == "mysql" else "TEXT"),
+        ("unionid", "VARCHAR(64)" if db.engine == "mysql" else "TEXT"),
+        ("session_key", "VARCHAR(64)" if db.engine == "mysql" else "TEXT"),
     ]
     match_columns = [
         ("shipment_status", "VARCHAR(24) DEFAULT 'pending'" if db.engine == "mysql" else "TEXT DEFAULT 'pending'"),

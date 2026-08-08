@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api, ApiError, EventInfo } from '../api/client'
 import { useToast } from '../components/Toast'
+import ImageUpload from '../components/ImageUpload'
 
 export default function CreateEventPage() {
   const navigate = useNavigate()
@@ -13,6 +14,7 @@ export default function CreateEventPage() {
   const [maxParticipants, setMaxParticipants] = useState('')
   const [isPublic, setIsPublic] = useState(true)
   const [matchVisibility, setMatchVisibility] = useState<'private' | 'public'>('private')
+  const [coverImage, setCoverImage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -33,6 +35,7 @@ export default function CreateEventPage() {
         maxParticipants: maxParticipants ? Number(maxParticipants) : null,
         isPublic,
         matchVisibility,
+        ...(coverImage ? { coverImage } : {}),
       })
       toast('活动创建成功！')
       navigate(`/events/${ev.code}`)
@@ -153,6 +156,15 @@ export default function CreateEventPage() {
             </button>
           </div>
           <div className="form-hint">仅个人可见时，每个人只能看到自己送谁</div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">封面图片</label>
+          <ImageUpload
+            value={coverImage}
+            onChange={setCoverImage}
+            hint="选填，支持 png / jpg / jpeg / gif / webp，最大 5MB"
+          />
         </div>
 
         {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
