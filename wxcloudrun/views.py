@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from functools import wraps
 from hashlib import sha256
+import json
 
 from flask import Blueprint, render_template, request, send_from_directory
 
@@ -201,7 +202,21 @@ def participant_payload(user_row, data=None):
         "preference_likes": str(data.get("preferenceLikes") or data.get("preference_likes") or user_row.get("gift_preference") or "").strip(),
         "preference_dislikes": str(data.get("preferenceDislikes") or data.get("preference_dislikes") or "").strip(),
         "preference_notes": str(data.get("preferenceNotes") or data.get("preference_notes") or "").strip(),
+        "preference_size": str(data.get("preferenceSize") or data.get("preference_size") or "").strip(),
+        "preference_color": str(data.get("preferenceColor") or data.get("preference_color") or "").strip(),
+        "wish_links": _normalize_wish_links(data),
     }
+
+
+def _normalize_wish_links(data):
+    """心愿链接：接受数组或换行/逗号分隔字符串，最多 3 条，统一存 JSON 数组"""
+    raw = data.get("wishLinks") or data.get("wish_links") or ""
+    items = []
+    if isinstance(raw, list):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+    elif isinstance(raw, str) and raw.strip():
+        items = [x.strip() for x in raw.replace("\n", ",").split(",") if x.strip()]
+    return json.dumps(items[:3], ensure_ascii=False)
 
 
 def validate_participant_payload(payload):
@@ -217,6 +232,10 @@ def validate_participant_payload(payload):
         return "Dislikes is too long"
     if len(payload["preference_notes"]) > 500:
         return "Preference notes is too long"
+    if len(payload["preference_size"]) > 50:
+        return "Size is too long"
+    if len(payload["preference_color"]) > 80:
+        return "Color is too long"
     return None
 
 
@@ -234,8 +253,9 @@ def add_participant(db, event_id, user_id, data=None):
         """
         INSERT INTO participants (
             event_id, user_id, nickname, receiver_name, phone, address,
-            preference_likes, preference_dislikes, preference_notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            preference_likes, preference_dislikes, preference_notes,
+            preference_size, preference_color, wish_links
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             event_id,
@@ -247,6 +267,9 @@ def add_participant(db, event_id, user_id, data=None):
             payload["preference_likes"],
             payload["preference_dislikes"],
             payload["preference_notes"],
+            payload["preference_size"],
+            payload["preference_color"],
+            payload["wish_links"],
         ),
     )
     db.execute(
@@ -298,10 +321,22 @@ def api_contact(row):
 
 
 def api_preference(row):
+    wish_links = []
+    raw_links = row.get("wish_links") or ""
+    if raw_links:
+        try:
+            parsed = json.loads(raw_links)
+            if isinstance(parsed, list):
+                wish_links = [str(x) for x in parsed if str(x)]
+        except Exception:
+            pass
     return {
         "likes": row.get("preference_likes") or "",
         "dislikes": row.get("preference_dislikes") or "",
         "notes": row.get("preference_notes") or "",
+        "size": row.get("preference_size") or "",
+        "color": row.get("preference_color") or "",
+        "wishLinks": wish_links,
     }
 
 
@@ -1085,6 +1120,7 @@ def my_match(user, code):
                        m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
                        p.receiver_name, p.phone, p.address,
                        p.preference_likes, p.preference_dislikes, p.preference_notes,
+                       p.preference_size, p.preference_color, p.wish_links,
                        p.user_id AS receiver_user_id, u.username, u.display_name
                 FROM matches m
                 JOIN participants p ON p.id = m.receiver_id

@@ -127,6 +127,9 @@ export interface MyMatch {
     likes: string
     dislikes: string
     notes: string
+    size: string
+    color: string
+    wishLinks: string[]
   }
 }
 

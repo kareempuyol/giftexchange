@@ -177,6 +177,18 @@ export default function EventDetailPage() {
             <p>💰 预算参考：¥{event.budget}</p>
             {myMatch.preference.likes && <p>❤️ 喜欢：{myMatch.preference.likes}</p>}
             {myMatch.preference.dislikes && <p>🚫 不喜欢：{myMatch.preference.dislikes}</p>}
+            {myMatch.preference.size && <p>📏 尺码：{myMatch.preference.size}</p>}
+            {myMatch.preference.color && <p>🎨 颜色：{myMatch.preference.color}</p>}
+            {myMatch.preference.wishLinks.length > 0 && (
+              <p>
+                🎁 心愿链接：
+                {myMatch.preference.wishLinks.map((link, i) => (
+                  <a key={i} href={link} target="_blank" rel="noreferrer" style={{ marginLeft: 8 }}>
+                    心愿{i + 1} ↗
+                  </a>
+                ))}
+              </p>
+            )}
             {myMatch.preference.notes && <p>📝 备注：{myMatch.preference.notes}</p>}
             {myMatch.note && <p>💬 悄悄话：{myMatch.note}</p>}
           </div>
@@ -219,21 +231,33 @@ export default function EventDetailPage() {
 
 function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => void; onJoined: () => void }) {
   const { toast } = useToast()
+  const [step, setStep] = useState<1 | 2>(1)
+  // 第一步：收件信息
   const [receiverName, setReceiverName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
+  // 第二步：心愿单（结构化）
   const [likes, setLikes] = useState('')
   const [dislikes, setDislikes] = useState('')
+  const [size, setSize] = useState('')
+  const [color, setColor] = useState('')
+  const [wishLinks, setWishLinks] = useState('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // 第一步校验通过才进第二步
+  const goNext = () => {
     if (!receiverName || !phone || !address) {
-      setError('请填写收件人、电话和地址')
+      setError('请填写收件人姓名、电话和地址（必填）')
       return
     }
+    setError('')
+    setStep(2)
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setSubmitting(true)
     setError('')
     try {
@@ -243,6 +267,9 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
         address,
         preferenceLikes: likes,
         preferenceDislikes: dislikes,
+        preferenceSize: size,
+        preferenceColor: color,
+        wishLinks: wishLinks.split(/[,，\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 3),
         preferenceNotes: notes,
       })
       onJoined()
@@ -255,41 +282,86 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
         <h3>加入活动</h3>
-        <p className="form-hint" style={{ marginBottom: 16 }}>填写收件信息，抽签后送礼的人会看到这些</p>
+
+        {/* 步骤指示器 */}
+        <div className="step-indicator">
+          <div className={`step-dot${step === 1 ? ' active' : ''}${step === 2 ? ' done' : ''}`}>
+            <span>{step === 2 ? '✓' : '1'}</span>
+          </div>
+          <div className={`step-line${step === 2 ? ' done' : ''}`} />
+          <div className={`step-dot${step === 2 ? ' active' : ''}`}><span>2</span></div>
+          <div className="step-labels">
+            <span className={step === 1 ? 'current' : ''}>收件信息</span>
+            <span className={step === 2 ? 'current' : ''}>心愿单</span>
+          </div>
+        </div>
+
         <form onSubmit={onSubmit}>
-          <div className="form-group">
-            <label className="form-label">收件人姓名 *</label>
-            <input className="form-input" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} maxLength={120} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">联系电话 *</label>
-            <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">收件地址 *</label>
-            <textarea className="form-textarea" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">我喜欢的礼物（选填）</label>
-            <input className="form-input" placeholder="例如：咖啡、书、手作" value={likes} onChange={(e) => setLikes(e.target.value)} maxLength={500} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">我不想要的（选填）</label>
-            <input className="form-input" placeholder="例如：香水、毛绒玩具" value={dislikes} onChange={(e) => setDislikes(e.target.value)} maxLength={500} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">备注（选填）</label>
-            <textarea className="form-textarea" placeholder="尺码、颜色偏好等" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
-          </div>
-          {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>取消</button>
-            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ flex: 1 }}>
-              {submitting ? '提交中…' : '确认加入'}
-            </button>
-          </div>
+          {step === 1 ? (
+            <>
+              <p className="form-hint" style={{ marginBottom: 16 }}>
+                抽签后，送你礼物的人会看到这些信息来寄礼物
+              </p>
+              <div className="form-group">
+                <label className="form-label">收件人姓名 *</label>
+                <input className="form-input" placeholder="真实姓名" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} maxLength={120} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">联系电话 *</label>
+                <input className="form-input" type="tel" placeholder="手机号" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">收件地址 *</label>
+                <textarea className="form-textarea" placeholder="省市区 + 详细地址" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} />
+              </div>
+              {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>取消</button>
+                <button type="button" className="btn btn-primary" onClick={goNext} style={{ flex: 1 }}>下一步</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="form-hint" style={{ marginBottom: 16 }}>
+                让送礼的人更懂你（全部选填，但填得越多礼物越合心意 🎁）
+              </p>
+              <div className="form-group">
+                <label className="form-label">我喜欢的礼物</label>
+                <input className="form-input" placeholder="例如：咖啡、书、手作" value={likes} onChange={(e) => setLikes(e.target.value)} maxLength={500} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">我不想要的</label>
+                <input className="form-input" placeholder="例如：香水、毛绒玩具" value={dislikes} onChange={(e) => setDislikes(e.target.value)} maxLength={500} />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">尺码（选填）</label>
+                  <input className="form-input" placeholder="如 M / 42 码" value={size} onChange={(e) => setSize(e.target.value)} maxLength={50} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">喜欢的颜色（选填）</label>
+                  <input className="form-input" placeholder="如 莫兰迪色系" value={color} onChange={(e) => setColor(e.target.value)} maxLength={80} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">心愿链接（选填，最多 3 个）</label>
+                <input className="form-input" placeholder="淘宝/京东等商品链接，逗号分隔" value={wishLinks} onChange={(e) => setWishLinks(e.target.value)} maxLength={500} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">备注（选填）</label>
+                <textarea className="form-textarea" placeholder="其他想说的话" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
+              </div>
+              {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => { setStep(1); setError('') }} style={{ flex: 1 }}>上一步</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting} style={{ flex: 1 }}>
+                  {submitting ? '提交中…' : '确认加入'}
+                </button>
+              </div>
+            </>
+          )}
         </form>
       </div>
     </div>

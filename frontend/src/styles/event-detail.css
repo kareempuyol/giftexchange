@@ -68,6 +68,60 @@
   color: var(--gift-brand);
 }
 
+/* ===== 分步表单指示器 ===== */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  margin: var(--gift-space-lg) 0;
+}
+.step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gift-bg-muted);
+  border: 2px solid var(--gift-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--gift-font-sm);
+  font-weight: var(--gift-font-bold);
+  color: var(--gift-text-secondary);
+  transition: all var(--gift-motion-fast) var(--gift-ease);
+  flex-shrink: 0;
+}
+.step-dot.active {
+  background: var(--gift-brand);
+  border-color: var(--gift-brand);
+  color: var(--gift-text-on-primary);
+}
+.step-dot.done {
+  background: var(--gift-success);
+  border-color: var(--gift-success);
+  color: var(--gift-text-on-primary);
+}
+.step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--gift-border);
+  margin: 0 var(--gift-space-sm);
+  transition: background var(--gift-motion-fast) var(--gift-ease);
+}
+.step-line.done {
+  background: var(--gift-success);
+}
+.step-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: var(--gift-space-xs);
+  font-size: var(--gift-font-xs);
+  color: var(--gift-text-secondary);
+}
+.step-labels .current {
+  color: var(--gift-brand);
+  font-weight: var(--gift-font-medium);
+}
+
 /* ===== 弹窗 ===== */
 .modal-overlay {
   position: fixed;

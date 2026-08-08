@@ -335,6 +335,9 @@ def run_migrations(db):
         ("preference_likes", "TEXT"),
         ("preference_dislikes", "TEXT"),
         ("preference_notes", "TEXT"),
+        ("preference_size", "VARCHAR(50)" if db.engine == "mysql" else "TEXT"),
+        ("preference_color", "VARCHAR(80)" if db.engine == "mysql" else "TEXT"),
+        ("wish_links", "TEXT"),
     ]
     for name, column_type in event_columns:
         try:
