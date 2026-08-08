@@ -216,12 +216,19 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--gift-space-md);
   margin-bottom: var(--gift-space-xl);
 }
 .page-title {
+  flex: 1;
+  min-width: 0;
   font-size: var(--gift-font-xl);
   font-weight: var(--gift-font-bold);
   color: var(--gift-text-primary);
+  line-height: 1.35;
+  overflow-wrap: break-word;
+  word-break: normal;
+  min-width: 0;
 }
 
 /* ===== 空状态 ===== */
