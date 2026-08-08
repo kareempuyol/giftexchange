@@ -91,7 +91,7 @@ export default function GiftWallPage() {
       {!unlocked ? (
         <div className="gw-progress-card">
           <div className="gw-progress-text">
-            {posted}/{total} 已晒，还差 {remaining} 人解锁 🔒
+            {posted}/{total} 已送出并晒图，还差 {remaining} 人解锁 🔒
           </div>
           <div className="gw-progress-bar">
             <div className="gw-progress-fill" style={{ width: `${pct}%` }} />
@@ -99,7 +99,7 @@ export default function GiftWallPage() {
           {posted === 0 ? (
             <p className="gw-lock-note">还没有人晒出礼物，收到礼物并晒图后，礼物墙就会揭晓 🎀</p>
           ) : (
-            <p className="gw-lock-note">所有人晒出礼物后，礼物墙自动解锁，敬请期待 ✨</p>
+            <p className="gw-lock-note">所有参与者送出礼物并晒图后，礼物墙自动解锁，敬请期待 ✨</p>
           )}
         </div>
       ) : items.length === 0 ? (
@@ -121,7 +121,22 @@ export default function GiftWallPage() {
 
               {item.giftPost.photoUrl && (
                 <div className="gw-photo-wrap">
-                  <img className="gw-photo" src={item.giftPost.photoUrl} alt="礼物照片" loading="lazy" />
+                  <img
+                    className="gw-photo"
+                    src={item.giftPost.photoUrl}
+                    alt="礼物照片"
+                    loading="lazy"
+                    onError={(e) => {
+                      // 图片加载失败降级：显示占位（不再显示裂图）
+                      const t = e.target as HTMLImageElement
+                      t.style.display = 'none'
+                      const wrap = t.parentElement
+                      if (wrap) {
+                        wrap.classList.add('gw-photo-fallback')
+                        wrap.textContent = '🎁 礼物照片'
+                      }
+                    }}
+                  />
                 </div>
               )}
 

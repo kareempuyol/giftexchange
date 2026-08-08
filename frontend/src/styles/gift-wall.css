@@ -111,6 +111,17 @@
   border: 1px solid var(--gift-border);
 }
 
+.gw-photo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  background: var(--gift-bg-muted);
+  border-radius: var(--gift-radius-md);
+  color: var(--gift-text-secondary);
+  font-size: var(--gift-font-md);
+}
+
 /* 点赞按钮 */
 .gw-item-footer {
   margin-top: auto;
@@ -149,7 +160,13 @@
 }
 
 .gw-like-btn.liked .gw-heart {
-  transform: scale(1.15);
+  animation: gw-heartbeat 0.4s var(--gift-ease);
+}
+@keyframes gw-heartbeat {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.5); }
+  60% { transform: scale(0.9); }
+  100% { transform: scale(1); }
 }
 
 /* 空状态 */
