@@ -202,6 +202,15 @@ export default function EventDetailPage() {
             <p><b>电话：</b>{myMatch.contact.phone}</p>
             <p><b>地址：</b>{myMatch.contact.address}</p>
           </div>
+
+          {/* 发货区：物流状态 + 填单号 + 悄悄话 */}
+          <ShipmentSection
+            code={code}
+            matchId={myMatch.matchId}
+            shipment={myMatch.shipment}
+            note={myMatch.note}
+            onUpdated={() => load()}
+          />
         </div>
       )}
 
@@ -369,6 +378,121 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
           )}
         </form>
       </div>
+    </div>
+  )
+}
+
+// ===== 发货区组件：物流状态 + 填单号 + 悄悄话 =====
+function ShipmentSection({
+  code,
+  matchId,
+  shipment,
+  note,
+  onUpdated,
+}: {
+  code: string
+  matchId: number
+  shipment: { status: string; carrier: string; trackingNumber: string; trackingSummary: string }
+  note: string
+  onUpdated: () => void
+}) {
+  const { toast } = useToast()
+  const [carrier, setCarrier] = useState(shipment.carrier || '')
+  const [trackingNumber, setTrackingNumber] = useState(shipment.trackingNumber || '')
+  const [secretNote, setSecretNote] = useState(note || '')
+  const [saving, setSaving] = useState(false)
+  const [showForm, setShowForm] = useState(!shipment.trackingNumber)
+
+  const saveShipment = async () => {
+    if (!trackingNumber.trim()) {
+      toast('请填写快递单号', 'error')
+      return
+    }
+    setSaving(true)
+    try {
+      await api.put(`/events/${code}/shipment`, {
+        matchId,
+        carrier: carrier.trim(),
+        trackingNumber: trackingNumber.trim(),
+        status: 'shipped',
+      })
+      // 悄悄话单独保存（允许空）
+      await api.put(`/events/${code}/note`, { matchId, note: secretNote.trim() })
+      toast('发货信息已保存 🚚')
+      setShowForm(false)
+      onUpdated()
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '保存失败', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const shipmentStatusLabel = () => {
+    if (shipment.status === 'delivered') return '已送达'
+    if (shipment.status === 'shipped') return '已发货'
+    return '未发货'
+  }
+
+  return (
+    <div style={{ marginTop: 16, borderTop: '1px solid var(--gift-border)', paddingTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600 }}>🚚 发货进度</h3>
+        <Badge tone={shipment.status === 'delivered' ? 'success' : shipment.status === 'shipped' ? 'info' : 'warning'}>
+          {shipmentStatusLabel()}
+        </Badge>
+      </div>
+
+      {shipment.trackingNumber && (
+        <div style={{ fontSize: 14, color: 'var(--gift-text-secondary)', marginBottom: 8 }}>
+          <p>单号：{shipment.trackingNumber}{shipment.carrier ? `（${shipment.carrier}）` : ''}</p>
+          {shipment.trackingSummary && (
+            <p style={{ marginTop: 4, color: 'var(--gift-text-primary)' }}>📦 {shipment.trackingSummary}</p>
+          )}
+        </div>
+      )}
+
+      {!showForm ? (
+        <button className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={() => setShowForm(true)}>
+          {shipment.trackingNumber ? '修改物流信息' : '填写快递单号'}
+        </button>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="form-input"
+              style={{ flex: 1 }}
+              placeholder="快递公司（选填）"
+              value={carrier}
+              onChange={(e) => setCarrier(e.target.value)}
+              maxLength={80}
+            />
+            <input
+              className="form-input"
+              style={{ flex: 2 }}
+              placeholder="快递单号 *"
+              value={trackingNumber}
+              onChange={(e) => setTrackingNumber(e.target.value)}
+              maxLength={120}
+            />
+          </div>
+          <input
+            className="form-input"
+            placeholder="附一句悄悄话（选填）💌"
+            value={secretNote}
+            onChange={(e) => setSecretNote(e.target.value)}
+            maxLength={500}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setShowForm(false)}>
+              取消
+            </button>
+            <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={saveShipment} disabled={saving}>
+              {saving ? '保存中…' : '确认发货'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

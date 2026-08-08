@@ -411,6 +411,71 @@ def parse_datetime(value):
     return parsed
 
 
+def query_kdniao_tracking(db, carrier, tracking_number):
+    """查询快递鸟物流轨迹。返回 (success, summary, detail)。
+
+    - success=False 时调用方应静默降级（不阻塞主流程）
+    - summary 是给用户看的简短状态
+    """
+    try:
+        import hashlib
+        import base64 as _b64
+        import urllib.request as _urlreq
+        import urllib.parse as _urlparse
+
+        ebusiness_id = setting_value(db, "kdniao_ebusiness_id").strip()
+        app_key = setting_value(db, "kdniao_app_key").strip()
+        if not ebusiness_id or not app_key:
+            return False, "", "KDNiao not configured"
+
+        request_data = {
+            "LogisticCode": tracking_number,
+            "ShipperCode": carrier or "",
+            "OrderCode": "",
+        }
+        data_json = json.dumps(request_data, separators=(",", ":"), ensure_ascii=False)
+        sign = _b64.b64encode(
+            hashlib.md5((data_json + app_key).encode("utf-8")).digest()
+        ).decode("utf-8")
+        payload = {
+            "RequestData": _b64.b64encode(data_json.encode("utf-8")).decode("utf-8"),
+            "EBusinessID": ebusiness_id,
+            "RequestType": "1002",
+            "DataSign": sign,
+            "DataType": "2",
+        }
+        form = "&".join(f"{k}={_urlparse.quote(str(v))}" for k, v in payload.items())
+        req = _urlreq.Request(
+            "https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx",
+            data=form.encode("utf-8"),
+            headers={"Content-Type": "application/x-www-form-urlencoded;charset=utf-8"},
+            method="POST",
+        )
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+
+        if result.get("Success") is not True:
+            return False, "", str(result.get("Reason") or "KDNiao query failed")
+
+        traces = result.get("Traces") or []
+        state = result.get("State") or "0"
+        state_map = {
+            "0": "无信息",
+            "1": "已揽收",
+            "2": "在途中",
+            "3": "已签收",
+            "4": "问题件",
+            "5": "转投",
+        }
+        latest = traces[0] if traces else {}
+        summary_parts = [state_map.get(state, "未知状态")]
+        if traces:
+            summary_parts.append(f"最新：{latest.get('AcceptStation', '')[:80]}")
+        return True, " | ".join(summary_parts), traces
+    except Exception as exc:
+        return False, "", str(exc)
+
+
 @api.route("/health")
 def health():
     return ok({"status": "ok", "timestamp": now_iso()})
@@ -1447,10 +1512,20 @@ def update_shipment(user, code):
                 return fail("Match not found")
             shipment_changed = (old_row.get("carrier") or "") != carrier or (old_row.get("tracking_number") or "") != tracking_number
 
+            # 物流自动跟踪：填了单号且配置了 KDNiao 时查询，失败静默降级
+            tracking_summary = ""
+            if status != "pending" and tracking_number and shipment_changed:
+                success, summary, _detail = query_kdniao_tracking(db, carrier, tracking_number)
+                if success:
+                    tracking_summary = summary
+                else:
+                    tracking_summary = "物流查询暂不可用，稍后自动更新" if tracking_number else ""
+
             cur = db.execute(
                 """
                 UPDATE matches
                 SET shipment_status = ?, carrier = ?, tracking_number = ?,
+                    tracking_summary = ?,
                     shipped_at = CASE
                         WHEN ? = 'pending' THEN NULL
                         ELSE COALESCE(shipped_at, CURRENT_TIMESTAMP)
@@ -1458,7 +1533,7 @@ def update_shipment(user, code):
                     tracking_updated_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND event_id = ? AND giver_id = ?
                 """,
-                (status, carrier, tracking_number, status, match_id, event["id"], me["id"]),
+                (status, carrier, tracking_number, tracking_summary, status, match_id, event["id"], me["id"]),
             )
             if cur.rowcount == 0:
                 return fail("Match not found")
