@@ -1,6 +1,7 @@
 import os
 import secrets
 import smtplib
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
@@ -9,7 +10,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
-from flask import Blueprint, render_template, request, send_from_directory
+from flask import Blueprint, jsonify, render_template, request, send_from_directory
 
 from wxcloudrun.auth import check_password, hash_password, sign_token, verify_token
 from wxcloudrun.database import DB
@@ -548,6 +549,9 @@ def uploads_file(filename):
 
 @site.route("/<path:_path>")
 def spa_fallback(_path):
+    # API 路径拼错时返回 JSON 404（避免前端拿到 HTML 报错困惑）
+    if _path.startswith("api/"):
+        return jsonify({"code": -1, "data": None, "message": "Not found"}), 404
     return render_template("index.html")
 
 
@@ -595,6 +599,53 @@ def register():
         return ok({"token": sign_token(user_id), "user": public_user(row)}, "Registered", 201)
 
 
+# ===== 登录限速（防暴力破解）=====
+# 内存滑动窗口：每个 IP 每 15 分钟最多 20 次失败；每个用户名每 15 分钟最多 10 次失败
+_LOGIN_WINDOW_SECONDS = 15 * 60
+_LOGIN_MAX_IP = 20
+_LOGIN_MAX_USER = 10
+_login_attempts = {}  # key -> list[timestamp]
+
+
+def _login_key_cleanup():
+    now = time.time()
+    expired = [k for k, v in _login_attempts.items() if v and (now - v[-1]) > _LOGIN_WINDOW_SECONDS]
+    for k in expired:
+        del _login_attempts[k]
+
+
+def _login_failures(key):
+    _login_key_cleanup()
+    now = time.time()
+    timestamps = [t for t in _login_attempts.get(key, []) if (now - t) <= _LOGIN_WINDOW_SECONDS]
+    _login_attempts[key] = timestamps
+    return timestamps
+
+
+def rate_limit_login(client_ip, username):
+    """检查是否超过限速。返回 (allowed, retry_after_seconds)"""
+    ip_failures = _login_failures(f"ip:{client_ip}")
+    if len(ip_failures) >= _LOGIN_MAX_IP:
+        retry_after = max(1, int(_LOGIN_WINDOW_SECONDS - (time.time() - ip_failures[0])))
+        return False, retry_after
+    user_failures = _login_failures(f"user:{username.lower()}")
+    if len(user_failures) >= _LOGIN_MAX_USER:
+        retry_after = max(1, int(_LOGIN_WINDOW_SECONDS - (time.time() - user_failures[0])))
+        return False, retry_after
+    return True, 0
+
+
+def record_failed_login(client_ip, username):
+    now = time.time()
+    _login_attempts.setdefault(f"ip:{client_ip}", []).append(now)
+    _login_attempts.setdefault(f"user:{username.lower()}", []).append(now)
+
+
+def clear_login_attempts(client_ip, username):
+    _login_attempts.pop(f"ip:{client_ip}", None)
+    _login_attempts.pop(f"user:{username.lower()}", None)
+
+
 @api.route("/auth/login", methods=["POST"])
 def login():
     data = body()
@@ -603,10 +654,18 @@ def login():
     if not username or not password:
         return fail("Username and password are required")
 
+    # 登录限速：按 IP+用户名 双重限制，防暴力破解
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
+    check, retry_after = rate_limit_login(client_ip, username)
+    if not check:
+        return fail(f"登录尝试过于频繁，请 {retry_after} 秒后再试", 429, headers={"Retry-After": str(retry_after)})
+
     with DB() as db:
         row = db.get("SELECT * FROM users WHERE username = ?", (username,))
         if not row or not check_password(password, row["password"]):
+            record_failed_login(client_ip, username)
             return fail("Invalid username or password", 401)
+        clear_login_attempts(client_ip, username)
         return ok({"token": sign_token(row["id"]), "user": public_user(row)}, "Signed in")
 
 
