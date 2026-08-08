@@ -1,9 +1,28 @@
 import os
+import threading
+import time
 
 from flask import Flask, jsonify
 
 from wxcloudrun.database import DB, init_schema
 from wxcloudrun.views import api, site
+
+
+def _deadline_scanner_loop(interval_seconds=3600):
+    """后台线程：每小时扫描一次即将到期的活动并发送截止提醒（幂等去重，可重复跑）。
+
+    轻量实现（threading + sleep），不引 APScheduler——当前单实例规模足够；
+    未来多进程部署时应换 cron / 独立 worker，避免重复扫描（notify 自带去重兜底）。
+    """
+    while True:
+        try:
+            from wxcloudrun.jobs import scan_deadlines
+            sent = scan_deadlines()
+            if sent:
+                print(f"[deadline-scanner] sent {sent} reminder notification(s)")
+        except Exception as exc:
+            print(f"[deadline-scanner] error: {exc}")
+        time.sleep(interval_seconds)
 
 
 def create_app():
@@ -39,6 +58,16 @@ def create_app():
         return response
 
     init_schema()
+
+    # 截止提醒后台扫描（可用环境变量 DEADLINE_SCANNER=0 关闭；间隔秒数可用 DEADLINE_SCAN_INTERVAL 覆盖）
+    if os.getenv("DEADLINE_SCANNER", "1").strip() not in ("0", "false", "False"):
+        try:
+            interval = int(os.getenv("DEADLINE_SCAN_INTERVAL", "3600"))
+        except ValueError:
+            interval = 3600
+        t = threading.Thread(target=_deadline_scanner_loop, args=(interval,), daemon=True)
+        t.start()
+
     return flask_app
 
 
