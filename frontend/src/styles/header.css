@@ -1,0 +1,214 @@
+/* 全局顶栏 */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--gift-card);
+  border-bottom: 1px solid var(--gift-border);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.app-header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--gift-space-sm) var(--gift-space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--gift-space-lg);
+  min-height: 52px;
+}
+
+.app-brand {
+  font-size: var(--gift-font-lg);
+  font-weight: var(--gift-font-bold);
+  color: var(--gift-brand);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-nav {
+  display: flex;
+  gap: var(--gift-space-sm);
+  align-items: center;
+}
+
+.app-nav-link {
+  font-size: var(--gift-font-md);
+  color: var(--gift-text-secondary);
+  text-decoration: none;
+  padding: var(--gift-space-xs) var(--gift-space-sm);
+  border-radius: var(--gift-radius-sm);
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  transition: color var(--gift-motion-fast) var(--gift-ease);
+}
+
+.app-nav-link:hover {
+  color: var(--gift-brand);
+}
+
+.app-nav-cta {
+  color: var(--gift-brand);
+  font-weight: var(--gift-font-medium);
+}
+
+.app-header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--gift-space-md);
+}
+
+/* 通知铃铛 */
+.notif-wrap {
+  position: relative;
+}
+
+.notif-bell {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--gift-motion-fast) var(--gift-ease);
+}
+
+.notif-bell:hover {
+  background: var(--gift-bg-muted);
+}
+
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--gift-error);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--gift-font-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notif-panel {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  width: 320px;
+  max-height: 420px;
+  background: var(--gift-card);
+  border: 1px solid var(--gift-border);
+  border-radius: var(--gift-radius-md);
+  box-shadow: var(--gift-shadow-modal);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--gift-space-md);
+  font-weight: var(--gift-font-medium);
+  border-bottom: 1px solid var(--gift-border);
+}
+
+.notif-mark-all {
+  border: none;
+  background: none;
+  color: var(--gift-brand);
+  font-size: var(--gift-font-sm);
+  cursor: pointer;
+  padding: 4px 8px;
+  min-height: 36px;
+}
+
+.notif-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notif-item {
+  padding: var(--gift-space-md);
+  border-bottom: 1px solid var(--gift-border);
+  cursor: pointer;
+  transition: background var(--gift-motion-fast) var(--gift-ease);
+}
+
+.notif-item:hover {
+  background: var(--gift-bg-muted);
+}
+
+.notif-item.unread {
+  background: var(--gift-brand-light);
+}
+
+.notif-title {
+  font-weight: var(--gift-font-medium);
+  font-size: var(--gift-font-md);
+}
+
+.notif-msg {
+  font-size: var(--gift-font-sm);
+  color: var(--gift-text-secondary);
+  margin-top: 4px;
+}
+
+.notif-meta {
+  margin-top: 6px;
+  font-size: var(--gift-font-sm);
+}
+
+.notif-meta a {
+  color: var(--gift-brand);
+  text-decoration: none;
+}
+
+.notif-empty {
+  padding: var(--gift-space-xl);
+  text-align: center;
+  color: var(--gift-text-secondary);
+}
+
+/* 用户区 */
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: var(--gift-space-sm);
+}
+
+.app-username {
+  font-size: var(--gift-font-md);
+  color: var(--gift-text-primary);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 移动端：隐藏用户名，保留核心 */
+@media (max-width: 640px) {
+  .app-username {
+    display: none;
+  }
+  .app-header-inner {
+    gap: var(--gift-space-sm);
+    padding: var(--gift-space-sm);
+  }
+  .notif-panel {
+    width: min(320px, calc(100vw - 24px));
+    right: -60px;
+  }
+}

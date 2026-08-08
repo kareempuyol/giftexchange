@@ -1,3 +1,8 @@
+/* 主内容区 */
+.app-main {
+  min-height: calc(100vh - 52px);
+}
+
 /* 认证页布局（登录/注册） */
 .auth-page {
   min-height: 100vh;

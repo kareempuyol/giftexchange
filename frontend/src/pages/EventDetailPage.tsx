@@ -72,6 +72,17 @@ export default function EventDetailPage() {
     }
   }
 
+  // 复制短码本身
+  const copyShortCode = async () => {
+    const sc = event?.shortCode || ''
+    try {
+      await navigator.clipboard.writeText(sc)
+      toast(`邀请码 ${sc} 已复制！`)
+    } catch {
+      toast(`邀请码：${sc}`, 'info')
+    }
+  }
+
   if (loading) return <div className="page-loading">加载中…</div>
   if (!event) return <div className="page-container">活动不存在</div>
 
@@ -91,12 +102,14 @@ export default function EventDetailPage() {
           {isOwner && <Badge tone="gold">我是组织者</Badge>}
         </div>
 
-        {/* 邀请区：短码 + 复制链接 */}
+        {/* 邀请区：短码 + 复制链接 + 复制短码 */}
         {event.shortCode && (
           <div className="invite-box">
             <div className="invite-info">
               <span className="invite-label">邀请码</span>
-              <span className="invite-code">{event.shortCode}</span>
+              <button className="invite-code-btn" onClick={copyShortCode} title="点击复制邀请码">
+                {event.shortCode} 📋
+              </button>
             </div>
             <button
               className="btn btn-primary btn-sm"

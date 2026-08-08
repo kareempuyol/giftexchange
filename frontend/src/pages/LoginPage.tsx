@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,14 +54,25 @@ export default function LoginPage() {
             />
           </div>
           <div className="form-group">
-            <input
-              className="form-input"
-              type="password"
-              placeholder="密码"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
+            <div className="pwd-wrap">
+              <input
+                className="form-input"
+                type={showPwd ? 'text' : 'password'}
+                placeholder="密码"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="pwd-toggle"
+                onClick={() => setShowPwd(v => !v)}
+                aria-label={showPwd ? '隐藏密码' : '显示密码'}
+                tabIndex={-1}
+              >
+                {showPwd ? '🙈' : '👁️'}
+              </button>
+            </div>
           </div>
 
           {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}

@@ -36,7 +36,13 @@
 .stat-num {
   font-size: var(--gift-font-title);
   font-weight: var(--gift-font-bold);
-  color: var(--gift-brand);
+  color: var(--gift-text-primary);
+}
+.stat-num.warn {
+  color: var(--gift-warning);
+}
+.stat-num.danger {
+  color: var(--gift-error);
 }
 .stat-label {
   font-size: var(--gift-font-xs);

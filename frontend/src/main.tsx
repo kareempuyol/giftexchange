@@ -10,6 +10,7 @@ import './styles/event-detail.css'
 import './styles/dashboard.css'
 import './styles/gift-wall.css'
 import './styles/image-upload.css'
+import './styles/header.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

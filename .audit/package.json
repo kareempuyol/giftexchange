@@ -1,0 +1,9 @@
+{
+  "name": "gift-audit",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "puppeteer-core": "^25.5.0"
+  }
+}

@@ -13,6 +13,8 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,23 +72,33 @@ export default function RegisterPage() {
             <div className="form-hint">用于登录和找回密码</div>
           </div>
           <div className="form-group">
-            <input
-              className="form-input"
-              type="password"
-              placeholder="密码"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="pwd-wrap">
+              <input
+                className="form-input"
+                type={showPwd ? 'text' : 'password'}
+                placeholder="密码"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button type="button" className="pwd-toggle" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? '隐藏密码' : '显示密码'} tabIndex={-1}>
+                {showPwd ? '🙈' : '👁️'}
+              </button>
+            </div>
             <div className="form-hint">至少 6 位，需包含字母和数字</div>
           </div>
           <div className="form-group">
-            <input
-              className="form-input"
-              type="password"
-              placeholder="确认密码"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
+            <div className="pwd-wrap">
+              <input
+                className="form-input"
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="确认密码"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+              />
+              <button type="button" className="pwd-toggle" onClick={() => setShowConfirm(v => !v)} aria-label={showConfirm ? '隐藏密码' : '显示密码'} tabIndex={-1}>
+                {showConfirm ? '🙈' : '👁️'}
+              </button>
+            </div>
             {confirm && password !== confirm && (
               <div className="form-error">两次输入的密码不一致</div>
             )}

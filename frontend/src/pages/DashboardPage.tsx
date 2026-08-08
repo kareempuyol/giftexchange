@@ -101,8 +101,8 @@ export default function DashboardPage() {
         <div className="stat-card"><div className="stat-num">{shipped}</div><div className="stat-label">已发货</div></div>
         <div className="stat-card"><div className="stat-num">{received}</div><div className="stat-label">已收货</div></div>
         <div className="stat-card"><div className="stat-num">{posted}</div><div className="stat-label">已晒图</div></div>
-        <div className="stat-card"><div className="stat-num">{pendingShipments}</div><div className="stat-label">待发货</div></div>
-        <div className="stat-card"><div className="stat-num">{unpostedGifts}</div><div className="stat-label">待晒图</div></div>
+        <div className="stat-card"><div className="stat-num warn">{pendingShipments}</div><div className="stat-label">待发货</div></div>
+        <div className="stat-card"><div className="stat-num warn">{unpostedGifts}</div><div className="stat-label">待晒图</div></div>
       </div>
 
       <div className="gift-card">

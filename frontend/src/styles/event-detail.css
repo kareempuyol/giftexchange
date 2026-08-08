@@ -38,34 +38,50 @@
   border-bottom: none;
 }
 
-/* 邀请区：短码 + 复制链接 */
+/* 邀请区：短码 + 复制 */
 .invite-box {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--gift-space-md);
   background: var(--gift-brand-light);
-  border: 1.5px dashed var(--gift-brand);
+  border: 1.5px solid var(--gift-brand);
   border-radius: var(--gift-radius-md);
   padding: var(--gift-space-md) var(--gift-space-lg);
-  margin-bottom: var(--gift-space-lg);
-  flex-wrap: wrap;
+  margin-bottom: var(--gift-space-md);
 }
 .invite-info {
   display: flex;
   align-items: center;
-  gap: var(--gift-space-md);
+  gap: var(--gift-space-sm);
+  min-width: 0;
 }
 .invite-label {
-  font-size: var(--gift-font-xs);
+  font-size: var(--gift-font-sm);
   color: var(--gift-text-secondary);
+  white-space: nowrap;
 }
 .invite-code {
-  font-family: 'SF Mono', 'Menlo', monospace;
-  font-size: var(--gift-font-xl);
+  font-size: var(--gift-font-title);
   font-weight: var(--gift-font-bold);
-  letter-spacing: 3px;
+  letter-spacing: 2px;
   color: var(--gift-brand);
+}
+.invite-code-btn {
+  border: none;
+  background: transparent;
+  font-size: var(--gift-font-title);
+  font-weight: var(--gift-font-bold);
+  letter-spacing: 2px;
+  color: var(--gift-brand);
+  cursor: pointer;
+  padding: var(--gift-space-xs) var(--gift-space-sm);
+  min-height: 44px;
+  border-radius: var(--gift-radius-sm);
+  transition: background var(--gift-motion-fast) var(--gift-ease);
+}
+.invite-code-btn:hover {
+  background: rgba(232, 85, 61, 0.08);
 }
 
 /* ===== 分步表单指示器 ===== */

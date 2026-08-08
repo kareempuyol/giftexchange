@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ToastProvider } from './components/Toast'
+import Header from './components/Header'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import EventsPage from './pages/EventsPage'
@@ -21,6 +22,15 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <Header />
+      <main className="app-main">{children}</main>
+    </>
+  )
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -28,11 +38,11 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/events" element={<RequireAuth><EventsPage /></RequireAuth>} />
-          <Route path="/events/new" element={<RequireAuth><CreateEventPage /></RequireAuth>} />
-          <Route path="/events/:code" element={<RequireAuth><EventDetailPage /></RequireAuth>} />
-          <Route path="/events/:code/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
-          <Route path="/events/:code/gift-wall" element={<RequireAuth><GiftWallPage /></RequireAuth>} />
+          <Route path="/events" element={<RequireAuth><Layout><EventsPage /></Layout></RequireAuth>} />
+          <Route path="/events/new" element={<RequireAuth><Layout><CreateEventPage /></Layout></RequireAuth>} />
+          <Route path="/events/:code" element={<RequireAuth><Layout><EventDetailPage /></Layout></RequireAuth>} />
+          <Route path="/events/:code/dashboard" element={<RequireAuth><Layout><DashboardPage /></Layout></RequireAuth>} />
+          <Route path="/events/:code/gift-wall" element={<RequireAuth><Layout><GiftWallPage /></Layout></RequireAuth>} />
           <Route path="/" element={<Navigate to="/events" replace />} />
           <Route path="*" element={<Navigate to="/events" replace />} />
         </Routes>
