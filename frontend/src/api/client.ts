@@ -209,6 +209,9 @@ export interface GiftWall {
   unlocked: boolean
   posted: number
   total: number
+  title: string
+  note?: string
+  budget?: number
   progress: GiftWallProgress
   items: GiftWallItem[]
 }

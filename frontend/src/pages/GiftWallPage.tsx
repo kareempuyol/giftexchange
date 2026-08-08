@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { api, ApiError, GiftWall, GiftWallItem } from '../api/client'
 import { useToast } from '../components/Toast'
+import PosterModal, { PosterData } from '../components/PosterModal'
 
 export default function GiftWallPage() {
   const { code = '' } = useParams()
@@ -10,6 +11,8 @@ export default function GiftWallPage() {
   const [wall, setWall] = useState<GiftWall | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [poster, setPoster] = useState<PosterData | null>(null)
+  const navigate = useNavigate()
   // 揭晓状态：同一次访问内记住已揭晓的卡片（matchId -> true）
   const [revealed, setRevealed] = useState<Record<number, boolean>>({})
 
@@ -111,6 +114,35 @@ export default function GiftWallPage() {
       ) : items.length === 0 ? (
         <div className="gw-empty">礼物墙已解锁，但还没有晒出的礼物 🎁</div>
       ) : (
+        <>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 20 }}>
+          <button
+            className="btn btn-primary"
+            style={{ width: 'auto', padding: '0 28px' }}
+            onClick={() => {
+              const totalStars = items.reduce((sum, it) => sum + (it.giftPost.rating || 0), 0)
+              setPoster({
+                kind: 'highlight',
+                title: wall.title,
+                participantCount: total,
+                totalPosted: posted,
+                totalStars,
+              })
+            }}
+          >
+            🏆 生成高光海报
+          </button>
+          <button
+            className="btn btn-secondary"
+            style={{ width: 'auto', padding: '0 28px' }}
+            onClick={() => {
+              localStorage.setItem('gift_draft', JSON.stringify({ title: wall.title, note: wall.note, budget: wall.budget }))
+              navigate('/events/new')
+            }}
+          >
+            🔁 再开一局
+          </button>
+        </div>
         <div className="gw-grid">
           {items.map((item) => {
             const isRevealed = !!revealed[item.matchId]
@@ -187,7 +219,10 @@ export default function GiftWallPage() {
             )
           })}
         </div>
+        </>
       )}
+
+      <PosterModal data={poster} onClose={() => setPoster(null)} />
     </div>
   )
 }

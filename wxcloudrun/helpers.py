@@ -1,0 +1,622 @@
+"""共享辅助函数 + Blueprint 定义（Blueprint 拆分重构 R2）。
+
+api / site 两个 Blueprint 在此定义；各路由模块 `from wxcloudrun.helpers import api`
+后继续用 @api.route(...) / @site.route(...) 注册路由，__init__.py 只需注册这两个蓝图。
+所有跨路由共享的辅助函数（DB 访问、序列化、权限、限速、设置、抽签包装、通知）集中在此。
+wxcloudrun/views.py 保留为兼容导入层（import wxcloudrun.views 不报错）。
+"""
+import json
+import os
+import secrets
+import smtplib
+import time
+import uuid
+from datetime import datetime, timezone
+from email.message import EmailMessage
+from functools import wraps
+from hashlib import sha256
+from pathlib import Path
+
+from flask import Blueprint, request
+
+from wxcloudrun.auth import verify_token
+from wxcloudrun.database import DB
+from wxcloudrun.notify import notify
+from wxcloudrun.response import fail, ok
+
+
+api = Blueprint("api", __name__, url_prefix="/api")
+site = Blueprint("site", __name__)
+
+SETTING_DEFINITIONS = {
+    "site_name": {"label": "Site name", "default": "Gift Exchange", "type": "text"},
+    "registration_enabled": {"label": "Allow registration", "default": "true", "type": "boolean"},
+    "shipment_tracking_enabled": {"label": "Enable shipment tracking", "default": "false", "type": "boolean"},
+    "tracking_provider": {"label": "Tracking provider", "default": "kdniao", "type": "select"},
+    "kdniao_ebusiness_id": {"label": "KDNiao business ID", "default": "", "type": "secret"},
+    "kdniao_app_key": {"label": "KDNiao app key", "default": "", "type": "secret"},
+    "cors_origin": {"label": "CORS origin", "default": "*", "type": "text"},
+    "password_reset_enabled": {"label": "Enable password reset", "default": "false", "type": "boolean"},
+    "app_base_url": {"label": "App base URL", "default": "", "type": "text"},
+    "smtp_host": {"label": "SMTP host", "default": "", "type": "text"},
+    "smtp_port": {"label": "SMTP port", "default": "587", "type": "text"},
+    "smtp_use_tls": {"label": "SMTP TLS", "default": "true", "type": "boolean"},
+    "smtp_username": {"label": "SMTP username", "default": "", "type": "text"},
+    "smtp_password": {"label": "SMTP password", "default": "", "type": "secret"},
+    "smtp_sender": {"label": "Sender email", "default": "", "type": "text"},
+}
+
+
+def now_iso():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def body():
+    return request.get_json(silent=True) or {}
+
+
+def public_user(row):
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "email": row["email"],
+        "displayName": row.get("display_name") or row["username"],
+        "avatarUrl": row.get("avatar_url"),
+        "isAdmin": is_user_admin(row),
+        "phone": row.get("phone") or "",
+        "address": row.get("address") or "",
+        "receiverName": row.get("receiver_name") or "",
+        "giftPreference": row.get("gift_preference") or "",
+        "createdAt": str(row.get("created_at") or ""),
+    }
+
+
+def api_event(row):
+    return {
+        "code": row["code"],
+        "shortCode": row.get("short_code") or "",
+        "title": row["name"],
+        "budget": row.get("budget_min") or 0,
+        "note": row.get("description") or "",
+        "drawDate": row.get("sign_up_deadline") or "",
+        "status": row["status"],
+        "matchVisibility": row.get("match_visibility") or "private",
+        "ownerId": row["creator_id"],
+        "ownerName": row.get("owner_username") or "",
+        "participantCount": row.get("participant_count") or 0,
+        "coverImage": row.get("cover_image") or "",
+        "isPublic": bool(row.get("is_public")) if row.get("is_public") is not None else True,
+        "maxParticipants": row.get("max_participants"),
+        "excludedPairs": excluded_pairs_list(row.get("excluded_pairs")),
+        "createdAt": str(row.get("created_at") or ""),
+        "updatedAt": str(row.get("updated_at") or ""),
+    }
+
+
+def current_user():
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Bearer "):
+        return None
+    return verify_token(header[7:])
+
+
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        user = current_user()
+        if not user:
+            return fail("Please sign in first", 401, -2)
+        return fn(user, *args, **kwargs)
+
+    return wrapper
+
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(user, *args, **kwargs):
+        with DB() as db:
+            row = current_user_row(db, user["userId"])
+            if not is_user_admin(row):
+                return fail("Admin permission required", 403)
+        return fn(user, *args, **kwargs)
+
+    return login_required(wrapper)
+
+
+def _split_env(name):
+    return {item.strip().lower() for item in os.getenv(name, "").split(",") if item.strip()}
+
+
+def is_user_admin(row):
+    if bool(row.get("is_admin")):
+        return True
+    usernames = _split_env("ADMIN_USERNAMES")
+    emails = _split_env("ADMIN_EMAILS")
+    return row.get("username", "").lower() in usernames or row.get("email", "").lower() in emails
+
+
+# 短码生成：6 位大写字母数字，去掉易混淆字符（0/O/1/I）
+SHORT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def generate_short_code(db, length=6):
+    for _ in range(20):
+        candidate = "".join(secrets.SystemRandom().choice(SHORT_CODE_ALPHABET) for _ in range(length))
+        exists = db.get("SELECT id FROM events WHERE short_code = ?", (candidate,))
+        if not exists:
+            return candidate
+    # 极端冲突情况：退化为 uuid 前缀
+    return str(uuid.uuid4())[:8].upper()
+
+
+def fetch_event(db, code):
+    # 兼容查询：先按原始 code（uuid），再按短码
+    row = db.get(
+        """
+        SELECT e.*, u.username AS owner_username
+        FROM events e JOIN users u ON u.id = e.creator_id
+        WHERE e.code = ?
+        """,
+        (code,),
+    )
+    if not row and code and len(code) <= 16:
+        row = db.get(
+            """
+            SELECT e.*, u.username AS owner_username
+            FROM events e JOIN users u ON u.id = e.creator_id
+            WHERE e.short_code = ?
+            """,
+            (code,),
+        )
+    if not row:
+        raise ValueError("Event not found")
+    return row
+
+
+def create_notification(db, user_id, event_id, match_id, type_name, title, message):
+    """兼容包装：委托 notify 统一入口（R5）。新代码请直接 from wxcloudrun.notify import notify。"""
+    return notify(db, user_id, event_id, match_id, type_name, title, message)
+
+
+def current_user_row(db, user_id):
+    row = db.get("SELECT * FROM users WHERE id = ?", (user_id,))
+    if not row:
+        raise ValueError("User not found")
+    return row
+
+
+def participant_rows(db, event_id):
+    return db.all(
+        """
+        SELECT p.id, p.user_id, p.nickname, p.receiver_name, p.phone, p.address,
+               p.preference_likes, p.preference_dislikes, p.preference_notes,
+               p.created_at, u.username, u.display_name, u.avatar_url
+        FROM participants p JOIN users u ON u.id = p.user_id
+        WHERE p.event_id = ?
+        ORDER BY p.created_at ASC
+        """,
+        (event_id,),
+    )
+
+
+def participant_payload(user_row, data=None):
+    data = data or {}
+    return {
+        "receiver_name": str(data.get("receiverName") or data.get("receiver_name") or user_row.get("receiver_name") or user_row.get("display_name") or user_row["username"]).strip(),
+        "phone": str(data.get("phone") or user_row.get("phone") or "").strip(),
+        "address": str(data.get("address") or user_row.get("address") or "").strip(),
+        "preference_likes": str(data.get("preferenceLikes") or data.get("preference_likes") or user_row.get("gift_preference") or "").strip(),
+        "preference_dislikes": str(data.get("preferenceDislikes") or data.get("preference_dislikes") or "").strip(),
+        "preference_notes": str(data.get("preferenceNotes") or data.get("preference_notes") or "").strip(),
+        "preference_size": str(data.get("preferenceSize") or data.get("preference_size") or "").strip(),
+        "preference_color": str(data.get("preferenceColor") or data.get("preference_color") or "").strip(),
+        "wish_links": _normalize_wish_links(data),
+    }
+
+
+def _normalize_wish_links(data):
+    """心愿链接：接受数组或换行/逗号分隔字符串，最多 3 条，统一存 JSON 数组"""
+    raw = data.get("wishLinks") or data.get("wish_links") or ""
+    items = []
+    if isinstance(raw, list):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+    elif isinstance(raw, str) and raw.strip():
+        items = [x.strip() for x in raw.replace("\n", ",").split(",") if x.strip()]
+    return json.dumps(items[:3], ensure_ascii=False)
+
+
+def validate_participant_payload(payload):
+    if len(payload["receiver_name"]) > 120:
+        return "Receiver name is too long"
+    if len(payload["phone"]) > 50:
+        return "Phone is too long"
+    if len(payload["address"]) > 500:
+        return "Address is too long"
+    if len(payload["preference_likes"]) > 500:
+        return "Preference is too long"
+    if len(payload["preference_dislikes"]) > 500:
+        return "Dislikes is too long"
+    if len(payload["preference_notes"]) > 500:
+        return "Preference notes is too long"
+    if len(payload["preference_size"]) > 50:
+        return "Size is too long"
+    if len(payload["preference_color"]) > 80:
+        return "Color is too long"
+    return None
+
+
+def add_participant(db, event_id, user_id, data=None):
+    user_row = current_user_row(db, user_id)
+    nickname = user_row.get("display_name") or user_row["username"]
+    payload = participant_payload(user_row, data)
+    error = validate_participant_payload(payload)
+    if error:
+        raise ValueError(error)
+    existing = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event_id, user_id))
+    if existing:
+        return existing["id"]
+    cur = db.execute(
+        """
+        INSERT INTO participants (
+            event_id, user_id, nickname, receiver_name, phone, address,
+            preference_likes, preference_dislikes, preference_notes,
+            preference_size, preference_color, wish_links
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            event_id,
+            user_id,
+            nickname,
+            payload["receiver_name"],
+            payload["phone"],
+            payload["address"],
+            payload["preference_likes"],
+            payload["preference_dislikes"],
+            payload["preference_notes"],
+            payload["preference_size"],
+            payload["preference_color"],
+            payload["wish_links"],
+        ),
+    )
+    db.execute(
+        "UPDATE events SET participant_count = participant_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (event_id,),
+    )
+    return cur.lastrowid
+
+
+def api_shipment(row):
+    return {
+        "status": row.get("shipment_status") or "pending",
+        "carrier": row.get("carrier") or "",
+        "trackingNumber": row.get("tracking_number") or "",
+        "shippedAt": str(row.get("shipped_at") or ""),
+        "trackingUpdatedAt": str(row.get("tracking_updated_at") or ""),
+        "trackingSummary": row.get("tracking_summary") or "",
+    }
+
+
+def api_gift_post(row):
+    return {
+        "receivedAt": str(row.get("received_at") or ""),
+        "rating": row.get("gift_rating"),
+        "review": row.get("gift_review") or "",
+        "photoUrl": row.get("gift_photo_url") or "",
+    }
+
+
+def api_notification(row):
+    return {
+        "id": row["id"],
+        "eventCode": row.get("event_code") or "",
+        "matchId": row.get("match_id"),
+        "type": row.get("type") or "",
+        "title": row.get("title") or "",
+        "message": row.get("message") or "",
+        "read": bool(row.get("read_at")),
+        "createdAt": str(row.get("created_at") or ""),
+    }
+
+
+def api_contact(row):
+    return {
+        "receiverName": row.get("receiver_name") or "",
+        "phone": row.get("phone") or "",
+        "address": row.get("address") or "",
+    }
+
+
+def api_preference(row):
+    wish_links = []
+    raw_links = row.get("wish_links") or ""
+    if raw_links:
+        try:
+            parsed = json.loads(raw_links)
+            if isinstance(parsed, list):
+                wish_links = [str(x) for x in parsed if str(x)]
+        except Exception:
+            pass
+    return {
+        "likes": row.get("preference_likes") or "",
+        "dislikes": row.get("preference_dislikes") or "",
+        "notes": row.get("preference_notes") or "",
+        "size": row.get("preference_size") or "",
+        "color": row.get("preference_color") or "",
+        "wishLinks": wish_links,
+    }
+
+
+def setting_value(db, key):
+    definition = SETTING_DEFINITIONS[key]
+    row = db.get("SELECT value FROM app_settings WHERE key_name = ?", (key,))
+    return row["value"] if row and row.get("value") is not None else os.getenv(key.upper(), definition["default"])
+
+
+def settings_payload(db, include_secrets=False):
+    values = {}
+    for key, definition in SETTING_DEFINITIONS.items():
+        value = setting_value(db, key)
+        if definition["type"] == "secret" and value and not include_secrets:
+            value = "********"
+        values[key] = {"value": value, **definition}
+    return values
+
+
+def save_setting(db, key, value):
+    cur = db.execute("UPDATE app_settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key_name = ?", (value, key))
+    if cur.rowcount == 0:
+        db.execute("INSERT INTO app_settings (key_name, value) VALUES (?, ?)", (key, value))
+
+
+def token_hash(token):
+    return sha256(token.encode("utf-8")).hexdigest()
+
+
+def absolute_app_url(db):
+    configured = setting_value(db, "app_base_url").strip().rstrip("/")
+    if configured:
+        return configured
+    return request.host_url.rstrip("/")
+
+
+def send_reset_email(db, email, reset_url):
+    host = setting_value(db, "smtp_host").strip()
+    sender = setting_value(db, "smtp_sender").strip() or setting_value(db, "smtp_username").strip()
+    if not host or not sender:
+        raise RuntimeError("Email service is not configured")
+
+    port = int(setting_value(db, "smtp_port") or 587)
+    username = setting_value(db, "smtp_username").strip()
+    password = setting_value(db, "smtp_password")
+    use_tls = setting_value(db, "smtp_use_tls").lower() == "true"
+    site_name = setting_value(db, "site_name")
+
+    message = EmailMessage()
+    message["Subject"] = f"{site_name} password reset"
+    message["From"] = sender
+    message["To"] = email
+    message.set_content(
+        "Use the link below to reset your password. The link expires in 30 minutes.\n\n"
+        f"{reset_url}\n\n"
+        "If you did not request this, you can ignore this email."
+    )
+
+    with smtplib.SMTP(host, port, timeout=12) as smtp:
+        if use_tls:
+            smtp.starttls()
+        if username or password:
+            smtp.login(username, password)
+        smtp.send_message(message)
+
+
+def parse_datetime(value):
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def query_kdniao_tracking(db, carrier, tracking_number):
+    """查询快递鸟物流轨迹。返回 (success, summary, detail)。
+
+    - success=False 时调用方应静默降级（不阻塞主流程）
+    - summary 是给用户看的简短状态
+    """
+    try:
+        import hashlib
+        import base64 as _b64
+        import urllib.request as _urlreq
+        import urllib.parse as _urlparse
+
+        ebusiness_id = setting_value(db, "kdniao_ebusiness_id").strip()
+        app_key = setting_value(db, "kdniao_app_key").strip()
+        if not ebusiness_id or not app_key:
+            return False, "", "KDNiao not configured"
+
+        request_data = {
+            "LogisticCode": tracking_number,
+            "ShipperCode": carrier or "",
+            "OrderCode": "",
+        }
+        data_json = json.dumps(request_data, separators=(",", ":"), ensure_ascii=False)
+        sign = _b64.b64encode(
+            hashlib.md5((data_json + app_key).encode("utf-8")).digest()
+        ).decode("utf-8")
+        payload = {
+            "RequestData": _b64.b64encode(data_json.encode("utf-8")).decode("utf-8"),
+            "EBusinessID": ebusiness_id,
+            "RequestType": "1002",
+            "DataSign": sign,
+            "DataType": "2",
+        }
+        form = "&".join(f"{k}={_urlparse.quote(str(v))}" for k, v in payload.items())
+        req = _urlreq.Request(
+            "https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx",
+            data=form.encode("utf-8"),
+            headers={"Content-Type": "application/x-www-form-urlencoded;charset=utf-8"},
+            method="POST",
+        )
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+
+        if result.get("Success") is not True:
+            return False, "", str(result.get("Reason") or "KDNiao query failed")
+
+        traces = result.get("Traces") or []
+        state = result.get("State") or "0"
+        state_map = {
+            "0": "无信息",
+            "1": "已揽收",
+            "2": "在途中",
+            "3": "已签收",
+            "4": "问题件",
+            "5": "转投",
+        }
+        latest = traces[0] if traces else {}
+        summary_parts = [state_map.get(state, "未知状态")]
+        if traces:
+            summary_parts.append(f"最新：{latest.get('AcceptStation', '')[:80]}")
+        return True, " | ".join(summary_parts), traces
+    except Exception as exc:
+        return False, "", str(exc)
+
+
+# ===== 图片上传（阶段二G：先传后引用，未来兼容 wx.uploadFile） =====
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp"}
+# 业务图片字段新格式：存 URL（≤2000）；兼容旧格式：data: 开头的 base64（≤350000）
+MAX_IMAGE_REF_URL = 2000
+MAX_IMAGE_REF_BASE64 = 350000
+
+
+def uploads_dir():
+    base = os.getenv("UPLOAD_DIR") or str(Path(__file__).resolve().parent.parent / "data" / "uploads")
+    Path(base).mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def image_ref_valid(value):
+    """图片字段校验：先传后引用。新值应为 /uploads/ 相对 URL；旧 base64（data: 开头）继续兼容。"""
+    if value.startswith("data:"):
+        return len(value) <= MAX_IMAGE_REF_BASE64
+    return len(value) <= MAX_IMAGE_REF_URL
+
+
+# ===== 登录限速（防暴力破解）=====
+# 内存滑动窗口：每个 IP 每 15 分钟最多 20 次失败；每个用户名每 15 分钟最多 10 次失败
+_LOGIN_WINDOW_SECONDS = 15 * 60
+_LOGIN_MAX_IP = 20
+_LOGIN_MAX_USER = 10
+_login_attempts = {}  # key -> list[timestamp]
+
+
+def _login_key_cleanup():
+    now = time.time()
+    expired = [k for k, v in _login_attempts.items() if v and (now - v[-1]) > _LOGIN_WINDOW_SECONDS]
+    for k in expired:
+        del _login_attempts[k]
+
+
+def _login_failures(key):
+    _login_key_cleanup()
+    now = time.time()
+    timestamps = [t for t in _login_attempts.get(key, []) if (now - t) <= _LOGIN_WINDOW_SECONDS]
+    _login_attempts[key] = timestamps
+    return timestamps
+
+
+def rate_limit_login(client_ip, username):
+    """检查是否超过限速。返回 (allowed, retry_after_seconds)"""
+    ip_failures = _login_failures(f"ip:{client_ip}")
+    if len(ip_failures) >= _LOGIN_MAX_IP:
+        retry_after = max(1, int(_LOGIN_WINDOW_SECONDS - (time.time() - ip_failures[0])))
+        return False, retry_after
+    user_failures = _login_failures(f"user:{username.lower()}")
+    if len(user_failures) >= _LOGIN_MAX_USER:
+        retry_after = max(1, int(_LOGIN_WINDOW_SECONDS - (time.time() - user_failures[0])))
+        return False, retry_after
+    return True, 0
+
+
+def record_failed_login(client_ip, username):
+    now = time.time()
+    _login_attempts.setdefault(f"ip:{client_ip}", []).append(now)
+    _login_attempts.setdefault(f"user:{username.lower()}", []).append(now)
+
+
+def clear_login_attempts(client_ip, username):
+    _login_attempts.pop(f"ip:{client_ip}", None)
+    _login_attempts.pop(f"user:{username.lower()}", None)
+
+
+def excluded_pairs_list(raw):
+    """解析互避对 JSON 为列表形式（用于 API 输出）：[[a,b], ...]"""
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            return [[int(p[0]), int(p[1])] for p in data if isinstance(p, list) and len(p) == 2]
+    except Exception:
+        pass
+    return []
+
+
+def parse_excluded_pairs(raw):
+    """解析互避对 JSON：[[userId1, userId2], ...] → {(1,2),(2,1)}（用于抽签判定）"""
+    pairs = set()
+    if not raw:
+        return pairs
+    try:
+        data = json.loads(raw)
+        for pair in data:
+            if isinstance(pair, list) and len(pair) == 2:
+                a, b = int(pair[0]), int(pair[1])
+                if a != b:
+                    pairs.add((min(a, b), max(a, b)))
+    except Exception:
+        pass
+    return pairs
+
+
+def draw_matches(rows, excluded_pairs):
+    """抽签核心：随机环 + 防自抽 + 互避规则。
+    返回 (matches, ok)。matches 为空且 ok=False 表示规则太严无法满足。
+    """
+    from wxcloudrun.draw import draw_matches as _draw_matches
+    return _draw_matches(rows, excluded_pairs)
+
+
+def draw_solvable(n, excluded_pairs):
+    """预判互避规则是否可能无解（2 人 / 3 人+互避对 在抽签前提前拒绝）"""
+    from wxcloudrun.draw import is_draw_solvable as _is_draw_solvable
+    return _is_draw_solvable(n, excluded_pairs)
+
+
+def send_draw_notifications(db, event_id, rows):
+    """抽签完成后通知所有参与者结果已出"""
+    for p in rows:
+        notify(
+            db, p["user_id"], event_id, None, "draw_result",
+            "抽签结果已出 🎉",
+            "你的送礼对象已经确定，快去看看要送谁吧！",
+        )
+
+
+def draw_deadline_passed(event):
+    """报名截止（抽签日）已到：支持 ISO datetime 与 YYYY-MM-DD 日期，未设置视为未到"""
+    raw = event.get("sign_up_deadline") or ""
+    if not raw:
+        return False
+    value = str(raw).strip()
+    try:
+        deadline = datetime.fromisoformat(value)
+    except ValueError:
+        try:
+            deadline = datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            return False
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) >= deadline

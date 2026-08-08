@@ -1,0 +1,414 @@
+"""礼物路由（received-gift、gift-wall、gift-wall/like、note、shipment）。"""
+from flask import request
+
+from wxcloudrun.database import DB
+from wxcloudrun.helpers import (
+    api,
+    api_gift_post,
+    api_shipment,
+    body,
+    fail,
+    fetch_event,
+    image_ref_valid,
+    login_required,
+    notify,
+    ok,
+    participant_rows,
+    query_kdniao_tracking,
+)
+
+
+def gift_wall_allowed(db, event, user_id):
+    """礼物墙权限：参与者或组织者"""
+    participant = db.get(
+        "SELECT id FROM participants WHERE event_id = ? AND user_id = ?",
+        (event["id"], user_id),
+    )
+    return bool(participant) or event["creator_id"] == user_id
+
+
+def gift_like_count(db, match_id):
+    row = db.get("SELECT COUNT(*) AS count FROM gift_likes WHERE match_id = ?", (match_id,))
+    return int(row["count"] or 0)
+
+
+@api.route("/events/<code>/received-gift")
+@login_required
+def received_gift(user, code):
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return ok(None)
+            row = db.get(
+                """
+                SELECT m.id, m.note, m.shipment_status, m.carrier, m.tracking_number,
+                       m.shipped_at, m.tracking_updated_at, m.tracking_summary,
+                       m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
+                       p.user_id AS giver_user_id, u.username, u.display_name
+                FROM matches m
+                JOIN participants p ON p.id = m.giver_id
+                JOIN users u ON u.id = p.user_id
+                WHERE m.event_id = ? AND m.receiver_id = ?
+                """,
+                (event["id"], me["id"]),
+            )
+            if not row:
+                return ok(None)
+            return ok(
+                {
+                    "matchId": row["id"],
+                    "giverId": row["giver_user_id"],
+                    "giverName": row["username"],
+                    "giverDisplayName": row.get("display_name") or row["username"],
+                    "note": row.get("note") or "",
+                    "shipment": api_shipment(row),
+                    "giftPost": api_gift_post(row),
+                }
+            )
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/received-gift", methods=["PUT"])
+@login_required
+def update_received_gift(user, code):
+    data = body()
+    match_id = data.get("matchId")
+    rating = data.get("rating")
+    review = str(data.get("review") or "").strip()
+    photo_url = str(data.get("photoUrl") or data.get("photo_url") or "").strip()
+
+    if not match_id:
+        return fail("matchId is required")
+    try:
+        rating_value = int(rating)
+    except Exception:
+        return fail("Rating is required")
+    if rating_value < 1 or rating_value > 5:
+        return fail("Rating must be 1-5")
+    if len(review) > 500:
+        return fail("Review is too long")
+    if photo_url and not image_ref_valid(photo_url):
+        return fail("Photo is too large")
+
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return fail("You are not a participant of this event", 403)
+            cur = db.execute(
+                """
+                UPDATE matches
+                SET received_at = COALESCE(received_at, CURRENT_TIMESTAMP),
+                    gift_rating = ?, gift_review = ?, gift_photo_url = ?
+                WHERE id = ? AND event_id = ? AND receiver_id = ?
+                """,
+                (rating_value, review, photo_url, match_id, event["id"], me["id"]),
+            )
+            if cur.rowcount == 0:
+                return fail("Match not found")
+            row = db.get(
+                """
+                SELECT m.*, giver.user_id AS giver_user_id, receiver.user_id AS receiver_user_id,
+                       ru.display_name AS receiver_display_name, ru.username AS receiver_username
+                FROM matches m
+                JOIN participants giver ON giver.id = m.giver_id
+                JOIN participants receiver ON receiver.id = m.receiver_id
+                JOIN users ru ON ru.id = receiver.user_id
+                WHERE m.id = ?
+                """,
+                (match_id,),
+            )
+            notify(
+                db,
+                row["giver_user_id"],
+                event["id"],
+                row["id"],
+                "gift_posted",
+                f"{row.get('receiver_display_name') or row.get('receiver_username')} 已晒礼物",
+                "TA 已收到你的礼物，并完成了晒图评价。",
+            )
+            # 礼物墙解锁通知：全部晒完时通知所有参与者；用 event_id + type 去重，只发一次
+            remaining = db.get(
+                "SELECT COUNT(*) AS count FROM matches WHERE event_id = ? AND received_at IS NULL",
+                (event["id"],),
+            )
+            if int(remaining["count"] or 0) == 0 and not db.get(
+                "SELECT id FROM notifications WHERE event_id = ? AND type = 'gift_wall_unlocked' LIMIT 1",
+                (event["id"],),
+            ):
+                for p in participant_rows(db, event["id"]):
+                    notify(
+                        db,
+                        p["user_id"],
+                        event["id"],
+                        None,
+                        "gift_wall_unlocked",
+                        "礼物墙已解锁 🎉",
+                        "所有礼物都已晒出，快去礼物墙看看吧！",
+                    )
+            return ok(api_gift_post(row), "Gift post saved")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/gift-wall")
+@login_required
+def gift_wall(user, code):
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if not gift_wall_allowed(db, event, user["userId"]):
+                return fail("No permission", 403)
+            counts = db.get(
+                """
+                SELECT COUNT(*) AS total,
+                       SUM(CASE WHEN received_at IS NOT NULL THEN 1 ELSE 0 END) AS posted
+                FROM matches
+                WHERE event_id = ?
+                """,
+                (event["id"],),
+            )
+            total = int(counts.get("total") or 0)
+            posted = int(counts.get("posted") or 0)
+            unlocked = total > 0 and total == posted
+            rows = []
+            like_counts = {}
+            liked_by_me = set()
+            if unlocked:
+                rows = db.all(
+                    """
+                    SELECT m.id, m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
+                           gu.username AS giver_username, gu.display_name AS giver_display_name,
+                           ru.username AS receiver_username, ru.display_name AS receiver_display_name
+                    FROM matches m
+                    JOIN participants gp ON gp.id = m.giver_id
+                    JOIN participants rp ON rp.id = m.receiver_id
+                    JOIN users gu ON gu.id = gp.user_id
+                    JOIN users ru ON ru.id = rp.user_id
+                    WHERE m.event_id = ?
+                    ORDER BY m.received_at DESC
+                    """,
+                    (event["id"],),
+                )
+                if rows:
+                    ids = [row["id"] for row in rows]
+                    placeholders = ",".join("?" for _ in ids)
+                    for lrow in db.all(
+                        f"SELECT match_id, COUNT(*) AS count FROM gift_likes WHERE match_id IN ({placeholders}) GROUP BY match_id",
+                        tuple(ids),
+                    ):
+                        like_counts[lrow["match_id"]] = int(lrow["count"] or 0)
+                    for lrow in db.all(
+                        f"SELECT match_id FROM gift_likes WHERE match_id IN ({placeholders}) AND user_id = ?",
+                        tuple(ids) + (user["userId"],),
+                    ):
+                        liked_by_me.add(lrow["match_id"])
+            return ok(
+                {
+                    "unlocked": unlocked,
+                    "posted": posted,
+                    "total": total,
+                    "title": event["name"],
+                    "note": event.get("description") or "",
+                    "budget": event.get("budget_min") or 0,
+                    "progress": {
+                        "posted": posted,
+                        "total": total,
+                        "unlocked": unlocked,
+                        "remaining": max(0, total - posted),
+                    },
+                    "items": [
+                        {
+                            "matchId": row["id"],
+                            "giverName": row.get("giver_display_name") or row["giver_username"],
+                            "receiverName": row.get("receiver_display_name") or row["receiver_username"],
+                            "giftPost": api_gift_post(row),
+                            "likeCount": like_counts.get(row["id"], 0),
+                            "likedByMe": row["id"] in liked_by_me,
+                        }
+                        for row in rows
+                    ],
+                }
+            )
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/gift-wall/like", methods=["POST"])
+@login_required
+def gift_wall_like(user, code):
+    data = body()
+    match_id = data.get("matchId")
+    if not match_id:
+        return fail("matchId is required")
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if not gift_wall_allowed(db, event, user["userId"]):
+                return fail("No permission", 403)
+            if not db.get(
+                "SELECT id FROM matches WHERE id = ? AND event_id = ?",
+                (match_id, event["id"]),
+            ):
+                return fail("Match not found", 404)
+            existing = db.get(
+                "SELECT id FROM gift_likes WHERE match_id = ? AND user_id = ?",
+                (match_id, user["userId"]),
+            )
+            if not existing:
+                db.execute(
+                    "INSERT INTO gift_likes (match_id, user_id) VALUES (?, ?)",
+                    (match_id, user["userId"]),
+                )
+            return ok(
+                {"matchId": match_id, "liked": True, "likeCount": gift_like_count(db, match_id)},
+                "Liked",
+            )
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/gift-wall/like", methods=["DELETE"])
+@login_required
+def gift_wall_unlike(user, code):
+    raw_match_id = request.args.get("matchId") or ""
+    try:
+        match_id = int(raw_match_id)
+    except (TypeError, ValueError):
+        return fail("matchId is required")
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if not gift_wall_allowed(db, event, user["userId"]):
+                return fail("No permission", 403)
+            if not db.get(
+                "SELECT id FROM matches WHERE id = ? AND event_id = ?",
+                (match_id, event["id"]),
+            ):
+                return fail("Match not found", 404)
+            db.execute(
+                "DELETE FROM gift_likes WHERE match_id = ? AND user_id = ?",
+                (match_id, user["userId"]),
+            )
+            return ok(
+                {"matchId": match_id, "liked": False, "likeCount": gift_like_count(db, match_id)},
+                "Unliked",
+            )
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/note", methods=["PUT"])
+@login_required
+def update_note(user, code):
+    data = body()
+    match_id = data.get("matchId")
+    note = str(data.get("note") or "")
+    if not match_id:
+        return fail("matchId is required")
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return fail("You are not a participant of this event", 403)
+            cur = db.execute("UPDATE matches SET note = ? WHERE id = ? AND giver_id = ?", (note, match_id, me["id"]))
+            if cur.rowcount == 0:
+                return fail("Match not found")
+            return ok(None, "Note saved")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/shipment", methods=["PUT"])
+@login_required
+def update_shipment(user, code):
+    data = body()
+    match_id = data.get("matchId")
+    carrier = str(data.get("carrier") or "").strip()
+    tracking_number = str(data.get("trackingNumber") or data.get("tracking_number") or "").strip()
+    status = str(data.get("status") or "").strip() or ("shipped" if tracking_number else "pending")
+
+    if status not in {"pending", "shipped", "delivered"}:
+        return fail("Invalid shipment status")
+    if not match_id:
+        return fail("matchId is required")
+    if status != "pending" and not tracking_number:
+        return fail("Tracking number is required")
+    if len(carrier) > 80:
+        return fail("Carrier is too long")
+    if len(tracking_number) > 120:
+        return fail("Tracking number is too long")
+
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return fail("You are not a participant of this event", 403)
+            old_row = db.get(
+                """
+                SELECT carrier, tracking_number
+                FROM matches
+                WHERE id = ? AND event_id = ? AND giver_id = ?
+                """,
+                (match_id, event["id"], me["id"]),
+            )
+            if not old_row:
+                return fail("Match not found")
+            shipment_changed = (old_row.get("carrier") or "") != carrier or (old_row.get("tracking_number") or "") != tracking_number
+
+            # 物流自动跟踪：填了单号且配置了 KDNiao 时查询，失败静默降级
+            tracking_summary = ""
+            if status != "pending" and tracking_number and shipment_changed:
+                success, summary, _detail = query_kdniao_tracking(db, carrier, tracking_number)
+                if success:
+                    tracking_summary = summary
+                else:
+                    tracking_summary = "物流查询暂不可用，稍后自动更新" if tracking_number else ""
+
+            cur = db.execute(
+                """
+                UPDATE matches
+                SET shipment_status = ?, carrier = ?, tracking_number = ?,
+                    tracking_summary = ?,
+                    shipped_at = CASE
+                        WHEN ? = 'pending' THEN NULL
+                        ELSE COALESCE(shipped_at, CURRENT_TIMESTAMP)
+                    END,
+                    tracking_updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND event_id = ? AND giver_id = ?
+                """,
+                (status, carrier, tracking_number, tracking_summary, status, match_id, event["id"], me["id"]),
+            )
+            if cur.rowcount == 0:
+                return fail("Match not found")
+
+            row = db.get(
+                """
+                SELECT m.*, receiver.user_id AS receiver_user_id, gu.display_name AS giver_display_name, gu.username AS giver_username
+                FROM matches m
+                JOIN participants giver ON giver.id = m.giver_id
+                JOIN participants receiver ON receiver.id = m.receiver_id
+                JOIN users gu ON gu.id = giver.user_id
+                WHERE m.id = ?
+                """,
+                (match_id,),
+            )
+            if status != "pending" and shipment_changed:
+                notify(
+                    db,
+                    row["receiver_user_id"],
+                    event["id"],
+                    row["id"],
+                    "shipment_sent",
+                    "你的礼物已发货",
+                    f"{row.get('giver_display_name') or row.get('giver_username')} 已填写快递信息，请留意收件。",
+                )
+            return ok(api_shipment(row), "Shipment saved")
+    except ValueError as exc:
+        return fail(str(exc), 404)

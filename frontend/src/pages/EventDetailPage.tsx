@@ -4,6 +4,7 @@ import { api, ApiError, EventInfo, Participant, MyMatch } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import { useToast } from '../components/Toast'
+import PosterModal, { PosterData } from '../components/PosterModal'
 
 export default function EventDetailPage() {
   const { code = '' } = useParams()
@@ -19,6 +20,7 @@ export default function EventDetailPage() {
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [confirmDraw, setConfirmDraw] = useState(false)
   const [drawing, setDrawing] = useState(false)
+  const [poster, setPoster] = useState<PosterData | null>(null)
 
   const isOwner = user?.id === event?.ownerId
 
@@ -182,6 +184,23 @@ export default function EventDetailPage() {
             >
               📋 复制邀请链接
             </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ width: 'auto', flexShrink: 0 }}
+              onClick={() =>
+                setPoster({
+                  kind: 'invite',
+                  title: event.title,
+                  note: event.note,
+                  budget: event.budget,
+                  participantCount: participants.length,
+                  shortCode: event.shortCode,
+                  coverImage: event.coverImage,
+                })
+              }
+            >
+              🖼️ 邀请海报
+            </button>
           </div>
         )}
 
@@ -339,6 +358,8 @@ export default function EventDetailPage() {
           }}
         />
       )}
+
+      <PosterModal data={poster} onClose={() => setPoster(null)} />
     </div>
   )
 }

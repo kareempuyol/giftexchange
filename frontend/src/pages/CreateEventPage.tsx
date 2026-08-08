@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api, ApiError, EventInfo } from '../api/client'
 import { useToast } from '../components/Toast'
@@ -17,6 +17,37 @@ export default function CreateEventPage() {
   const [coverImage, setCoverImage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // 读取「再开一局」草稿（GiftWallPage 写入）或 URL 预填
+  useEffect(() => {
+    try {
+      const draft = localStorage.getItem('gift_draft')
+      if (draft) {
+        const d = JSON.parse(draft)
+        if (d.title) setTitle(d.title)
+        if (d.note) setNote(d.note)
+        if (d.budget) setBudget(String(d.budget))
+        localStorage.removeItem('gift_draft')
+      }
+    } catch {
+      /* 忽略损坏草稿 */
+    }
+  }, [])
+
+  // 季节模板
+  const templates = [
+    { icon: '🎄', name: '圣诞交换', title: '圣诞礼物交换', note: '今年圣诞，我们把心意藏在礼物里 🎁', budget: '200', days: '12月20日' },
+    { icon: '🎂', name: '生日惊喜', title: '生日惊喜派对', note: '给寿星的礼物盲盒，大家一起宠 TA 🎂', budget: '150', days: '生日前一周' },
+    { icon: '🎉', name: '新年聚会', title: '新年礼物互赠', note: '新年新气象，互相送份小确幸 🧧', budget: '100', days: '元旦前三天' },
+  ]
+
+  const applyTemplate = (t: (typeof templates)[number]) => {
+    setTitle(t.title)
+    setNote(t.note)
+    setBudget(t.budget)
+    setDrawDate('')
+    toast(`已应用「${t.name}」模板，可再调整`)
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,6 +85,24 @@ export default function CreateEventPage() {
       </div>
 
       <form className="gift-card" onSubmit={onSubmit}>
+        {/* 季节模板快捷栏 */}
+        <div style={{ marginBottom: 20 }}>
+          <div className="form-label">从模板创建</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {templates.map((t) => (
+              <button
+                key={t.name}
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ width: 'auto', flex: '1 1 auto', minWidth: 100 }}
+                onClick={() => applyTemplate(t)}
+              >
+                {t.icon} {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="form-group">
           <label className="form-label">活动名称 *</label>
           <input
