@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, ApiError, EventInfo, Participant, MyMatch } from '../api/client'
+import { api, ApiError, EventInfo, GiftPrivacy, Participant, MyMatch, ReceivedGift } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
+import ImageUpload from '../components/ImageUpload'
 import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
 
@@ -316,6 +317,9 @@ export default function EventDetailPage() {
         </div>
       )}
 
+      {/* 我收到的礼物：晒图不阻塞（Luna 独到项）——可选 公开照片/仅文字/模糊照片 */}
+      {joined && event.status === 'drawn' && <ReceivedGiftSection code={code} />}
+
       {/* 礼物墙入口：抽签后参与者/组织者可见 */}
       {event.status === 'drawn' && (isOwner || joined) && (
         <div className="gift-card" style={{ marginBottom: 16 }}>
@@ -499,6 +503,236 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
           )}
         </form>
       </div>
+    </div>
+  )
+}
+
+// ===== 我收到的礼物：晒图（评分 + 评价 + 照片 + 隐私形式） =====
+// 晒图不阻塞（Luna 独到项）：privacy='text' 时只写评价也能晒出，礼物墙照常解锁；
+// 'blur' 前端传原图但标记模糊，礼物墙 CSS 模糊展示、点击查看原图（后端不做图像处理）。
+const PRIVACY_OPTIONS: { value: GiftPrivacy; label: string; hint: string }[] = [
+  { value: 'photo', label: '📷 公开照片', hint: '照片直接展示在礼物墙' },
+  { value: 'text', label: '📝 仅文字', hint: '不传照片，只写评价也能晒出' },
+  { value: 'blur', label: '🌫️ 模糊照片', hint: '照片模糊展示，点击可查看原图' },
+]
+
+const PRIVACY_LABEL: Record<GiftPrivacy, string> = {
+  photo: '📷 公开照片',
+  text: '📝 仅文字',
+  blur: '🌫️ 模糊照片',
+}
+
+function ReceivedGiftSection({ code }: { code: string }) {
+  const { toast } = useToast()
+  const [received, setReceived] = useState<ReceivedGift | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  // 表单状态
+  const [rating, setRating] = useState(0)
+  const [review, setReview] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('')
+  const [privacy, setPrivacy] = useState<GiftPrivacy>('photo')
+  const [saving, setSaving] = useState(false)
+  // 已晒出状态下：模糊照片点击查看原图
+  const [blurView, setBlurView] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await api.get<ReceivedGift | null>(`/events/${code}/received-gift`)
+      setReceived(data)
+      if (data) {
+        setRating(data.giftPost.rating || 0)
+        setReview(data.giftPost.review || '')
+        setPhotoUrl(data.giftPost.photoUrl || '')
+        setPrivacy(data.giftPost.privacy || 'photo')
+      }
+    } catch {
+      setReceived(null) // 非参与者/无匹配：隐藏该区块
+    } finally {
+      setLoading(false)
+    }
+  }, [code])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const startEdit = () => {
+    if (!received) return
+    setRating(received.giftPost.rating || 0)
+    setReview(received.giftPost.review || '')
+    setPhotoUrl(received.giftPost.photoUrl || '')
+    setPrivacy(received.giftPost.privacy || 'photo')
+    setBlurView(false)
+    setEditing(true)
+  }
+
+  const submit = async () => {
+    if (!received) return
+    if (rating < 1 || rating > 5) {
+      toast('请先给礼物评分 ⭐', 'error')
+      return
+    }
+    if (privacy !== 'text' && !photoUrl.trim()) {
+      toast('请上传一张照片（或选择「仅文字」模式）', 'error')
+      return
+    }
+    setSaving(true)
+    try {
+      await api.put(`/events/${code}/received-gift`, {
+        matchId: received.matchId,
+        rating,
+        review: review.trim(),
+        photoUrl: photoUrl.trim(),
+        privacy,
+      })
+      toast('晒图成功 🎉')
+      setEditing(false)
+      load()
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '保存失败', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading || !received) return null
+  const giverName = received.giverDisplayName || received.giverName
+  const posted = !!received.giftPost.receivedAt
+  const curPrivacy: GiftPrivacy = received.giftPost.privacy || 'photo'
+
+  return (
+    <div className="gift-card" style={{ marginBottom: 16 }}>
+      <h2 className="section-title">🎁 我收到的礼物</h2>
+      <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
+        {posted
+          ? `来自 ${giverName} 的礼物，你已晒出（${PRIVACY_LABEL[curPrivacy]}）`
+          : `来自 ${giverName} 的礼物 —— 晒出后，礼物墙就离解锁更近一步 🎀`}
+      </p>
+
+      {posted && !editing ? (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span className="gw-stars" aria-label={`评分 ${rating}/5`}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span key={n} className={n <= (received.giftPost.rating || 0) ? 'gw-star on' : 'gw-star'}>★</span>
+              ))}
+            </span>
+            <button type="button" className="btn btn-ghost btn-sm" style={{ width: 'auto' }} onClick={startEdit}>
+              修改晒图
+            </button>
+          </div>
+          {received.giftPost.review && (
+            <p className="gw-review" style={{ marginTop: 8 }}>“{received.giftPost.review}”</p>
+          )}
+          {received.giftPost.photoUrl && (
+            <div className="gw-photo-wrap" style={{ marginTop: 8 }}>
+              <img
+                className={`gw-photo${curPrivacy === 'blur' ? ' gw-photo-blur' : ''}${curPrivacy === 'blur' && blurView ? ' viewing' : ''}`}
+                src={received.giftPost.photoUrl}
+                alt={curPrivacy === 'blur' ? '模糊照片，点击查看原图' : '礼物照片'}
+                loading="lazy"
+                onClick={curPrivacy === 'blur' ? () => setBlurView((v) => !v) : undefined}
+              />
+              {curPrivacy === 'blur' && (
+                <span className="gw-blur-hint">{blurView ? '👁 点击隐藏原图' : '🌫️ 模糊照片 · 点击查看原图'}</span>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* 评分 */}
+          <div>
+            <div className="form-label">评分 *</div>
+            <div className="gw-stars" style={{ fontSize: 28, cursor: 'pointer' }}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={`gw-star${n <= rating ? ' on' : ''}`}
+                  style={{ background: 'none', border: 'none', fontSize: 28, padding: '0 4px', cursor: 'pointer' }}
+                  onClick={() => setRating(n)}
+                  aria-label={`${n} 星`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 评价 */}
+          <div>
+            <label className="form-label">评价（选填）</label>
+            <textarea
+              className="form-textarea"
+              placeholder="收到礼物想说点什么？"
+              value={review}
+              onChange={(e) => setReview(e.target.value)}
+              maxLength={500}
+              rows={3}
+            />
+          </div>
+
+          {/* 隐私形式 */}
+          <div>
+            <div className="form-label">晒图形式</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {PRIVACY_OPTIONS.map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`privacy-option${privacy === opt.value ? ' active' : ''}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 12px',
+                    border: `1px solid ${privacy === opt.value ? 'var(--gift-brand)' : 'var(--gift-border)'}`,
+                    borderRadius: 'var(--gift-radius-md)',
+                    background: privacy === opt.value ? 'var(--gift-brand-light)' : 'var(--gift-card)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="gift-privacy"
+                    value={opt.value}
+                    checked={privacy === opt.value}
+                    onChange={() => setPrivacy(opt.value)}
+                    style={{ accentColor: 'var(--gift-brand)' }}
+                  />
+                  <span style={{ fontWeight: privacy === opt.value ? 600 : 400 }}>{opt.label}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--gift-text-secondary)' }}>{opt.hint}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 照片：仅文字模式无需上传 */}
+          {privacy !== 'text' ? (
+            <div>
+              <ImageUpload
+                value={photoUrl}
+                onChange={setPhotoUrl}
+                label={privacy === 'blur' ? '上传照片（将模糊展示）' : '上传照片'}
+                hint={privacy === 'blur' ? '照片会以模糊效果展示在礼物墙，其他人点击可查看原图' : undefined}
+              />
+            </div>
+          ) : (
+            <p className="form-hint" style={{ margin: 0 }}>📝 仅文字模式：无需上传照片，写好评价即可晒出</p>
+          )}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setEditing(false); load() }} disabled={saving}>
+              取消
+            </button>
+            <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={submit} disabled={saving}>
+              {saving ? '提交中…' : posted ? '保存修改' : '晒出礼物 🎉'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

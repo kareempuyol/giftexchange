@@ -169,6 +169,7 @@ def init_schema():
               gift_rating INT,
               gift_review TEXT,
               gift_photo_url MEDIUMTEXT,
+              gift_privacy VARCHAR(24) DEFAULT 'photo',
               matched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               INDEX idx_matches_event (event_id),
               CONSTRAINT fk_matches_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
@@ -293,6 +294,7 @@ def init_schema():
               gift_rating INTEGER,
               gift_review TEXT,
               gift_photo_url TEXT,
+              gift_privacy TEXT DEFAULT 'photo',
               matched_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
             """,
@@ -324,6 +326,19 @@ def init_schema():
         for statement in statements:
             db.execute(statement)
         run_migrations(db)
+
+
+def _column_exists(db, table, column):
+    """幂等迁移辅助：检查列是否已存在（MySQL 走 information_schema，SQLite 走 pragma_table_info）。"""
+    if db.engine == "mysql":
+        row = db.get(
+            "SELECT COUNT(*) AS count FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+            (table, column),
+        )
+    else:
+        row = db.get("SELECT COUNT(*) AS count FROM pragma_table_info(?) WHERE name = ?", (table, column))
+    return int(row["count"] or 0) > 0
 
 
 def run_migrations(db):
@@ -389,6 +404,13 @@ def run_migrations(db):
             db.execute(f"ALTER TABLE matches ADD COLUMN {name} {column_type}")
         except Exception:
             pass
+    # 晒图隐私（Luna 独到项：晒图不阻塞）：photo=公开照片 / text=仅文字 / blur=模糊照片。
+    # 显式幂等检查（不依赖 try/except），新旧库均收敛到 DEFAULT 'photo'。
+    if not _column_exists(db, "matches", "gift_privacy"):
+        db.execute(
+            "ALTER TABLE matches ADD COLUMN gift_privacy "
+            + ("VARCHAR(24) DEFAULT 'photo'" if db.engine == "mysql" else "TEXT DEFAULT 'photo'")
+        )
     try:
         total = db.get("SELECT COUNT(*) AS count FROM users")["count"]
         admins = db.get("SELECT COUNT(*) AS count FROM users WHERE is_admin = 1")["count"]

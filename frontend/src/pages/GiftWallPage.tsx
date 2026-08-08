@@ -15,6 +15,8 @@ export default function GiftWallPage() {
   const navigate = useNavigate()
   // 揭晓状态：同一次访问内记住已揭晓的卡片（matchId -> true）
   const [revealed, setRevealed] = useState<Record<number, boolean>>({})
+  // 模糊照片：点击查看原图（matchId -> true = 已查看）
+  const [viewPhoto, setViewPhoto] = useState<Record<number, boolean>>({})
 
   const reveal = (matchId: number) => {
     setRevealed((prev) => (prev[matchId] ? prev : { ...prev, [matchId]: true }))
@@ -146,6 +148,10 @@ export default function GiftWallPage() {
         <div className="gw-grid">
           {items.map((item) => {
             const isRevealed = !!revealed[item.matchId]
+            // 晒图隐私：后端返回 item.privacy 与 giftPost.privacy（旧数据缺省视为 photo）
+            const privacy = item.giftPost.privacy || item.privacy || 'photo'
+            const isBlur = privacy === 'blur'
+            const isTextView = privacy === 'text' && !item.giftPost.photoUrl
             return (
               <div key={item.matchId} className={`gw-item-card${isRevealed ? ' revealed' : ''}`}>
                 {/* 揭晓星星散落装饰（纯 CSS 动画，无库） */}
@@ -170,13 +176,18 @@ export default function GiftWallPage() {
 
                   {item.giftPost.review && <p className="gw-review">“{item.giftPost.review}”</p>}
 
-                  {item.giftPost.photoUrl && (
+                  {isTextView ? (
+                    <div className="gw-text-badge" role="img" aria-label="仅文字晒图">
+                      📝 文字心意
+                    </div>
+                  ) : item.giftPost.photoUrl ? (
                     <div className="gw-photo-wrap">
                       <img
-                        className="gw-photo"
+                        className={`gw-photo${isBlur ? ' gw-photo-blur' : ''}${isBlur && viewPhoto[item.matchId] ? ' viewing' : ''}`}
                         src={item.giftPost.photoUrl}
-                        alt="礼物照片"
+                        alt={isBlur ? '模糊照片，点击查看原图' : '礼物照片'}
                         loading="lazy"
+                        onClick={isBlur ? () => setViewPhoto((prev) => ({ ...prev, [item.matchId]: !prev[item.matchId] })) : undefined}
                         onError={(e) => {
                           // 图片加载失败降级：显示占位（不再显示裂图）
                           const t = e.target as HTMLImageElement
@@ -188,8 +199,13 @@ export default function GiftWallPage() {
                           }
                         }}
                       />
+                      {isBlur && (
+                        <span className="gw-blur-hint">
+                          {viewPhoto[item.matchId] ? '👁 点击隐藏原图' : '🌫️ 模糊照片 · 点击查看'}
+                        </span>
+                      )}
                     </div>
-                  )}
+                  ) : null}
 
                   <div className="gw-item-footer">
                     <button

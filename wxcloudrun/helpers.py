@@ -9,6 +9,7 @@ import json
 import os
 import secrets
 import smtplib
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
@@ -416,68 +417,123 @@ def parse_datetime(value):
     return parsed
 
 
+# ===== KDNiao 物流查询（3s 超时 + 6h 内存缓存 + 静默降级）=====
+_KDNIAO_API_URL = "https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx"
+_KDNIAO_TIMEOUT_SECONDS = 3  # 外网同步调用硬超时：宁可降级也不拖垮请求线程
+_KDNIAO_CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 小时缓存：同一 (carrier, tracking_number) 不重复外呼
+# 注：单实例部署内存缓存足够；多实例部署时替换为 Redis
+# （key: kdniao:<carrier>:<tracking_number>，TTL 6h，读写同样需原子操作）。过期条目在命中时惰性清理。
+_kdniao_cache = {}  # (carrier, tracking_number) -> (expire_at, (success, summary, detail))
+_kdniao_cache_lock = threading.Lock()
+
+
+def _kdniao_cache_get(key):
+    """取缓存；未命中或已过期返回 None。线程安全。"""
+    with _kdniao_cache_lock:
+        entry = _kdniao_cache.get(key)
+        if entry is None:
+            return None
+        expire_at, result = entry
+        if time.time() >= expire_at:
+            _kdniao_cache.pop(key, None)
+            return None
+        return result
+
+
+def _kdniao_cache_set(key, result):
+    """写缓存。线程安全。"""
+    with _kdniao_cache_lock:
+        _kdniao_cache[key] = (time.time() + _KDNIAO_CACHE_TTL_SECONDS, result)
+
+
+def _kdniao_http_query(ebusiness_id, app_key, carrier, tracking_number):
+    """真正的外网查询（无缓存、无降级）。返回 KDNiao 响应解析后的 dict。"""
+    import hashlib
+    import base64 as _b64
+    import urllib.request as _urlreq
+    import urllib.parse as _urlparse
+
+    request_data = {
+        "LogisticCode": tracking_number,
+        "ShipperCode": carrier or "",
+        "OrderCode": "",
+    }
+    data_json = json.dumps(request_data, separators=(",", ":"), ensure_ascii=False)
+    sign = _b64.b64encode(
+        hashlib.md5((data_json + app_key).encode("utf-8")).digest()
+    ).decode("utf-8")
+    payload = {
+        "RequestData": _b64.b64encode(data_json.encode("utf-8")).decode("utf-8"),
+        "EBusinessID": ebusiness_id,
+        "RequestType": "1002",
+        "DataSign": sign,
+        "DataType": "2",
+    }
+    form = "&".join(f"{k}={_urlparse.quote(str(v))}" for k, v in payload.items())
+    req = _urlreq.Request(
+        _KDNIAO_API_URL,
+        data=form.encode("utf-8"),
+        headers={"Content-Type": "application/x-www-form-urlencoded;charset=utf-8"},
+        method="POST",
+    )
+    with _urlreq.urlopen(req, timeout=_KDNIAO_TIMEOUT_SECONDS) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _kdniao_result_to_summary(result):
+    """KDNiao 响应 -> (success, summary, detail)。summary 是给用户看的简短状态。"""
+    if result.get("Success") is not True:
+        return False, "", str(result.get("Reason") or "KDNiao query failed")
+    traces = result.get("Traces") or []
+    state = str(result.get("State") or "0")
+    state_map = {
+        "0": "无信息",
+        "1": "已揽收",
+        "2": "在途中",
+        "3": "已签收",
+        "4": "问题件",
+        "5": "转投",
+    }
+    latest = traces[0] if traces else {}
+    summary_parts = [state_map.get(state, "未知状态")]
+    if traces:
+        summary_parts.append(f"最新：{latest.get('AcceptStation', '')[:80]}")
+    return True, " | ".join(summary_parts), traces
+
+
 def query_kdniao_tracking(db, carrier, tracking_number):
     """查询快递鸟物流轨迹。返回 (success, summary, detail)。
 
     - success=False 时调用方应静默降级（不阻塞主流程）
     - summary 是给用户看的简短状态
+    - 增强：3 秒硬超时 + 6 小时内存缓存（key=(carrier, tracking_number)）+ 异常全兜底
+    - 永不抛异常：配置缺失/超时/网络/解析错误一律降级为 (False, ...)
+    - 调用方（gift_routes.py）已有 shipment_changed 判断，单号未变不会走到这里；
+      同单号 6h 内重复提交则直接命中缓存，不重复外呼
     """
-    try:
-        import hashlib
-        import base64 as _b64
-        import urllib.request as _urlreq
-        import urllib.parse as _urlparse
+    key = (carrier or "", tracking_number or "")
+    if not tracking_number:
+        return False, "", "empty tracking number"
 
+    cached = _kdniao_cache_get(key)
+    if cached is not None:
+        return cached
+
+    try:
         ebusiness_id = setting_value(db, "kdniao_ebusiness_id").strip()
         app_key = setting_value(db, "kdniao_app_key").strip()
         if not ebusiness_id or not app_key:
             return False, "", "KDNiao not configured"
 
-        request_data = {
-            "LogisticCode": tracking_number,
-            "ShipperCode": carrier or "",
-            "OrderCode": "",
-        }
-        data_json = json.dumps(request_data, separators=(",", ":"), ensure_ascii=False)
-        sign = _b64.b64encode(
-            hashlib.md5((data_json + app_key).encode("utf-8")).digest()
-        ).decode("utf-8")
-        payload = {
-            "RequestData": _b64.b64encode(data_json.encode("utf-8")).decode("utf-8"),
-            "EBusinessID": ebusiness_id,
-            "RequestType": "1002",
-            "DataSign": sign,
-            "DataType": "2",
-        }
-        form = "&".join(f"{k}={_urlparse.quote(str(v))}" for k, v in payload.items())
-        req = _urlreq.Request(
-            "https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx",
-            data=form.encode("utf-8"),
-            headers={"Content-Type": "application/x-www-form-urlencoded;charset=utf-8"},
-            method="POST",
+        outcome = _kdniao_result_to_summary(
+            _kdniao_http_query(ebusiness_id, app_key, key[0], key[1])
         )
-        with _urlreq.urlopen(req, timeout=10) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-
-        if result.get("Success") is not True:
-            return False, "", str(result.get("Reason") or "KDNiao query failed")
-
-        traces = result.get("Traces") or []
-        state = result.get("State") or "0"
-        state_map = {
-            "0": "无信息",
-            "1": "已揽收",
-            "2": "在途中",
-            "3": "已签收",
-            "4": "问题件",
-            "5": "转投",
-        }
-        latest = traces[0] if traces else {}
-        summary_parts = [state_map.get(state, "未知状态")]
-        if traces:
-            summary_parts.append(f"最新：{latest.get('AcceptStation', '')[:80]}")
-        return True, " | ".join(summary_parts), traces
+        # 只缓存成功结果：失败/降级不缓存，下次变更单号仍会重试
+        if outcome[0]:
+            _kdniao_cache_set(key, outcome)
+        return outcome
     except Exception as exc:
+        # 静默降级：超时/网络/解析异常一律不抛到路由层
         return False, "", str(exc)
 
 

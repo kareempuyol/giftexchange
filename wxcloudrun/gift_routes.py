@@ -27,6 +27,16 @@ def gift_wall_allowed(db, event, user_id):
     return bool(participant) or event["creator_id"] == user_id
 
 
+def gift_post(row):
+    """api_gift_post + 晒图隐私字段（helpers 的 api_gift_post 不含 gift_privacy）。
+
+    privacy: 'photo'=公开照片 / 'text'=仅文字 / 'blur'=模糊照片（旧数据默认 photo）。
+    """
+    post = api_gift_post(row)
+    post["privacy"] = row.get("gift_privacy") or "photo"
+    return post
+
+
 def gift_like_count(db, match_id):
     row = db.get("SELECT COUNT(*) AS count FROM gift_likes WHERE match_id = ?", (match_id,))
     return int(row["count"] or 0)
@@ -45,7 +55,7 @@ def received_gift(user, code):
                 """
                 SELECT m.id, m.note, m.shipment_status, m.carrier, m.tracking_number,
                        m.shipped_at, m.tracking_updated_at, m.tracking_summary,
-                       m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
+                       m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url, m.gift_privacy,
                        p.user_id AS giver_user_id, u.username, u.display_name
                 FROM matches m
                 JOIN participants p ON p.id = m.giver_id
@@ -64,7 +74,7 @@ def received_gift(user, code):
                     "giverDisplayName": row.get("display_name") or row["username"],
                     "note": row.get("note") or "",
                     "shipment": api_shipment(row),
-                    "giftPost": api_gift_post(row),
+                    "giftPost": gift_post(row),
                 }
             )
     except ValueError as exc:
@@ -79,6 +89,8 @@ def update_received_gift(user, code):
     rating = data.get("rating")
     review = str(data.get("review") or "").strip()
     photo_url = str(data.get("photoUrl") or data.get("photo_url") or "").strip()
+    # 晒图隐私（Luna 独到项）：'photo'=公开照片 / 'text'=仅文字 / 'blur'=模糊照片（默认 photo）
+    privacy = str(data.get("privacy") or "photo").strip() or "photo"
 
     if not match_id:
         return fail("matchId is required")
@@ -90,6 +102,8 @@ def update_received_gift(user, code):
         return fail("Rating must be 1-5")
     if len(review) > 500:
         return fail("Review is too long")
+    if privacy not in {"photo", "text", "blur"}:
+        return fail("Invalid privacy")
     if photo_url and not image_ref_valid(photo_url):
         return fail("Photo is too large")
 
@@ -103,10 +117,10 @@ def update_received_gift(user, code):
                 """
                 UPDATE matches
                 SET received_at = COALESCE(received_at, CURRENT_TIMESTAMP),
-                    gift_rating = ?, gift_review = ?, gift_photo_url = ?
+                    gift_rating = ?, gift_review = ?, gift_photo_url = ?, gift_privacy = ?
                 WHERE id = ? AND event_id = ? AND receiver_id = ?
                 """,
-                (rating_value, review, photo_url, match_id, event["id"], me["id"]),
+                (rating_value, review, photo_url, privacy, match_id, event["id"], me["id"]),
             )
             if cur.rowcount == 0:
                 return fail("Match not found")
@@ -150,7 +164,7 @@ def update_received_gift(user, code):
                         "礼物墙已解锁 🎉",
                         "所有礼物都已晒出，快去礼物墙看看吧！",
                     )
-            return ok(api_gift_post(row), "Gift post saved")
+            return ok(gift_post(row), "Gift post saved")
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -181,7 +195,7 @@ def gift_wall(user, code):
             if unlocked:
                 rows = db.all(
                     """
-                    SELECT m.id, m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url,
+                    SELECT m.id, m.received_at, m.gift_rating, m.gift_review, m.gift_photo_url, m.gift_privacy,
                            gu.username AS giver_username, gu.display_name AS giver_display_name,
                            ru.username AS receiver_username, ru.display_name AS receiver_display_name
                     FROM matches m
@@ -226,7 +240,8 @@ def gift_wall(user, code):
                             "matchId": row["id"],
                             "giverName": row.get("giver_display_name") or row["giver_username"],
                             "receiverName": row.get("receiver_display_name") or row["receiver_username"],
-                            "giftPost": api_gift_post(row),
+                            "privacy": row.get("gift_privacy") or "photo",
+                            "giftPost": gift_post(row),
                             "likeCount": like_counts.get(row["id"], 0),
                             "likedByMe": row["id"] in liked_by_me,
                         }
@@ -352,7 +367,7 @@ def update_shipment(user, code):
                 return fail("You are not a participant of this event", 403)
             old_row = db.get(
                 """
-                SELECT carrier, tracking_number
+                SELECT carrier, tracking_number, tracking_summary
                 FROM matches
                 WHERE id = ? AND event_id = ? AND giver_id = ?
                 """,
@@ -363,7 +378,8 @@ def update_shipment(user, code):
             shipment_changed = (old_row.get("carrier") or "") != carrier or (old_row.get("tracking_number") or "") != tracking_number
 
             # 物流自动跟踪：填了单号且配置了 KDNiao 时查询，失败静默降级
-            tracking_summary = ""
+            # 单号未变化时保留旧 summary（否则同单号重复提交会把已存摘要清空）
+            tracking_summary = old_row.get("tracking_summary") or ""
             if status != "pending" and tracking_number and shipment_changed:
                 success, summary, _detail = query_kdniao_tracking(db, carrier, tracking_number)
                 if success:

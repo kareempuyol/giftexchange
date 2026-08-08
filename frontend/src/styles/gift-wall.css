@@ -241,6 +241,40 @@
   font-size: var(--gift-font-md);
 }
 
+/* ===== 晒图隐私（Luna 独到项：晒图不阻塞） ===== */
+/* 仅文字：不渲染照片区，显示文字心意标记 */
+.gw-text-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  margin-top: var(--gift-space-xs);
+  background: var(--gift-bg-muted);
+  border: 1px dashed var(--gift-border-strong);
+  border-radius: var(--gift-radius-md);
+  color: var(--gift-text-secondary);
+  font-size: var(--gift-font-md);
+}
+
+/* 模糊照片：CSS filter 模糊，点击查看原图（不做后端图像处理） */
+.gw-photo-blur {
+  filter: blur(8px);
+  cursor: pointer;
+  transition: filter var(--gift-motion-normal) var(--gift-ease);
+}
+
+.gw-photo-blur.viewing {
+  filter: none;
+}
+
+.gw-blur-hint {
+  display: block;
+  margin-top: var(--gift-space-xs);
+  text-align: center;
+  font-size: var(--gift-font-sm);
+  color: var(--gift-text-secondary);
+}
+
 /* 点赞按钮 */
 .gw-item-footer {
   margin-top: auto;

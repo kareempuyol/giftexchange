@@ -182,11 +182,15 @@ export interface Shipment {
   trackingSummary: string
 }
 
+export type GiftPrivacy = 'photo' | 'text' | 'blur'
+
 export interface GiftPost {
   receivedAt: string
   rating: number | null
   review: string
   photoUrl: string
+  /** 晒图隐私：photo=公开照片 / text=仅文字 / blur=模糊照片（后端旧数据缺省视为 photo） */
+  privacy?: GiftPrivacy
 }
 
 export interface GiftWallProgress {
@@ -201,6 +205,8 @@ export interface GiftWallItem {
   giverName: string
   receiverName: string
   giftPost: GiftPost
+  /** item 级隐私（后端同步返回，兼容旧缓存时以 giftPost.privacy 优先） */
+  privacy?: GiftPrivacy
   likeCount: number
   likedByMe: boolean
 }
@@ -214,6 +220,17 @@ export interface GiftWall {
   budget?: number
   progress: GiftWallProgress
   items: GiftWallItem[]
+}
+
+/** GET /api/events/<code>/received-gift 返回：我作为收礼人收到的礼物 */
+export interface ReceivedGift {
+  matchId: number
+  giverId: number
+  giverName: string
+  giverDisplayName: string
+  note: string
+  shipment: Shipment
+  giftPost: GiftPost
 }
 
 export interface NotificationItem {
