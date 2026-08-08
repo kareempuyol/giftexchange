@@ -153,6 +153,11 @@ export default function EventDetailPage() {
             <p style={{ marginTop: 8 }}>
               当前 <b>{event.participantCount}</b> 人参与。抽签后不可撤销，每个人将获得一个送礼对象。
             </p>
+            {event.excludedPairs.length > 0 && (
+              <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning)' }}>
+                ⚠️ 已配置 {event.excludedPairs.length} 组互避规则，抽签时会避开这些配对
+              </p>
+            )}
             <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
               {participants.filter((p) => !p.contactComplete).length > 0 &&
                 `提示：${participants.filter((p) => !p.contactComplete).length} 人未填完整收件信息，抽签后对方可能收不到礼物。`}

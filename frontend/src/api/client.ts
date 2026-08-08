@@ -94,6 +94,7 @@ export interface EventInfo {
   coverImage?: string
   isPublic: boolean
   maxParticipants?: number | null
+  excludedPairs: number[][]
   createdAt: string
   updatedAt: string
 }

@@ -327,6 +327,7 @@ def run_migrations(db):
         ("is_public", "BOOLEAN DEFAULT TRUE" if db.engine == "mysql" else "INTEGER DEFAULT 1"),
         ("max_participants", "INT DEFAULT NULL" if db.engine == "mysql" else "INTEGER DEFAULT NULL"),
         ("short_code", "VARCHAR(16)" if db.engine == "mysql" else "TEXT"),
+        ("excluded_pairs", "TEXT"),
     ]
     participant_columns = [
         ("receiver_name", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),

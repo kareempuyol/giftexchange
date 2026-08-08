@@ -77,6 +77,7 @@ def api_event(row):
         "coverImage": row.get("cover_image") or "",
         "isPublic": bool(row.get("is_public")) if row.get("is_public") is not None else True,
         "maxParticipants": row.get("max_participants"),
+        "excludedPairs": excluded_pairs_list(row.get("excluded_pairs")),
         "createdAt": str(row.get("created_at") or ""),
         "updatedAt": str(row.get("updated_at") or ""),
     }
@@ -654,6 +655,8 @@ def create_event(user):
     is_public = bool(data.get("isPublic")) if data.get("isPublic") is not None else True
     max_participants = data.get("maxParticipants")
     cover_image = str(data.get("coverImage") or "").strip()
+    excluded_pairs_raw = data.get("excludedPairs")
+    excluded_pairs = json.dumps(excluded_pairs_raw, ensure_ascii=False) if excluded_pairs_raw else "[]"
 
     if not title:
         return fail("Event title is required")
@@ -683,11 +686,11 @@ def create_event(user):
         db.execute(
             """
             INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline,
-                                match_visibility, is_public, max_participants, cover_image, short_code)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                match_visibility, is_public, max_participants, cover_image, short_code, excluded_pairs)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (code, title, note, budget, user["userId"], draw_date, match_visibility,
-             1 if is_public else 0, max_participants, cover_image, short_code),
+             1 if is_public else 0, max_participants, cover_image, short_code, excluded_pairs),
         )
         return ok(api_event(fetch_event(db, code)), "Event created", 201)
 
@@ -862,6 +865,10 @@ def edit_event(user, code):
                 fields["is_public"] = 1 if is_public else 0
                 params.append(1 if is_public else 0)
 
+            if "excludedPairs" in data:
+                fields["excluded_pairs"] = json.dumps(data["excludedPairs"], ensure_ascii=False)
+                params.append(fields["excluded_pairs"])
+
             if not fields:
                 return fail("No fields to update")
 
@@ -977,6 +984,72 @@ def participants(_user, code):
         return fail(str(exc), 404)
 
 
+def excluded_pairs_list(raw):
+    """解析互避对 JSON 为列表形式（用于 API 输出）：[[a,b], ...]"""
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            return [[int(p[0]), int(p[1])] for p in data if isinstance(p, list) and len(p) == 2]
+    except Exception:
+        pass
+    return []
+
+
+def parse_excluded_pairs(raw):
+    """解析互避对 JSON：[[userId1, userId2], ...] → {(1,2),(2,1)}（用于抽签判定）"""
+    pairs = set()
+    if not raw:
+        return pairs
+    try:
+        data = json.loads(raw)
+        for pair in data:
+            if isinstance(pair, list) and len(pair) == 2:
+                a, b = int(pair[0]), int(pair[1])
+                if a != b:
+                    pairs.add((min(a, b), max(a, b)))
+    except Exception:
+        pass
+    return pairs
+
+
+def draw_matches(rows, excluded_pairs):
+    """抽签核心：随机环 + 防自抽 + 互避规则。
+    返回 (matches, ok)。matches 为空且 ok=False 表示规则太严无法满足。"""
+    n = len(rows)
+    if n < 2:
+        return [], False
+    max_attempts = 200
+    for _ in range(max_attempts):
+        shuffled = rows[:]
+        secrets.SystemRandom().shuffle(shuffled)
+        valid = True
+        for index, giver in enumerate(shuffled):
+            receiver = shuffled[(index + 1) % n]
+            if giver["user_id"] == receiver["user_id"]:
+                valid = False
+                break
+            pair_key = (min(giver["user_id"], receiver["user_id"]),
+                        max(giver["user_id"], receiver["user_id"]))
+            if pair_key in excluded_pairs:
+                valid = False
+                break
+        if valid:
+            return shuffled, True
+    return [], False
+
+
+def send_draw_notifications(db, event_id, rows):
+    """抽签完成后通知所有参与者结果已出"""
+    for p in rows:
+        create_notification(
+            db, p["user_id"], event_id, None, "draw_result",
+            "抽签结果已出 🎉",
+            "你的送礼对象已经确定，快去看看要送谁吧！",
+        )
+
+
 @api.route("/events/<code>/draw", methods=["POST"])
 @login_required
 def draw(user, code):
@@ -991,8 +1064,10 @@ def draw(user, code):
             rows = participant_rows(db, event["id"])
             if len(rows) < 2:
                 return fail("At least 2 people are required to draw")
-            shuffled = rows[:]
-            secrets.SystemRandom().shuffle(shuffled)
+            excluded = parse_excluded_pairs(event.get("excluded_pairs"))
+            shuffled, draw_ok = draw_matches(rows, excluded)
+            if not draw_ok:
+                return fail("无法满足互避规则，请调整后重试", 400)
             db.execute("DELETE FROM matches WHERE event_id = ?", (event["id"],))
             matches = []
             for index, giver in enumerate(shuffled):
@@ -1011,6 +1086,7 @@ def draw(user, code):
                     }
                 )
             db.execute("UPDATE events SET status = 'drawn', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (event["id"],))
+            send_draw_notifications(db, event["id"], rows)
             return ok(matches, "Draw complete")
     except ValueError as exc:
         return fail(str(exc), 404)
