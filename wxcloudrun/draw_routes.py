@@ -1,5 +1,6 @@
 """抽签路由（draw、matches、my-match）。"""
 from wxcloudrun.database import DB
+from wxcloudrun.gift_routes import shipment_state
 from wxcloudrun.helpers import (
     api,
     api_contact,
@@ -156,6 +157,7 @@ def my_match(user, code):
                     "receiverName": row["username"],
                     "receiverDisplayName": row.get("display_name") or row["username"],
                     "note": row.get("note") or "",
+                    "shipmentState": shipment_state(row),
                     "shipment": api_shipment(row),
                     "giftPost": api_gift_post(row),
                     "contact": api_contact(row),

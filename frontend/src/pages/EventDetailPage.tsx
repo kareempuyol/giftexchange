@@ -306,6 +306,9 @@ export default function EventDetailPage() {
             <p><b>地址：</b>{myMatch.contact.address}</p>
           </div>
 
+          {/* 送礼状态机进度条：待购买 → 已发货 → 已签收 → 已晒图（未抽签/无 my-match 不显示） */}
+          <ShipmentProgress state={myMatch.shipmentState || deriveShipmentState(myMatch)} />
+
           {/* 发货区：物流状态 + 填单号 + 悄悄话 */}
           <ShipmentSection
             code={code}
@@ -733,6 +736,46 @@ function ReceivedGiftSection({ code }: { code: string }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ===== 送礼状态机进度条（Luna 独到项）：🛒 待购买 → 📦 已发货 → ✅ 已签收 → ✨ 已晒图 =====
+const SHIPMENT_STEPS = [
+  { key: 'purchase', icon: '🛒', label: '待购买' },
+  { key: 'shipped', icon: '📦', label: '已发货' },
+  { key: 'received', icon: '✅', label: '已签收' },
+  { key: 'posted', icon: '✨', label: '已晒图' },
+] as const
+
+// 兜底推导：旧后端无 shipmentState 字段时，从现有字段推算同一状态机
+function deriveShipmentState(myMatch: MyMatch): string {
+  const { shipment, giftPost } = myMatch
+  if (giftPost.review) return 'posted'
+  if (giftPost.receivedAt) return 'received'
+  if (shipment.trackingNumber || shipment.status !== 'pending') return 'shipped'
+  return 'purchase'
+}
+
+function ShipmentProgress({ state }: { state: string }) {
+  const currentIndex = SHIPMENT_STEPS.findIndex((s) => s.key === state)
+  return (
+    <div className="ship-progress" role="list" aria-label="送礼进度">
+      {SHIPMENT_STEPS.map((s, i) => (
+        <div className="ship-progress-step-wrap" key={s.key}>
+          <div
+            className={`ship-progress-step${i < currentIndex ? ' done' : ''}${i === currentIndex ? ' active' : ''}`}
+          >
+            <div className="ship-progress-dot" aria-hidden="true">
+              {i < currentIndex ? '✓' : s.icon}
+            </div>
+            <div className="ship-progress-label">{s.label}</div>
+          </div>
+          {i < SHIPMENT_STEPS.length - 1 && (
+            <div className={`ship-progress-line${i < currentIndex ? ' done' : ''}`} />
+          )}
+        </div>
+      ))}
     </div>
   )
 }

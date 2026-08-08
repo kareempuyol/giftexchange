@@ -2,6 +2,8 @@ import os
 import sqlite3
 from pathlib import Path
 
+from wxcloudrun.migrations import _column_exists, run_migrations_v2
+
 
 def _mysql_config():
     address = os.getenv("MYSQL_ADDRESS") or os.getenv("MYSQL_HOST")
@@ -328,30 +330,21 @@ def init_schema():
         run_migrations(db)
 
 
-def _column_exists(db, table, column):
-    """幂等迁移辅助：检查列是否已存在（MySQL 走 information_schema，SQLite 走 pragma_table_info）。"""
-    if db.engine == "mysql":
-        row = db.get(
-            "SELECT COUNT(*) AS count FROM information_schema.COLUMNS "
-            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-            (table, column),
-        )
-    else:
-        row = db.get("SELECT COUNT(*) AS count FROM pragma_table_info(?) WHERE name = ?", (table, column))
-    return int(row["count"] or 0) > 0
-
-
 def run_migrations(db):
+    """迁移入口（对外接口不变，init_schema 调用处不动）。
+
+    1. 版本化链（v1-v6）交给 migrations.run_migrations_v2：每个 ALTER 带 _column_exists
+       幂等守卫 + schema_migrations 记录，旧库重跑不报 duplicate column。
+    2. 未入册的历史列继续走 try/except 幂等 ALTER（老库兜底，双引擎类型分离）。
+    3. 数据兜底：首个用户提权为管理员 + 存量活动补齐短码。
+    """
+    run_migrations_v2(db)
     user_columns = [
         ("is_admin", "TINYINT DEFAULT 0" if db.engine == "mysql" else "INTEGER DEFAULT 0"),
         ("phone", "VARCHAR(50)" if db.engine == "mysql" else "TEXT"),
         ("address", "TEXT"),
         ("receiver_name", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),
         ("gift_preference", "TEXT"),
-        # 微信小程序架构预留：仅加列，不做登录逻辑（阶段二G）
-        ("openid", "VARCHAR(64)" if db.engine == "mysql" else "TEXT"),
-        ("unionid", "VARCHAR(64)" if db.engine == "mysql" else "TEXT"),
-        ("session_key", "VARCHAR(64)" if db.engine == "mysql" else "TEXT"),
     ]
     match_columns = [
         ("shipment_status", "VARCHAR(24) DEFAULT 'pending'" if db.engine == "mysql" else "TEXT DEFAULT 'pending'"),
@@ -370,16 +363,11 @@ def run_migrations(db):
         ("cover_image", "TEXT" if db.engine == "mysql" else "TEXT DEFAULT ''"),
         ("is_public", "BOOLEAN DEFAULT TRUE" if db.engine == "mysql" else "INTEGER DEFAULT 1"),
         ("max_participants", "INT DEFAULT NULL" if db.engine == "mysql" else "INTEGER DEFAULT NULL"),
-        ("short_code", "VARCHAR(16)" if db.engine == "mysql" else "TEXT"),
-        ("excluded_pairs", "TEXT"),
     ]
     participant_columns = [
         ("receiver_name", "VARCHAR(120)" if db.engine == "mysql" else "TEXT"),
         ("phone", "VARCHAR(50)" if db.engine == "mysql" else "TEXT"),
         ("address", "TEXT"),
-        ("preference_likes", "TEXT"),
-        ("preference_dislikes", "TEXT"),
-        ("preference_notes", "TEXT"),
         ("preference_size", "VARCHAR(50)" if db.engine == "mysql" else "TEXT"),
         ("preference_color", "VARCHAR(80)" if db.engine == "mysql" else "TEXT"),
         ("wish_links", "TEXT"),
@@ -404,13 +392,6 @@ def run_migrations(db):
             db.execute(f"ALTER TABLE matches ADD COLUMN {name} {column_type}")
         except Exception:
             pass
-    # 晒图隐私（Luna 独到项：晒图不阻塞）：photo=公开照片 / text=仅文字 / blur=模糊照片。
-    # 显式幂等检查（不依赖 try/except），新旧库均收敛到 DEFAULT 'photo'。
-    if not _column_exists(db, "matches", "gift_privacy"):
-        db.execute(
-            "ALTER TABLE matches ADD COLUMN gift_privacy "
-            + ("VARCHAR(24) DEFAULT 'photo'" if db.engine == "mysql" else "TEXT DEFAULT 'photo'")
-        )
     try:
         total = db.get("SELECT COUNT(*) AS count FROM users")["count"]
         admins = db.get("SELECT COUNT(*) AS count FROM users WHERE is_admin = 1")["count"]

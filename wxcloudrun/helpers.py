@@ -4,6 +4,9 @@ api / site 两个 Blueprint 在此定义；各路由模块 `from wxcloudrun.help
 后继续用 @api.route(...) / @site.route(...) 注册路由，__init__.py 只需注册这两个蓝图。
 所有跨路由共享的辅助函数（DB 访问、序列化、权限、限速、设置、抽签包装、通知）集中在此。
 wxcloudrun/views.py 保留为兼容导入层（import wxcloudrun.views 不报错）。
+
+可观测性：本模块 re-export log_event（wxcloudrun/observability.py），路由模块可直接
+`from wxcloudrun.helpers import log_event` 打业务埋点（不改变响应结构/状态码）。
 """
 import json
 import os
@@ -23,6 +26,7 @@ from flask import Blueprint, request
 from wxcloudrun.auth import verify_token
 from wxcloudrun.database import DB
 from wxcloudrun.notify import notify
+from wxcloudrun.observability import log_event  # 结构化日志：路由模块可直接 from wxcloudrun.helpers import log_event
 from wxcloudrun.response import fail, ok
 
 
@@ -141,6 +145,9 @@ SHORT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def generate_short_code(db, length=6):
+    # 可观测性埋点：event_created（当前唯一调用点 = event_routes.create_event，
+    # 在 INSERT 之前触发；DB 层异常属罕见误报。精确落点待路由模块接入后迁移）
+    log_event("event_created")
     for _ in range(20):
         candidate = "".join(secrets.SystemRandom().choice(SHORT_CODE_ALPHABET) for _ in range(length))
         exists = db.get("SELECT id FROM events WHERE short_code = ?", (candidate,))
@@ -599,11 +606,15 @@ def record_failed_login(client_ip, username):
     now = time.time()
     _login_attempts.setdefault(f"ip:{client_ip}", []).append(now)
     _login_attempts.setdefault(f"user:{username.lower()}", []).append(now)
+    # 可观测性埋点：login_failed（唯一调用点 = auth_routes.login 的密码错误分支）
+    log_event("login_failed", username=username, client_ip=client_ip)
 
 
 def clear_login_attempts(client_ip, username):
     _login_attempts.pop(f"ip:{client_ip}", None)
     _login_attempts.pop(f"user:{username.lower()}", None)
+    # 可观测性埋点：login_success（唯一调用点 = auth_routes.login 的登录成功分支）
+    log_event("login_success", username=username, client_ip=client_ip)
 
 
 def excluded_pairs_list(raw):
@@ -652,6 +663,8 @@ def draw_solvable(n, excluded_pairs):
 
 def send_draw_notifications(db, event_id, rows):
     """抽签完成后通知所有参与者结果已出"""
+    # 可观测性埋点：draw_success（唯一调用点 = draw_routes.draw 的写入成功分支）
+    log_event("draw_success", event_id=event_id, participant_count=len(rows))
     for p in rows:
         notify(
             db, p["user_id"], event_id, None, "draw_result",

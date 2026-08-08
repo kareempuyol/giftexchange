@@ -1,10 +1,19 @@
+import logging
 import os
 import threading
 import time
 
-from flask import Flask, jsonify
+from flask import Flask, g, jsonify, request
 
 from wxcloudrun.database import DB, init_schema
+from wxcloudrun.helpers import current_user
+from wxcloudrun.observability import (
+    get_request_id,
+    log_event,
+    make_request_id,
+    set_request_id,
+    set_user_id,
+)
 from wxcloudrun.views import api, site
 
 
@@ -29,6 +38,39 @@ def create_app():
     flask_app = Flask(__name__)
     flask_app.register_blueprint(api)
     flask_app.register_blueprint(site)
+
+    # 可观测性：app.logger 与结构化日志统一 INFO 级
+    flask_app.logger.setLevel(logging.INFO)
+
+    # 可观测性：每个请求生成/透传 request_id，并记录登录用户（仅日志用）
+    @flask_app.before_request
+    def attach_request_context():
+        # 客户端透传 X-Request-ID（跨层追踪）优先，否则生成新的；非法值回退新生成
+        incoming = (request.headers.get("X-Request-ID") or "").strip()
+        if incoming and len(incoming) <= 128:
+            request_id = incoming
+        else:
+            request_id = make_request_id()
+        set_request_id(request_id)
+        g._gift_request_start = time.perf_counter()
+        # verify_token 永不抛异常；解析失败/未登录即空（每次请求无条件重置，防串号）
+        user = current_user()
+        set_user_id(user.get("userId") if user else None)
+
+    # 可观测性：请求级日志（method/path/status/耗时/request_id）+ X-Request-ID 回显
+    @flask_app.after_request
+    def log_request(response):
+        response.headers["X-Request-ID"] = get_request_id() or ""
+        start = getattr(g, "_gift_request_start", None)
+        duration_ms = round((time.perf_counter() - start) * 1000, 2) if start else None
+        log_event(
+            "request",
+            method=request.method,
+            path=request.path,
+            status=response.status_code,
+            duration_ms=duration_ms,
+        )
+        return response
 
     # 生产安全：500 错误不泄露堆栈/内部信息
     @flask_app.errorhandler(500)

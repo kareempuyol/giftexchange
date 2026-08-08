@@ -18,6 +18,26 @@ from wxcloudrun.helpers import (
 )
 
 
+def shipment_state(row):
+    """推导送礼状态机当前阶段（Luna 独到项，纯函数）。
+
+    阶段流转：'purchase'（待购买）→ 'shipped'（已发货）→ 'received'（已签收）→ 'posted'（已晒图）。
+    优先级：已晒图 > 已签收 > 已发货 > 待购买。
+    - posted：gift_review 非空（已晒图）
+    - received：received_at 非空但未晒图
+    - shipped：有单号或 shipment_status != 'pending'（已发货未签收）
+    - purchase：其余（未购买/未发货）
+    """
+    if row.get("gift_review"):
+        return "posted"
+    if row.get("received_at"):
+        return "received"
+    status = row.get("shipment_status") or "pending"
+    if status != "pending" or row.get("tracking_number"):
+        return "shipped"
+    return "purchase"
+
+
 def gift_wall_allowed(db, event, user_id):
     """礼物墙权限：参与者或组织者"""
     participant = db.get(

@@ -150,12 +150,15 @@ export interface Participant {
   joinedAt: string
 }
 
+export type ShipmentState = 'purchase' | 'shipped' | 'received' | 'posted'
+
 export interface MyMatch {
   matchId: number
   receiverId: number
   receiverName: string
   receiverDisplayName: string
   note: string
+  shipmentState: ShipmentState
   shipment: Shipment
   giftPost: GiftPost
   contact: {
