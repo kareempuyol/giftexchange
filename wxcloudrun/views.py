@@ -966,12 +966,39 @@ def public_events(_user):
         })
 
 
-@api.route("/events/<code>")
+@api.route("/events/<code>", methods=["GET"])
 @login_required
 def event_detail(_user, code):
     try:
         with DB() as db:
             return ok(api_event(fetch_event(db, code)))
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/preview", methods=["GET"])
+def event_preview(code):
+    """游客可读的活动概要（邀请落地页用，不泄露收件人/发货等敏感信息）"""
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            participant_row = db.get(
+                "SELECT COUNT(*) AS c FROM participants WHERE event_id = ?",
+                (event["id"],),
+            )
+            participant_count = participant_row["c"] if participant_row else 0
+            return ok({
+                "code": event["code"],
+                "shortCode": event["short_code"],
+                "title": event["name"],
+                "note": event.get("note") or "",
+                "budget": event.get("budget"),
+                "signUpDeadline": event.get("sign_up_deadline"),
+                "status": event["status"],
+                "coverImage": event.get("cover_image") or "",
+                "participantCount": participant_count,
+                "isPublic": bool(event.get("is_public")),
+            })
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -1202,28 +1229,10 @@ def parse_excluded_pairs(raw):
 
 def draw_matches(rows, excluded_pairs):
     """抽签核心：随机环 + 防自抽 + 互避规则。
-    返回 (matches, ok)。matches 为空且 ok=False 表示规则太严无法满足。"""
-    n = len(rows)
-    if n < 2:
-        return [], False
-    max_attempts = 200
-    for _ in range(max_attempts):
-        shuffled = rows[:]
-        secrets.SystemRandom().shuffle(shuffled)
-        valid = True
-        for index, giver in enumerate(shuffled):
-            receiver = shuffled[(index + 1) % n]
-            if giver["user_id"] == receiver["user_id"]:
-                valid = False
-                break
-            pair_key = (min(giver["user_id"], receiver["user_id"]),
-                        max(giver["user_id"], receiver["user_id"]))
-            if pair_key in excluded_pairs:
-                valid = False
-                break
-        if valid:
-            return shuffled, True
-    return [], False
+    返回 (matches, ok)。matches 为空且 ok=False 表示规则太严无法满足。
+    """
+    from wxcloudrun.draw import draw_matches as _draw_matches
+    return _draw_matches(rows, excluded_pairs)
 
 
 def send_draw_notifications(db, event_id, rows):

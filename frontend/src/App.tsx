@@ -40,7 +40,7 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/events" element={<RequireAuth><Layout><EventsPage /></Layout></RequireAuth>} />
           <Route path="/events/new" element={<RequireAuth><Layout><CreateEventPage /></Layout></RequireAuth>} />
-          <Route path="/events/:code" element={<RequireAuth><Layout><EventDetailPage /></Layout></RequireAuth>} />
+          <Route path="/events/:code" element={<Layout><EventDetailPage /></Layout>} />
           <Route path="/events/:code/dashboard" element={<RequireAuth><Layout><DashboardPage /></Layout></RequireAuth>} />
           <Route path="/events/:code/gift-wall" element={<RequireAuth><Layout><GiftWallPage /></Layout></RequireAuth>} />
           <Route path="/" element={<Navigate to="/events" replace />} />

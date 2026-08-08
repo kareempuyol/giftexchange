@@ -125,6 +125,19 @@ export interface EventInfo {
   updatedAt: string
 }
 
+export interface EventPreview {
+  code: string
+  shortCode: string
+  title: string
+  note?: string
+  budget?: number
+  signUpDeadline?: string
+  status: string
+  coverImage?: string
+  participantCount: number
+  isPublic: boolean
+}
+
 export interface Participant {
   id: number
   userId: number

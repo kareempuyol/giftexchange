@@ -11,6 +11,7 @@ export default function EventDetailPage() {
   const { toast } = useToast()
 
   const [event, setEvent] = useState<EventInfo | null>(null)
+  const [preview, setPreview] = useState<EventPreview | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [myMatch, setMyMatch] = useState<MyMatch | null>(null)
   const [joined, setJoined] = useState(false)
@@ -24,6 +25,13 @@ export default function EventDetailPage() {
   const load = async () => {
     setLoading(true)
     try {
+      if (!user) {
+        // 游客模式：只读预览（邀请落地页）
+        const pv = await api.get<EventPreview>(`/events/${code}/preview`)
+        setPreview(pv)
+        setLoading(false)
+        return
+      }
       const ev = await api.get<EventInfo>(`/events/${code}`)
       setEvent(ev)
       const [parts, match] = await Promise.all([
@@ -43,7 +51,7 @@ export default function EventDetailPage() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code])
+  }, [code, user])
 
   const onDraw = async () => {
     setDrawing(true)
@@ -84,6 +92,62 @@ export default function EventDetailPage() {
   }
 
   if (loading) return <div className="page-loading">加载中…</div>
+
+  // 游客模式：邀请落地预览（不泄露收件人/发货等敏感信息）
+  if (!user) {
+    if (!preview) return <div className="page-loading">加载中…</div>
+    return (
+      <div className="page-container" style={{ maxWidth: 760 }}>
+        <div className="page-header">
+          <h1 className="page-title">{preview.title}</h1>
+          <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
+        </div>
+
+        <div className="gift-card" style={{ marginBottom: 16 }}>
+          {preview.coverImage && (
+            <img
+              src={preview.coverImage}
+              alt="活动封面"
+              style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 'var(--gift-radius-md)', marginBottom: 12 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          )}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <Badge tone={preview.status === 'open' ? 'success' : 'gold'}>
+              {preview.status === 'open' ? '报名中' : '已抽签'}
+            </Badge>
+            {preview.isPublic ? <Badge tone="info">公开活动</Badge> : <Badge tone="warning">私密活动</Badge>}
+          </div>
+
+          {preview.note && <p style={{ color: 'var(--gift-text-secondary)', marginBottom: 12 }}>{preview.note}</p>}
+
+          <div className="event-meta-grid">
+            {preview.budget ? <div><span className="meta-label">预算</span><span className="meta-value">¥{preview.budget}</span></div> : null}
+            <div><span className="meta-label">参与人数</span><span className="meta-value">{preview.participantCount} 人</span></div>
+            {preview.signUpDeadline ? (
+              <div><span className="meta-label">报名截止</span><span className="meta-value">{new Date(preview.signUpDeadline).toLocaleDateString('zh-CN')}</span></div>
+            ) : null}
+          </div>
+
+          <p style={{ color: 'var(--gift-text-secondary)', margin: '16px 0' }}>
+            {preview.status === 'open'
+              ? `朋友邀请你参加「${preview.title}」🎁 登录后即可查看详情并加入`
+              : '这个活动已经开始啦，登录后看看大家交换了什么礼物吧'}
+          </p>
+
+          <Link to={`/login?from=${encodeURIComponent(`events/${code}`)}`} className="btn btn-primary">
+            登录后加入
+          </Link>
+          <div style={{ textAlign: 'center', marginTop: 12, fontSize: 'var(--gift-font-sm)' }}>
+            <Link to={`/register?from=${encodeURIComponent(`events/${code}`)}`} style={{ color: 'var(--gift-brand)' }}>
+              没有账号？立即注册
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!event) return <div className="page-container">活动不存在</div>
 
   return (
