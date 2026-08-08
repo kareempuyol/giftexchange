@@ -1,4 +1,24 @@
 /* 管理台样式 */
+.dash-reminders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gift-space-sm);
+  margin-bottom: var(--gift-space-lg);
+}
+.reminder-card {
+  display: flex;
+  align-items: center;
+  gap: var(--gift-space-sm);
+  background: var(--gift-card);
+  border: 1px solid var(--gift-border);
+  border-left: 3px solid var(--gift-brand);
+  border-radius: var(--gift-radius-card);
+  padding: var(--gift-space-sm) var(--gift-space-md);
+  font-size: var(--gift-font-sm);
+}
+.reminder-message {
+  color: var(--gift-text);
+}
 .dash-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

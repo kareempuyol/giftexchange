@@ -17,10 +17,37 @@ interface DashboardParticipant {
   postedGift: boolean
 }
 
+interface DashboardReminder {
+  type: 'shipment' | 'gift' | 'draw'
+  message: string
+}
+
+interface DashboardData {
+  participants: DashboardParticipant[]
+  pendingShipments: number
+  unpostedGifts: number
+  reminders: DashboardReminder[]
+}
+
+const REMINDER_TONE: Record<DashboardReminder['type'], 'success' | 'warning' | 'error' | 'info' | 'gold'> = {
+  shipment: 'warning',
+  gift: 'info',
+  draw: 'error',
+}
+
+const REMINDER_LABEL: Record<DashboardReminder['type'], string> = {
+  shipment: '待发货',
+  gift: '待晒图',
+  draw: '待抽签',
+}
+
 export default function DashboardPage() {
   const { code = '' } = useParams()
   const [event, setEvent] = useState<EventInfo | null>(null)
   const [rows, setRows] = useState<DashboardParticipant[]>([])
+  const [pendingShipments, setPendingShipments] = useState(0)
+  const [unpostedGifts, setUnpostedGifts] = useState(0)
+  const [reminders, setReminders] = useState<DashboardReminder[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,10 +55,13 @@ export default function DashboardPage() {
       try {
         const [ev, data] = await Promise.all([
           api.get<EventInfo>(`/events/${code}`),
-          api.get<{ participants: DashboardParticipant[] }>(`/events/${code}/dashboard`),
+          api.get<DashboardData>(`/events/${code}/dashboard`),
         ])
         setEvent(ev)
         setRows(data.participants)
+        setPendingShipments(data.pendingShipments ?? 0)
+        setUnpostedGifts(data.unpostedGifts ?? 0)
+        setReminders(data.reminders ?? [])
       } catch {
         // 非组织者无法查看
       } finally {
@@ -55,11 +85,24 @@ export default function DashboardPage() {
         <Link to={`/events/${code}`} className="btn btn-ghost btn-sm">返回活动</Link>
       </div>
 
+      {reminders.length > 0 && (
+        <div className="dash-reminders">
+          {reminders.map((r) => (
+            <div key={r.type} className="reminder-card">
+              <Badge tone={REMINDER_TONE[r.type]}>{REMINDER_LABEL[r.type]}</Badge>
+              <span className="reminder-message">{r.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="dash-stats">
         <div className="stat-card"><div className="stat-num">{rows.length}</div><div className="stat-label">参与人数</div></div>
         <div className="stat-card"><div className="stat-num">{shipped}</div><div className="stat-label">已发货</div></div>
         <div className="stat-card"><div className="stat-num">{received}</div><div className="stat-label">已收货</div></div>
         <div className="stat-card"><div className="stat-num">{posted}</div><div className="stat-label">已晒图</div></div>
+        <div className="stat-card"><div className="stat-num">{pendingShipments}</div><div className="stat-label">待发货</div></div>
+        <div className="stat-card"><div className="stat-num">{unpostedGifts}</div><div className="stat-label">待晒图</div></div>
       </div>
 
       <div className="gift-card">

@@ -1041,6 +1041,18 @@ def join_event(user, code):
                     ),
                 )
             user_row = current_user_row(db, user["userId"])
+            # 通知组织者：新参与者加入（组织者自己加入不通知自己）
+            if event["creator_id"] != user["userId"]:
+                joiner_name = user_row.get("display_name") or user_row["username"]
+                create_notification(
+                    db,
+                    event["creator_id"],
+                    event["id"],
+                    None,
+                    "participant_joined",
+                    f"{joiner_name} 加入了活动",
+                    f"{joiner_name} 加入了「{event['name']}」，快去看看吧。",
+                )
             return ok(
                 {"id": participant_id, "eventCode": code, "userName": user_row.get("display_name") or user_row["username"]},
                 "Joined event",
@@ -1256,6 +1268,24 @@ def event_matches(user, code):
         return fail(str(exc), 404)
 
 
+def draw_deadline_passed(event):
+    """报名截止（抽签日）已到：支持 ISO datetime 与 YYYY-MM-DD 日期，未设置视为未到"""
+    raw = event.get("sign_up_deadline") or ""
+    if not raw:
+        return False
+    value = str(raw).strip()
+    try:
+        deadline = datetime.fromisoformat(value)
+    except ValueError:
+        try:
+            deadline = datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            return False
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) >= deadline
+
+
 @api.route("/events/<code>/dashboard")
 @login_required
 def event_dashboard(user, code):
@@ -1294,7 +1324,38 @@ def event_dashboard(user, code):
                         "postedGift": bool(match_row.get("gift_rating") or match_row.get("gift_review") or match_row.get("gift_photo_url")),
                     }
                 )
-            return ok({"participants": data, "count": len(data)})
+            # 催办统计（按 matches 聚合：已抽签未发货 / 已发货未晒图）
+            counts = db.get(
+                """
+                SELECT
+                  SUM(CASE WHEN shipment_status = 'pending' THEN 1 ELSE 0 END) AS pending_shipments,
+                  SUM(CASE WHEN shipment_status != 'pending' AND received_at IS NULL THEN 1 ELSE 0 END) AS unposted_gifts
+                FROM matches
+                WHERE event_id = ?
+                """,
+                (event["id"],),
+            )
+            pending_shipments = int(counts.get("pending_shipments") or 0)
+            unposted_gifts = int(counts.get("unposted_gifts") or 0)
+            # 催办提醒
+            reminders = []
+            if event["status"] != "drawn":
+                if draw_deadline_passed(event):
+                    reminders.append({"type": "draw", "message": "报名截止时间已到，快去抽签"})
+            else:
+                if pending_shipments > 0:
+                    reminders.append({"type": "shipment", "message": f"{pending_shipments} 人已抽签未发货"})
+                if unposted_gifts > 0:
+                    reminders.append({"type": "gift", "message": f"{unposted_gifts} 人已发货未晒图"})
+            return ok(
+                {
+                    "participants": data,
+                    "count": len(data),
+                    "pendingShipments": pending_shipments,
+                    "unpostedGifts": unposted_gifts,
+                    "reminders": reminders,
+                }
+            )
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -1442,6 +1503,25 @@ def update_received_gift(user, code):
                 f"{row.get('receiver_display_name') or row.get('receiver_username')} 已晒礼物",
                 "TA 已收到你的礼物，并完成了晒图评价。",
             )
+            # 礼物墙解锁通知：全部晒完时通知所有参与者；用 event_id + type 去重，只发一次
+            remaining = db.get(
+                "SELECT COUNT(*) AS count FROM matches WHERE event_id = ? AND received_at IS NULL",
+                (event["id"],),
+            )
+            if int(remaining["count"] or 0) == 0 and not db.get(
+                "SELECT id FROM notifications WHERE event_id = ? AND type = 'gift_wall_unlocked' LIMIT 1",
+                (event["id"],),
+            ):
+                for p in participant_rows(db, event["id"]):
+                    create_notification(
+                        db,
+                        p["user_id"],
+                        event["id"],
+                        None,
+                        "gift_wall_unlocked",
+                        "礼物墙已解锁 🎉",
+                        "所有礼物都已晒出，快去礼物墙看看吧！",
+                    )
             return ok(api_gift_post(row), "Gift post saved")
     except ValueError as exc:
         return fail(str(exc), 404)
