@@ -166,10 +166,13 @@
 | C 抽签规则+通知 | ✅ 已完成 | 互避规则 + draw_result 通知 |
 | D 物流跟踪 | ✅ 已完成 | KDNiao 查询 + 降级 + 悄悄话 |
 | E 礼物墙互动 | ✅ 已完成 (302ef50) | 点赞 + 进度条 + posted统计修复 |
-| F 通知补全 | 🔄 子代理执行中 | participant_joined / gift_wall_unlocked |
-| H dashboard 催办 | 🔄 子代理执行中 | pendingShipments/unpostedGifts/reminders |
+| F 通知补全 | ✅ 已完成 (9ec7875) | participant_joined / gift_wall_unlocked |
+| H dashboard 催办 | ✅ 已完成 (9ec7875) | pendingShipments/unpostedGifts/reminders |
 | G 部署+小程序预留 | ✅ 已完成 (8bd7aef) | upload接口/微信字段/ImageUpload组件 |
 | ~~安全：participants 泄露~~ | ✅ 已排除（误报） | 接口仅返回昵称/完整度，联系方式未输出 |
 | 安全：抽签并发竞态 | ✅ 已修复 (8bd7aef) | 条件更新 + 409 |
+| UI/UX 审计 | ✅ 已完成 (80809ab) | 6组报告 + 两轮修复（Header/通知铃铛/动效等） |
+| 安全审计 | ✅ 已完成 (8560ea4) | 登录限速/CORS收紧/JSON错误/API 404 |
+| 阶段六 回归+部署 | ✅ 已完成 | 本地 17/17 + 公网隧道 10/10 |
 
 *本文件驱动阶段二至六。每完成一个升级，回到这里标记对应环节已改善。*
