@@ -165,11 +165,11 @@
 | B 心愿单结构化 | ✅ 已完成 | size/color/wishLinks 字段 + 两步表单 |
 | C 抽签规则+通知 | ✅ 已完成 | 互避规则 + draw_result 通知 |
 | D 物流跟踪 | ✅ 已完成 | KDNiao 查询 + 降级 + 悄悄话 |
-| E 礼物墙互动 | 🔄 进行中 | 点赞 + 进度条 |
-| F 通知补全 | ⬜ 待做 | |
-| H dashboard 催办 | ⬜ 待做 | |
-| G 部署+小程序预留 | 🔄 进行中 | 子代理执行中 |
+| E 礼物墙互动 | ✅ 已完成 (302ef50) | 点赞 + 进度条 + posted统计修复 |
+| F 通知补全 | 🔄 子代理执行中 | participant_joined / gift_wall_unlocked |
+| H dashboard 催办 | 🔄 子代理执行中 | pendingShipments/unpostedGifts/reminders |
+| G 部署+小程序预留 | ✅ 已完成 (8bd7aef) | upload接口/微信字段/ImageUpload组件 |
 | ~~安全：participants 泄露~~ | ✅ 已排除（误报） | 接口仅返回昵称/完整度，联系方式未输出 |
-| 安全：抽签并发竞态 | ⬜ 待修 | P2：并发双击抽签会覆盖结果，加条件更新 |
+| 安全：抽签并发竞态 | ✅ 已修复 (8bd7aef) | 条件更新 + 409 |
 
 *本文件驱动阶段二至六。每完成一个升级，回到这里标记对应环节已改善。*
