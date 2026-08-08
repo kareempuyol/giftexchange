@@ -120,9 +120,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--gift-space-md);
+  padding: var(--gift-space-md) var(--gift-space-lg);
   font-weight: var(--gift-font-medium);
   border-bottom: 1px solid var(--gift-border);
+  gap: var(--gift-space-md);
 }
 
 .notif-mark-all {
@@ -138,13 +139,18 @@
 .notif-list {
   overflow-y: auto;
   flex: 1;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .notif-item {
-  padding: var(--gift-space-md);
+  padding: var(--gift-space-md) var(--gift-space-lg);
   border-bottom: 1px solid var(--gift-border);
   cursor: pointer;
   transition: background var(--gift-motion-fast) var(--gift-ease);
+  overflow: hidden;
+}
+.notif-item:last-child {
+  border-bottom: none;
 }
 
 .notif-item:hover {
@@ -206,6 +212,13 @@
   .app-header-inner {
     gap: var(--gift-space-sm);
     padding: var(--gift-space-sm);
+  }
+  /* 移动端隐藏"我的活动"链接（品牌即回首页，避免拥挤） */
+  .app-nav-link:not(.app-nav-cta) {
+    display: none;
+  }
+  .app-brand {
+    font-size: var(--gift-font-md);
   }
   .notif-panel {
     width: min(320px, calc(100vw - 24px));

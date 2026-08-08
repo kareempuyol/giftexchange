@@ -219,6 +219,10 @@ select {
   gap: var(--gift-space-md);
   margin-bottom: var(--gift-space-xl);
 }
+.page-header .btn {
+  width: auto;
+  flex-shrink: 0;
+}
 .page-title {
   flex: 1;
   min-width: 0;
