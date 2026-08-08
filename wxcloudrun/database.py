@@ -188,6 +188,19 @@ def init_schema():
               CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """,
+            """
+            CREATE TABLE IF NOT EXISTS gift_likes (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              match_id INT NOT NULL,
+              user_id INT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE KEY uniq_like_match_user (match_id, user_id),
+              INDEX idx_likes_match (match_id),
+              INDEX idx_likes_user (user_id),
+              CONSTRAINT fk_likes_match FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+              CONSTRAINT fk_likes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """,
         ]
     else:
         statements = [
@@ -291,6 +304,15 @@ def init_schema():
               message TEXT,
               read_at TEXT,
               created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS gift_likes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(match_id, user_id)
             )
             """,
         ]

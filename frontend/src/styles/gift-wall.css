@@ -1,0 +1,164 @@
+/* ===== 礼物墙 Gift Wall ===== */
+/* 全部使用 Design Tokens（--gift-*），不硬编码颜色/间距/圆角 */
+
+/* 进度卡：未解锁时展示 */
+.gw-progress-card {
+  background: var(--gift-card);
+  border: 1px solid var(--gift-border);
+  border-radius: var(--gift-radius-card);
+  padding: var(--gift-space-xl);
+  box-shadow: var(--gift-shadow-card);
+  text-align: center;
+}
+
+.gw-progress-text {
+  font-size: var(--gift-font-lg);
+  font-weight: var(--gift-font-bold);
+  color: var(--gift-text-primary);
+  margin-bottom: var(--gift-space-md);
+}
+
+.gw-progress-bar {
+  height: 12px;
+  background: var(--gift-bg-muted);
+  border: 1px solid var(--gift-border);
+  border-radius: var(--gift-radius-pill);
+  overflow: hidden;
+  margin: var(--gift-space-lg) 0 var(--gift-space-sm);
+}
+
+.gw-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gift-brand), var(--gift-gold));
+  border-radius: var(--gift-radius-pill);
+  transition: width var(--gift-motion-normal) var(--gift-ease);
+}
+
+.gw-lock-note {
+  font-size: var(--gift-font-sm);
+  color: var(--gift-text-secondary);
+}
+
+/* 解锁后的礼物卡片列表 */
+.gw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--gift-space-lg);
+}
+
+.gw-item-card {
+  background: var(--gift-card);
+  border: 1px solid var(--gift-border);
+  border-radius: var(--gift-radius-card);
+  padding: var(--gift-space-lg);
+  box-shadow: var(--gift-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gift-space-sm);
+}
+
+.gw-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gift-space-sm);
+}
+
+.gw-people {
+  font-size: var(--gift-font-md);
+  font-weight: var(--gift-font-bold);
+  color: var(--gift-text-primary);
+}
+
+.gw-arrow {
+  color: var(--gift-text-secondary);
+  margin: 0 var(--gift-space-xs);
+}
+
+/* 评分星星 */
+.gw-stars {
+  color: var(--gift-gold);
+  font-size: var(--gift-font-md);
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.gw-star {
+  color: var(--gift-border-strong);
+}
+
+.gw-star.on {
+  color: var(--gift-gold);
+}
+
+/* 评价与照片 */
+.gw-review {
+  font-size: var(--gift-font-sm);
+  color: var(--gift-text-primary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.gw-photo-wrap {
+  margin-top: var(--gift-space-xs);
+}
+
+.gw-photo {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: var(--gift-radius-md);
+  border: 1px solid var(--gift-border);
+}
+
+/* 点赞按钮 */
+.gw-item-footer {
+  margin-top: auto;
+  padding-top: var(--gift-space-xs);
+}
+
+.gw-like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gift-space-xs);
+  border: 1px solid var(--gift-border);
+  background: var(--gift-card);
+  color: var(--gift-text-secondary);
+  border-radius: var(--gift-radius-pill);
+  padding: 6px var(--gift-space-md);
+  font-size: var(--gift-font-sm);
+  font-weight: var(--gift-font-medium);
+  cursor: pointer;
+  transition: all var(--gift-motion-fast) var(--gift-ease);
+}
+
+.gw-like-btn:hover {
+  border-color: var(--gift-brand);
+  color: var(--gift-brand);
+}
+
+.gw-like-btn.liked {
+  background: var(--gift-brand-light);
+  border-color: var(--gift-brand);
+  color: var(--gift-brand);
+}
+
+.gw-heart {
+  display: inline-block;
+  transition: transform var(--gift-motion-fast) var(--gift-ease);
+}
+
+.gw-like-btn.liked .gw-heart {
+  transform: scale(1.15);
+}
+
+/* 空状态 */
+.gw-empty {
+  text-align: center;
+  padding: var(--gift-space-xxl) var(--gift-space-lg);
+  color: var(--gift-text-secondary);
+  font-size: var(--gift-font-md);
+  background: var(--gift-card);
+  border: 1px dashed var(--gift-border-strong);
+  border-radius: var(--gift-radius-card);
+}

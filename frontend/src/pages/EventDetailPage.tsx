@@ -214,6 +214,23 @@ export default function EventDetailPage() {
         </div>
       )}
 
+      {/* 礼物墙入口：抽签后参与者/组织者可见 */}
+      {event.status === 'drawn' && (isOwner || joined) && (
+        <div className="gift-card" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div>
+              <h2 className="section-title">🎁 礼物墙</h2>
+              <p style={{ marginTop: 4, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
+                看看大家都收到了什么礼物，给喜欢的点赞！
+              </p>
+            </div>
+            <Link to={`/events/${code}/gift-wall`} className="btn btn-primary" style={{ flexShrink: 0, width: 'auto' }}>
+              去看看
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="gift-card">
         <h2 className="section-title">参与者（{participants.length}）</h2>
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>

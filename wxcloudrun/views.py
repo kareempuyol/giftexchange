@@ -1399,14 +1399,12 @@ def gift_wall(user, code):
     try:
         with DB() as db:
             event = fetch_event(db, code)
-            participant = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
-            is_creator = event["creator_id"] == user["userId"]
-            if not is_creator and not participant:
+            if not gift_wall_allowed(db, event, user["userId"]):
                 return fail("No permission", 403)
             counts = db.get(
                 """
                 SELECT COUNT(*) AS total,
-                       SUM(CASE WHEN received_at IS NOT NULL AND gift_photo_url IS NOT NULL AND gift_photo_url <> '' THEN 1 ELSE 0 END) AS posted
+                       SUM(CASE WHEN received_at IS NOT NULL THEN 1 ELSE 0 END) AS posted
                 FROM matches
                 WHERE event_id = ?
                 """,
@@ -1416,6 +1414,8 @@ def gift_wall(user, code):
             posted = int(counts.get("posted") or 0)
             unlocked = total > 0 and total == posted
             rows = []
+            like_counts = {}
+            liked_by_me = set()
             if unlocked:
                 rows = db.all(
                     """
@@ -1432,21 +1432,120 @@ def gift_wall(user, code):
                     """,
                     (event["id"],),
                 )
+                if rows:
+                    ids = [row["id"] for row in rows]
+                    placeholders = ",".join("?" for _ in ids)
+                    for lrow in db.all(
+                        f"SELECT match_id, COUNT(*) AS count FROM gift_likes WHERE match_id IN ({placeholders}) GROUP BY match_id",
+                        tuple(ids),
+                    ):
+                        like_counts[lrow["match_id"]] = int(lrow["count"] or 0)
+                    for lrow in db.all(
+                        f"SELECT match_id FROM gift_likes WHERE match_id IN ({placeholders}) AND user_id = ?",
+                        tuple(ids) + (user["userId"],),
+                    ):
+                        liked_by_me.add(lrow["match_id"])
             return ok(
                 {
                     "unlocked": unlocked,
                     "posted": posted,
                     "total": total,
+                    "progress": {
+                        "posted": posted,
+                        "total": total,
+                        "unlocked": unlocked,
+                        "remaining": max(0, total - posted),
+                    },
                     "items": [
                         {
                             "matchId": row["id"],
                             "giverName": row.get("giver_display_name") or row["giver_username"],
                             "receiverName": row.get("receiver_display_name") or row["receiver_username"],
                             "giftPost": api_gift_post(row),
+                            "likeCount": like_counts.get(row["id"], 0),
+                            "likedByMe": row["id"] in liked_by_me,
                         }
                         for row in rows
                     ],
                 }
+            )
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+def gift_wall_allowed(db, event, user_id):
+    """礼物墙权限：参与者或组织者"""
+    participant = db.get(
+        "SELECT id FROM participants WHERE event_id = ? AND user_id = ?",
+        (event["id"], user_id),
+    )
+    return bool(participant) or event["creator_id"] == user_id
+
+
+def gift_like_count(db, match_id):
+    row = db.get("SELECT COUNT(*) AS count FROM gift_likes WHERE match_id = ?", (match_id,))
+    return int(row["count"] or 0)
+
+
+@api.route("/events/<code>/gift-wall/like", methods=["POST"])
+@login_required
+def gift_wall_like(user, code):
+    data = body()
+    match_id = data.get("matchId")
+    if not match_id:
+        return fail("matchId is required")
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if not gift_wall_allowed(db, event, user["userId"]):
+                return fail("No permission", 403)
+            if not db.get(
+                "SELECT id FROM matches WHERE id = ? AND event_id = ?",
+                (match_id, event["id"]),
+            ):
+                return fail("Match not found", 404)
+            existing = db.get(
+                "SELECT id FROM gift_likes WHERE match_id = ? AND user_id = ?",
+                (match_id, user["userId"]),
+            )
+            if not existing:
+                db.execute(
+                    "INSERT INTO gift_likes (match_id, user_id) VALUES (?, ?)",
+                    (match_id, user["userId"]),
+                )
+            return ok(
+                {"matchId": match_id, "liked": True, "likeCount": gift_like_count(db, match_id)},
+                "Liked",
+            )
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/gift-wall/like", methods=["DELETE"])
+@login_required
+def gift_wall_unlike(user, code):
+    raw_match_id = request.args.get("matchId") or ""
+    try:
+        match_id = int(raw_match_id)
+    except (TypeError, ValueError):
+        return fail("matchId is required")
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if not gift_wall_allowed(db, event, user["userId"]):
+                return fail("No permission", 403)
+            if not db.get(
+                "SELECT id FROM matches WHERE id = ? AND event_id = ?",
+                (match_id, event["id"]),
+            ):
+                return fail("Match not found", 404)
+            db.execute(
+                "DELETE FROM gift_likes WHERE match_id = ? AND user_id = ?",
+                (match_id, user["userId"]),
+            )
+            return ok(
+                {"matchId": match_id, "liked": False, "likeCount": gift_like_count(db, match_id)},
+                "Unliked",
             )
     except ValueError as exc:
         return fail(str(exc), 404)

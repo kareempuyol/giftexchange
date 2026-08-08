@@ -150,6 +150,30 @@ export interface GiftPost {
   photoUrl: string
 }
 
+export interface GiftWallProgress {
+  posted: number
+  total: number
+  unlocked: boolean
+  remaining: number
+}
+
+export interface GiftWallItem {
+  matchId: number
+  giverName: string
+  receiverName: string
+  giftPost: GiftPost
+  likeCount: number
+  likedByMe: boolean
+}
+
+export interface GiftWall {
+  unlocked: boolean
+  posted: number
+  total: number
+  progress: GiftWallProgress
+  items: GiftWallItem[]
+}
+
 export interface NotificationItem {
   id: number
   eventCode: string

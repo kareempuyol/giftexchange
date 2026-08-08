@@ -8,6 +8,7 @@ import './styles/auth.css'
 import './styles/events.css'
 import './styles/event-detail.css'
 import './styles/dashboard.css'
+import './styles/gift-wall.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
