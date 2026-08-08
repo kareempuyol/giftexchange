@@ -108,28 +108,29 @@
   border-radius: var(--gift-radius-pill);
 }
 
-/* 揭晓：遮罩 3D 翻走（Flip） */
+/* 揭晓：遮罩 3D 翻走（Flip，0.55s 更可感知） */
 .gw-item-card.revealed .gw-mask.gw-mask-hidden {
-  transform: rotateY(100deg) scale(0.9);
+  transform: rotateY(110deg) scale(0.85);
   opacity: 0;
   pointer-events: none;
-  animation: gw-mask-flip var(--gift-motion-normal) var(--gift-ease) forwards;
+  animation: gw-mask-flip 0.55s var(--gift-ease) forwards;
 }
 
 @keyframes gw-mask-flip {
-  0% { transform: rotateY(0deg) scale(1); opacity: 1; }
-  100% { transform: rotateY(100deg) scale(0.9); opacity: 0; }
+  0% { transform: rotateY(0deg) scale(1) translateX(0); opacity: 1; }
+  35% { transform: rotateY(45deg) scale(1.02) translateX(6px); opacity: 1; }
+  100% { transform: rotateY(110deg) scale(0.85) translateX(-14px); opacity: 0; }
 }
 
-/* 揭晓：内容缩放淡入 */
+/* 揭晓：内容从下方弹入（位移+缩放+淡入，0.45s） */
 .gw-item-card.revealed .gw-item-body {
-  animation: gw-body-pop var(--gift-motion-normal) var(--gift-ease) both;
+  animation: gw-body-pop 0.45s var(--gift-ease) both;
 }
 
 @keyframes gw-body-pop {
-  0% { transform: scale(0.88); opacity: 0; }
-  70% { transform: scale(1.03); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% { transform: translateY(18px) scale(0.92); opacity: 0; }
+  60% { transform: translateY(-4px) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 /* ===== 星星散落（揭晓惊喜，纯 emoji + CSS 动画） ===== */
