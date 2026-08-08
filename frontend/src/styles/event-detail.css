@@ -27,6 +27,16 @@
   font-weight: var(--gift-font-bold);
 }
 
+/* 悄悄话未揭晓提示 */
+.note-pending {
+  color: var(--gift-text-secondary);
+  font-style: italic;
+  background: var(--gift-brand-light);
+  display: inline-block;
+  padding: var(--gift-space-xs) var(--gift-space-sm);
+  border-radius: var(--gift-radius-sm);
+}
+
 .participant-row {
   display: flex;
   align-items: center;

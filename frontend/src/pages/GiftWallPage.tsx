@@ -10,6 +10,12 @@ export default function GiftWallPage() {
   const [wall, setWall] = useState<GiftWall | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // 揭晓状态：同一次访问内记住已揭晓的卡片（matchId -> true）
+  const [revealed, setRevealed] = useState<Record<number, boolean>>({})
+
+  const reveal = (matchId: number) => {
+    setRevealed((prev) => (prev[matchId] ? prev : { ...prev, [matchId]: true }))
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -106,52 +112,80 @@ export default function GiftWallPage() {
         <div className="gw-empty">礼物墙已解锁，但还没有晒出的礼物 🎁</div>
       ) : (
         <div className="gw-grid">
-          {items.map((item) => (
-            <div key={item.matchId} className="gw-item-card">
-              <div className="gw-item-header">
-                <div className="gw-people">
-                  {item.giverName}
-                  <span className="gw-arrow">→</span>
-                  {item.receiverName}
+          {items.map((item) => {
+            const isRevealed = !!revealed[item.matchId]
+            return (
+              <div key={item.matchId} className={`gw-item-card${isRevealed ? ' revealed' : ''}`}>
+                {/* 揭晓星星散落装饰（纯 CSS 动画，无库） */}
+                <div className="gw-reveal-stars" aria-hidden="true">
+                  <span>✨</span>
+                  <span>⭐</span>
+                  <span>✨</span>
+                  <span>🌟</span>
+                  <span>⭐</span>
                 </div>
-                <Stars rating={item.giftPost.rating} />
-              </div>
 
-              {item.giftPost.review && <p className="gw-review">“{item.giftPost.review}”</p>}
+                {/* 礼物内容 */}
+                <div className="gw-item-body" aria-hidden={!isRevealed}>
+                  <div className="gw-item-header">
+                    <div className="gw-people">
+                      {item.giverName}
+                      <span className="gw-arrow">→</span>
+                      {item.receiverName}
+                    </div>
+                    <Stars rating={item.giftPost.rating} />
+                  </div>
 
-              {item.giftPost.photoUrl && (
-                <div className="gw-photo-wrap">
-                  <img
-                    className="gw-photo"
-                    src={item.giftPost.photoUrl}
-                    alt="礼物照片"
-                    loading="lazy"
-                    onError={(e) => {
-                      // 图片加载失败降级：显示占位（不再显示裂图）
-                      const t = e.target as HTMLImageElement
-                      t.style.display = 'none'
-                      const wrap = t.parentElement
-                      if (wrap) {
-                        wrap.classList.add('gw-photo-fallback')
-                        wrap.textContent = '🎁 礼物照片'
-                      }
-                    }}
-                  />
+                  {item.giftPost.review && <p className="gw-review">“{item.giftPost.review}”</p>}
+
+                  {item.giftPost.photoUrl && (
+                    <div className="gw-photo-wrap">
+                      <img
+                        className="gw-photo"
+                        src={item.giftPost.photoUrl}
+                        alt="礼物照片"
+                        loading="lazy"
+                        onError={(e) => {
+                          // 图片加载失败降级：显示占位（不再显示裂图）
+                          const t = e.target as HTMLImageElement
+                          t.style.display = 'none'
+                          const wrap = t.parentElement
+                          if (wrap) {
+                            wrap.classList.add('gw-photo-fallback')
+                            wrap.textContent = '🎁 礼物照片'
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="gw-item-footer">
+                    <button
+                      className={`gw-like-btn${item.likedByMe ? ' liked' : ''}`}
+                      onClick={() => toggleLike(item)}
+                      aria-pressed={item.likedByMe}
+                    >
+                      <span className="gw-heart">{item.likedByMe ? '❤️' : '🤍'}</span>
+                      <span>{item.likeCount}</span>
+                    </button>
+                  </div>
                 </div>
-              )}
 
-              <div className="gw-item-footer">
+                {/* 遮罩态：礼盒 + 点击揭晓（揭晓后翻走隐藏，保留动画出口） */}
                 <button
-                  className={`gw-like-btn${item.likedByMe ? ' liked' : ''}`}
-                  onClick={() => toggleLike(item)}
-                  aria-pressed={item.likedByMe}
+                  type="button"
+                  className={`gw-mask${isRevealed ? ' gw-mask-hidden' : ''}`}
+                  onClick={() => reveal(item.matchId)}
+                  aria-label="点击揭晓这份礼物"
+                  aria-hidden={isRevealed}
+                  tabIndex={isRevealed ? -1 : 0}
                 >
-                  <span className="gw-heart">{item.likedByMe ? '❤️' : '🤍'}</span>
-                  <span>{item.likeCount}</span>
+                  <span className="gw-mask-gift">🎁</span>
+                  <span className="gw-mask-hint">点击揭晓</span>
                 </button>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

@@ -36,6 +36,9 @@ class DB:
             self.conn = sqlite3.connect(db_path)
             self.conn.row_factory = sqlite3.Row
             self.conn.execute("PRAGMA foreign_keys = ON")
+            # R6: WAL 模式 + 忙等待 5s，提升并发读写（读不阻塞写）；仅 SQLite，MySQL 不适用
+            self.conn.execute("PRAGMA journal_mode = WAL")
+            self.conn.execute("PRAGMA busy_timeout = 5000")
 
     def __enter__(self):
         return self

@@ -16,6 +16,8 @@ def draw_matches(rows, excluded_pairs):
     n = len(rows)
     if n < 2:
         return [], False
+    # 归一化互避对：调用方传 (u2,u1) 或 (u1,u2) 等价，函数内部统一为 (min,max)
+    excluded = {(min(a, b), max(a, b)) for a, b in excluded_pairs}
     max_attempts = 200
     for _ in range(max_attempts):
         shuffled = rows[:]
@@ -28,7 +30,7 @@ def draw_matches(rows, excluded_pairs):
                 break
             pair_key = (min(giver["user_id"], receiver["user_id"]),
                         max(giver["user_id"], receiver["user_id"]))
-            if pair_key in excluded_pairs:
+            if pair_key in excluded:
                 valid = False
                 break
         if valid:

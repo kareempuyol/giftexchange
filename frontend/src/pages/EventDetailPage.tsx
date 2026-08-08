@@ -272,7 +272,13 @@ export default function EventDetailPage() {
               </p>
             )}
             {myMatch.preference.notes && <p>📝 备注：{myMatch.preference.notes}</p>}
-            {myMatch.note && <p>💬 悄悄话：{myMatch.note}</p>}
+            {/* 悄悄话：仅当收礼人已晒图后才揭晓（纯前端门控，receivedAt 非空 = 收礼人已晒图） */}
+            {myMatch.note &&
+              (myMatch.giftPost.receivedAt ? (
+                <p>💬 悄悄话：{myMatch.note}</p>
+              ) : (
+                <p className="note-pending">💬 悄悄话：收礼人晒图后揭晓 ✨</p>
+              ))}
           </div>
           <div style={{ marginTop: 12, padding: 12, background: 'var(--gift-bg-muted)', borderRadius: 12 }}>
             <p><b>收件人：</b>{myMatch.contact.receiverName}</p>

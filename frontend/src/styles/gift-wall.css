@@ -55,6 +55,124 @@
   display: flex;
   flex-direction: column;
   gap: var(--gift-space-sm);
+  position: relative;
+  perspective: 1200px;
+  overflow: hidden;
+}
+
+/* ===== 揭晓遮罩态：礼盒 + 点击揭晓 ===== */
+.gw-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gift-space-sm);
+  background: linear-gradient(160deg, var(--gift-brand) 0%, var(--gift-coral-600) 100%);
+  border: none;
+  border-radius: inherit;
+  color: var(--gift-text-on-primary);
+  font-family: var(--gift-font-family);
+  cursor: pointer;
+  transform-origin: center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transition:
+    transform var(--gift-motion-normal) var(--gift-ease),
+    opacity var(--gift-motion-normal) var(--gift-ease);
+}
+
+.gw-mask:hover {
+  background: linear-gradient(160deg, var(--gift-brand-hover) 0%, var(--gift-coral-700) 100%);
+}
+
+.gw-mask-gift {
+  font-size: 56px;
+  line-height: 1;
+  animation: gw-gift-bob 1.8s var(--gift-ease) infinite;
+}
+
+@keyframes gw-gift-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-6px) rotate(4deg); }
+}
+
+.gw-mask-hint {
+  font-size: var(--gift-font-md);
+  font-weight: var(--gift-font-bold);
+  letter-spacing: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  padding: var(--gift-space-xs) var(--gift-space-md);
+  border-radius: var(--gift-radius-pill);
+}
+
+/* 揭晓：遮罩 3D 翻走（Flip） */
+.gw-item-card.revealed .gw-mask.gw-mask-hidden {
+  transform: rotateY(100deg) scale(0.9);
+  opacity: 0;
+  pointer-events: none;
+  animation: gw-mask-flip var(--gift-motion-normal) var(--gift-ease) forwards;
+}
+
+@keyframes gw-mask-flip {
+  0% { transform: rotateY(0deg) scale(1); opacity: 1; }
+  100% { transform: rotateY(100deg) scale(0.9); opacity: 0; }
+}
+
+/* 揭晓：内容缩放淡入 */
+.gw-item-card.revealed .gw-item-body {
+  animation: gw-body-pop var(--gift-motion-normal) var(--gift-ease) both;
+}
+
+@keyframes gw-body-pop {
+  0% { transform: scale(0.88); opacity: 0; }
+  70% { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== 星星散落（揭晓惊喜，纯 emoji + CSS 动画） ===== */
+.gw-reveal-stars {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.gw-reveal-stars span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: 20px;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.3);
+}
+
+.gw-item-card.revealed .gw-reveal-stars span {
+  animation: gw-star-fly var(--gift-motion-slow) var(--gift-ease) forwards;
+}
+
+.gw-reveal-stars span:nth-child(1) { --gw-sx: -70px; --gw-sy: -95px; animation-delay: 0s; }
+.gw-reveal-stars span:nth-child(2) { --gw-sx: 65px; --gw-sy: -80px; animation-delay: 0.04s; }
+.gw-reveal-stars span:nth-child(3) { --gw-sx: -55px; --gw-sy: 70px; animation-delay: 0.08s; }
+.gw-reveal-stars span:nth-child(4) { --gw-sx: 80px; --gw-sy: 55px; animation-delay: 0.12s; }
+.gw-reveal-stars span:nth-child(5) { --gw-sx: 0px; --gw-sy: -115px; animation-delay: 0.16s; }
+
+@keyframes gw-star-fly {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(0deg); }
+  25% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--gw-sx)), calc(-50% + var(--gw-sy))) scale(1.15) rotate(30deg);
+  }
+}
+
+/* 遮罩态下隐藏内容防读屏/点击穿透（视觉已遮住，双保险） */
+.gw-item-card:not(.revealed) .gw-item-body {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .gw-item-header {
