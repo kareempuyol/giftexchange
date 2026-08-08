@@ -160,7 +160,18 @@ export default function EventDetailPage() {
         <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
       </div>
 
-      <div className="gift-card" style={{ marginBottom: 16 }}>
+      <div className="gift-card" style={{ marginBottom: 16, overflow: 'hidden' }}>
+        {/* 活动封面（登录态也展示） */}
+        {event.coverImage && (
+          <div style={{ margin: '-16px -16px 12px' }}>
+            <img
+              src={event.coverImage}
+              alt="活动封面"
+              style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <Badge tone={event.status === 'open' ? 'success' : 'gold'}>
             {event.status === 'open' ? '报名中' : '已抽签'}

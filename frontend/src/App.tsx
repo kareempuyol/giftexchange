@@ -9,6 +9,7 @@ import EventDetailPage from './pages/EventDetailPage'
 import CreateEventPage from './pages/CreateEventPage'
 import DashboardPage from './pages/DashboardPage'
 import GiftWallPage from './pages/GiftWallPage'
+import ProfilePage from './pages/ProfilePage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/events/:code" element={<Layout><EventDetailPage /></Layout>} />
           <Route path="/events/:code/dashboard" element={<RequireAuth><Layout><DashboardPage /></Layout></RequireAuth>} />
           <Route path="/events/:code/gift-wall" element={<RequireAuth><Layout><GiftWallPage /></Layout></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><Layout><ProfilePage /></Layout></RequireAuth>} />
           <Route path="/" element={<Navigate to="/events" replace />} />
           <Route path="*" element={<Navigate to="/events" replace />} />
         </Routes>

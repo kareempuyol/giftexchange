@@ -115,7 +115,9 @@ export default function Header() {
 
           {/* 用户菜单 */}
           <div className="app-user">
-            <span className="app-username">{user.displayName || user.username}</span>
+            <Link to="/profile" className="app-username" title="个人资料" style={{ cursor: 'pointer' }}>
+              {user.displayName || user.username} ⚙️
+            </Link>
             <button className="btn btn-ghost btn-sm" onClick={onLogout}>退出</button>
           </div>
         </div>

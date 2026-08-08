@@ -219,6 +219,31 @@ def update_profile(user):
         return ok(public_user(current_user_row(db, user["userId"])), "Profile saved")
 
 
+@api.route("/profile/password", methods=["PUT"])
+@login_required
+def change_password(user):
+    """修改密码：验证旧密码 → 设置新密码（沿用注册的强度规则）"""
+    data = body()
+    old_password = str(data.get("oldPassword") or "")
+    new_password = str(data.get("newPassword") or "")
+    if not old_password or not new_password:
+        return fail("Old and new password are required")
+    if len(new_password) < 6 or len(new_password) > 128:
+        return fail("New password length must be 6-128 characters")
+    if not any(c.isalpha() for c in new_password) or not any(c.isdigit() for c in new_password):
+        return fail("New password must contain letters and numbers")
+
+    with DB() as db:
+        row = db.get("SELECT * FROM users WHERE id = ?", (user["userId"],))
+        if not row:
+            return fail("User not found", 404)
+        if not check_password(old_password, row["password"]):
+            return fail("Old password is incorrect", 400)
+        db.execute("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                   (hash_password(new_password), user["userId"]))
+        return ok(None, "Password changed")
+
+
 @api.route("/admin/settings")
 @admin_required
 def admin_settings(_user):

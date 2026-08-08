@@ -108,6 +108,14 @@ export default function EventsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {events.map((ev) => (
             <Link key={ev.code} to={`/events/${ev.code}`} className="event-card">
+              {ev.coverImage && (
+                <img
+                  src={ev.coverImage}
+                  alt=""
+                  style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              )}
               <div className="event-card-main">
                 <div className="event-card-title">
                   {ev.title} {statusBadge(ev.status)}
