@@ -230,7 +230,7 @@ select {
 .flow-step-wrap {
   display: flex;
   align-items: flex-start;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
 }
 .flow-step {
@@ -270,7 +270,7 @@ select {
   color: var(--gift-text-secondary);
   line-height: 1.3;
   min-width: 0;
-  overflow-wrap: break-word;
+  white-space: nowrap;
 }
 .flow-step.done .flow-step-label {
   color: var(--gift-text-secondary);
@@ -280,7 +280,7 @@ select {
   font-weight: var(--gift-font-bold);
 }
 .flow-step-line {
-  flex: 1;
+  flex: 0 0 14px;
   min-width: 6px;
   height: 2px;
   margin-top: 15px;
