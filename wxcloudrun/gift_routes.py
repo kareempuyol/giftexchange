@@ -189,6 +189,44 @@ def update_received_gift(user, code):
         return fail(str(exc), 404)
 
 
+@api.route("/events/<code>/received-gift", methods=["DELETE"])
+@login_required
+def delete_received_gift(user, code):
+    """删除晒图（仅收礼人本人，P0）。
+
+    清空晒图字段（照片/评价/评分/隐私）并回退 received_at 为 NULL，
+    礼物墙 posted 计数随之 -1，卡片恢复"未揭晓/未晒图"状态。
+    未晒图/他人晒图/已删除 一律 404（幂等由前端二次确认 + 本路由拒重删保证）。
+    """
+    raw_match_id = request.args.get("matchId") or ""
+    try:
+        match_id = int(raw_match_id)
+    except (TypeError, ValueError):
+        return fail("matchId is required")
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return fail("You are not a participant of this event", 403)
+            cur = db.execute(
+                """
+                UPDATE matches
+                SET gift_photo_url = '', gift_review = '', gift_rating = NULL,
+                    received_at = NULL, gift_privacy = 'photo'
+                WHERE id = ? AND event_id = ? AND receiver_id = ? AND received_at IS NOT NULL
+                """,
+                (match_id, event["id"], me["id"]),
+            )
+            if cur.rowcount == 0:
+                return fail("Match not found", 404)
+            # 晒图已删：残留点赞一并清掉（卡片恢复未揭晓状态，点赞失去意义）
+            db.execute("DELETE FROM gift_likes WHERE match_id = ?", (match_id,))
+            return ok(None, "Gift post deleted")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
 @api.route("/events/<code>/gift-wall")
 @login_required
 def gift_wall(user, code):

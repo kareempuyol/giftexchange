@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, ApiError, EventInfo, GiftPrivacy, Participant, MyMatch, ReceivedGift } from '../api/client'
+import { api, ApiError, EventInfo, EventPreview, GiftPrivacy, Participant, MyMatch, ReceivedGift } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import ImageUpload from '../components/ImageUpload'
@@ -547,6 +547,9 @@ function ReceivedGiftSection({ code }: { code: string }) {
   const [photoUrl, setPhotoUrl] = useState('')
   const [privacy, setPrivacy] = useState<GiftPrivacy>('photo')
   const [saving, setSaving] = useState(false)
+  // 删除晒图：二次确认弹窗
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   // 已晒出状态下：模糊照片点击查看原图
   const [blurView, setBlurView] = useState(false)
 
@@ -580,6 +583,22 @@ function ReceivedGiftSection({ code }: { code: string }) {
     setPrivacy(received.giftPost.privacy || 'photo')
     setBlurView(false)
     setEditing(true)
+  }
+
+  const onDelete = async () => {
+    if (!received) return
+    setDeleting(true)
+    try {
+      await api.delete(`/events/${code}/received-gift?matchId=${received.matchId}`)
+      toast('晒图已删除')
+      setConfirmDelete(false)
+      setEditing(false)
+      load()
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '删除失败', 'error')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const submit = async () => {
@@ -633,9 +652,19 @@ function ReceivedGiftSection({ code }: { code: string }) {
                 <span key={n} className={n <= (received.giftPost.rating || 0) ? 'gw-star on' : 'gw-star'}>★</span>
               ))}
             </span>
-            <button type="button" className="btn btn-ghost btn-sm" style={{ width: 'auto' }} onClick={startEdit}>
-              修改晒图
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ width: 'auto' }} onClick={startEdit}>
+                修改晒图
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ width: 'auto', color: 'var(--gift-error)' }}
+                onClick={() => setConfirmDelete(true)}
+              >
+                删除晒图
+              </button>
+            </div>
           </div>
           {received.giftPost.review && (
             <p className="gw-review" style={{ marginTop: 8 }}>“{received.giftPost.review}”</p>
@@ -744,6 +773,30 @@ function ReceivedGiftSection({ code }: { code: string }) {
             <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={submit} disabled={saving}>
               {saving ? '提交中…' : posted ? '保存修改' : '晒出礼物 🎉'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="modal-overlay" onClick={() => setConfirmDelete(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>删除晒图？</h3>
+            <p style={{ marginTop: 8 }}>
+              删除后你的评分、评价和照片会从礼物墙移除，礼物卡片将恢复未揭晓状态。此操作不可撤销。
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                取消
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1, background: 'var(--gift-error)' }}
+                onClick={onDelete}
+                disabled={deleting}
+              >
+                {deleting ? '删除中…' : '确认删除'}
+              </button>
+            </div>
           </div>
         </div>
       )}
