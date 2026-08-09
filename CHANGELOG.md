@@ -3,7 +3,24 @@
 > 项目无发布版本号，按开发波次记录。提交哈希取 `git log` 短哈希。
 > 格式：日期 · 波次标题（commit）—— 内容。最新在前。
 
-## 2026-08-10 · Hackathon 轮11 — 体验收尾 + 微信生态预留（本轮，未 commit）
+## 2026-08-10 · Hackathon 轮14 — 性能极限 + 打磨（d509a01）
+- 性能：vite manualChunks vendor 拆分（react→vendor-react、router→vendor-router），单次发版重下 gzip 75.9→19.7KB（**-74%**）；上传前图片压缩（utils/imageCompress.ts，长边>1600 降采样 + JPEG/WebP 0.8，≤256KB 跳过，扩展名随内容改写），实测 4.53MB→570KB（**-87.4%**）；API 4 列表端点瘦身为 10 字段 summary（helpers.api_event_summary，note 截断 80 字符）；api_event 移除 createdAt/updatedAt；EventsPage 懒加载 + 登录后预取 chunk
+- 修 P0：ImageBitmap.close() 在 drawImage 前调用导致所有上传误报「上传失败」（先绘制后 close，注释防回归）
+- 打磨：统一 404 页（NotFoundPage，React Router `*`）、9 页面 document.title（usePageTitle，活动名动态，zh/en）；favicon/404/静态资源 200 确认
+- 新增 tests/test_api_slim.py（4 用例：summary 字段集合/note 截断/detail 保留）；pytest 265→**269**
+
+## 2026-08-10 · Hackathon 轮13 — 功能增量 5 项（d4abe8f）
+- 复制活动：已抽签详情页组织者「📋 复制活动」→ title（副本）/budget/note/公开性/上限/互避规则/成员名单写入 draft → 跳创建页（互避按 userId 反查用户名行格式）
+- 礼物墙分享文案：顶部「📋 复制分享文案」（解锁前可用，含短码），gift-wall 响应新增 shortCode 字段
+- 心愿清单：迁移 v12（users.wishlist/wishlist_visible）；资料页输入 + 展示开关；my-match 返回 receiverWishlist **仅收礼人开启时**（隐私门控）
+- 截止提醒横幅：组织者视角过 drawDate 未抽签红色提醒（纯前端 zh/en）
+- 列表 X/N 人：有 maxParticipants 时显示 `{count}/{max} 人`
+- 新增 tests/test_features_r13.py（8 用例）；pytest 258→**265**
+
+## 2026-08-10 · Hackathon 轮12 — 收官总报告（7954f7c）
+- HACKATHON_DELIVERY.md 总报告 + .audit/DELIVERY_CHECK.md 核对记录（pytest 258 复跑 / E2E 48/48 / CI 5 连绿 / 工作区零 diff）
+
+## 2026-08-10 · Hackathon 轮11 — 体验收尾 + 微信生态预留（90576db）
 - 空态引导：首页空态卡片三入口可达（创建活动 / 邀请码加入 / 发现活动），joined 空态补「发现活动」；截图走查 desktop+mobile（ui-shots/r13/）
 - 列表状态保留：详情页返回恢复 tab/搜索/滚动位置（sessionStorage 自管 + `history.scrollRestoration='manual'`，规避浏览器导航滚动重置污染保存值）；Header「我的活动/品牌」显式导航清除状态
 - 表单回车补齐：搜索栏/邀请码弹窗改为真 `<form onSubmit>`；加入表单步骤①「下一步」改 type=submit（原先无 submit 按钮 + textarea 阻断隐式提交，回车无响应），空字段回车报错、已填回车进步骤②、不跳过心愿单
@@ -11,7 +28,7 @@
 - 微信预留：确认 users.openid/unionid/session_key 列（migration v5）写路径；新增公开 `GET /api/site/config`（registration_enabled/site_name）；docs/ARCHITECTURE.md 增「微信生态接入规划」节（接入路径+红线，无假实现）
 - 邀请制开关前端：登录页按配置隐藏注册入口、注册页 403 →「注册暂未开放」（i18n zh+en）；新增 tests/test_site_config.py（3 用例）
 
-## 2026-08-10 · Hackathon 轮10 — i18n 全量迁移 + 登录安全深化（本轮，未 commit）
+## 2026-08-10 · Hackathon 轮10 — i18n 全量迁移 + 登录安全深化（54da190）
 - i18n 全站迁移：9 页 + 6 组件 + App/format/client 全部文案接入 t()，en 字典 499 key 100% 覆盖（生成自 .audit/en_dict_gen.py），未翻译 key 回退原文 = 0
 - en-US 全站走查通过（登录/列表/详情/礼物墙/个人中心/创建页/海报弹窗截图 7+1 张，.audit/i18n2-shots/）；zh 默认逐字不变；document.title 随语言
 - 顺带修复：EventDetailPage 缺失 SafeImage import（渲染崩溃隐患）
@@ -19,7 +36,7 @@
 - 登录审计补全：注销账号登录尝试计入 login_failed（含 IP/用户名/时间）+ 限速
 - 密码策略 P2：密码不能与用户名相同（注册/改密/重置，前后端 + 大小写不敏感），docs/API.md 同步
 
-## 2026-08-10 · Hackathon 轮9 — 产品文档全面化（本轮，未 commit）
+## 2026-08-10 · Hackathon 轮9 — 产品文档全面化（78450ca）
 - 重写 README（定位/8 功能/快速开始/技术栈/架构图/质量/文档导航）
 - 新增 docs/ARCHITECTURE.md、docs/API.md（49 接口 100% 覆盖）、CHANGELOG.md
 - ROADMAP 升级 v5；新增 .audit/DOCS_REPORT.md

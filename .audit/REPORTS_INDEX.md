@@ -1,9 +1,25 @@
 # REPORTS_INDEX.md — 审计报告清单
 
-项目：giftexchange（hackathon 轮1–轮7，omp 执行）
-更新：2026-08-10（轮7 最终回归）
+项目：giftexchange（hackathon 轮1–轮15，omp 执行）
+更新：2026-08-10（轮15 最终全量回归）
 
 全部报告位于 `.audit/`，按轮次排列：
+
+## 轮15 — 最终全量回归 + 报告更新（2026-08-10）
+- `FINAL2_CHECK.md` — 全量回归核对（pytest 269 / CI 5 连绿 / build+重启+health+公网冒烟 / E2E 48/48 复跑 / 工作区状态）
+- 本轮文档更新：`HACKATHON_DELIVERY.md`（轮13/14 入时间线、commit 25、测试 269）、`CHANGELOG.md`（补轮12/13/14 条目）、`REPORTS_INDEX.md`（本文件）
+- 本轮复跑数据：`.audit/e2e-results.json`（主旅程 48 步）、`.audit/e2e-shots/`
+
+## 轮14 — 性能极限 + 打磨（2026-08-10）
+- `PERF3_REPORT.md` — vendor 拆分（发版重下 -74%）、上传图片压缩（-87.4%）、API 瘦身契约、404 页/标题打磨；修上传全挂 P0（ImageBitmap 顺序）
+- 截图：`.audit/r14_shots/`（404-desktop/404-mobile）
+
+## 轮13 — 功能增量 5 项（2026-08-10）
+- `FEATURES_REPORT.md` — 复制活动 / 礼物墙分享文案 / 心愿清单（迁移 v12 + 隐私门控）/ 截止提醒横幅 / 列表 X/N 人；pytest 265（+8）
+- 截图：`.audit/r13_shots/`（01–08.webp）
+
+## 轮12 — 收官总报告（2026-08-10）
+- `HACKATHON_DELIVERY.md`（项目根）+ `DELIVERY_CHECK.md` — 全量核对记录（pytest 258 / E2E 48/48 / CI 5 连绿）
 
 ## 轮7 — 最终回归 + 体验复核（2026-08-10）
 - `FINAL_REPORT.md` — 全量回归 / 主旅程复测 / 视觉终审 / 遗漏扫描汇总（pytest 248 全绿、E2E 48/48、CI 3 连绿）
