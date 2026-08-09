@@ -2,14 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, NotificationItem } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
+import { useToast } from '../components/Toast'
 
 /** 全局顶栏：品牌 + 导航 + 通知铃铛 + 用户菜单 */
 export default function Header() {
   const { user, logout } = useAuth()
+  const { toast } = useToast()
   const navigate = useNavigate()
   const [notifs, setNotifs] = useState<NotificationItem[]>([])
   const [showNotif, setShowNotif] = useState(false)
   const [unread, setUnread] = useState(0)
+  const [notifLoaded, setNotifLoaded] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
   // 拉通知（仅登录后）
@@ -20,7 +23,9 @@ export default function Header() {
         const data = await api.get<{ items: NotificationItem[]; unread: number }>('/notifications')
         setNotifs(data.items || [])
         setUnread(data.unread || 0)
-      } catch { /* 静默 */ }
+      } catch { /* 静默：铃铛无角标，面板内显示加载失败兜底 */ } finally {
+        setNotifLoaded(true)
+      }
     }
     load()
     const timer = setInterval(load, 30000)
@@ -49,7 +54,9 @@ export default function Header() {
       await api.post('/notifications/read', {})
       setNotifs(prev => prev.map(n => ({ ...n, read: true })))
       setUnread(0)
-    } catch { /* 静默 */ }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '操作失败，请重试', 'error')
+    }
   }
 
   const clearRead = async () => {
@@ -58,7 +65,9 @@ export default function Header() {
       const data = await api.get<{ items: NotificationItem[]; unread: number }>('/notifications')
       setNotifs(data.items || [])
       setUnread(data.unread || 0)
-    } catch { /* 静默 */ }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '操作失败，请重试', 'error')
+    }
   }
 
   const onLogout = () => {
@@ -102,7 +111,9 @@ export default function Header() {
                     <button className="notif-mark-all" onClick={clearRead}>清空已读</button>
                   </div>
                 </div>
-                {notifs.length === 0 ? (
+                {!notifLoaded ? (
+                  <div className="notif-empty">加载中…</div>
+                ) : notifs.length === 0 ? (
                   <div className="notif-empty">暂无通知</div>
                 ) : (
                   <div className="notif-list">

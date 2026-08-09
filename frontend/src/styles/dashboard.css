@@ -50,8 +50,15 @@
   margin-top: 2px;
 }
 
+.dash-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .dash-table {
   width: 100%;
+  min-width: 480px;
   border-collapse: collapse;
   font-size: var(--gift-font-sm);
 }

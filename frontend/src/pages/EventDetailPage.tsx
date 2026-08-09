@@ -6,6 +6,7 @@ import Badge from '../components/Badge'
 import ImageUpload from '../components/ImageUpload'
 import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
+import { formatDeadline, formatMoney } from '../utils/format'
 
 // 成员完成度状态徽标（joined < ready < shipped < posted）
 const MEMBER_STATUS_META: Record<MemberStatus, { label: string; tone: 'success' | 'warning' | 'error' | 'info' | 'gold' }> = {
@@ -27,6 +28,7 @@ export default function EventDetailPage() {
   const [myMatch, setMyMatch] = useState<MyMatch | null>(null)
   const [joined, setJoined] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [confirmDraw, setConfirmDraw] = useState(false)
   const [drawing, setDrawing] = useState(false)
@@ -43,6 +45,7 @@ export default function EventDetailPage() {
 
   const load = async () => {
     setLoading(true)
+    setLoadError('')
     try {
       if (!user) {
         // 游客模式：只读预览（邀请落地页）
@@ -60,8 +63,8 @@ export default function EventDetailPage() {
       if (parts) setParticipants(parts.participants)
       setMyMatch(match)
       setJoined(!!match || parts?.participants.some((p) => p.userId === user?.id))
-    } catch {
-      toast('加载活动失败', 'error')
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : '加载活动失败，请稍后重试')
     } finally {
       setLoading(false)
     }
@@ -167,11 +170,30 @@ export default function EventDetailPage() {
     }
   }
 
-  if (loading) return <div className="page-loading">加载中…</div>
+  if (loading) return <div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>
+
+  // 加载失败：给出错误说明 + 重试，不误导为「活动不存在」
+  if (loadError) {
+    return (
+      <div className="page-container" style={{ maxWidth: 760 }}>
+        <div className="page-header">
+          <h1 className="page-title">活动详情</h1>
+          <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
+        </div>
+        <div className="empty-state gift-card">
+          <div className="empty-title">加载失败</div>
+          <p className="empty-sub">{loadError}</p>
+          <button className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }} onClick={load}>
+            重试
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // 游客模式：邀请落地预览（不泄露收件人/发货等敏感信息）
   if (!user) {
-    if (!preview) return <div className="page-loading">加载中…</div>
+    if (!preview) return <div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>
     return (
       <div className="page-container" style={{ maxWidth: 760 }}>
         <div className="page-header">
@@ -198,10 +220,10 @@ export default function EventDetailPage() {
           {preview.note && <p style={{ color: 'var(--gift-text-secondary)', marginBottom: 12 }}>{preview.note}</p>}
 
           <div className="event-meta-grid">
-            {preview.budget ? <div><span className="meta-label">预算</span><span className="meta-value">¥{preview.budget}</span></div> : null}
+            {preview.budget ? <div><span className="meta-label">预算</span><span className="meta-value">{formatMoney(preview.budget)}</span></div> : null}
             <div><span className="meta-label">参与人数</span><span className="meta-value">{preview.participantCount} 人</span></div>
             {preview.signUpDeadline ? (
-              <div><span className="meta-label">报名截止</span><span className="meta-value">{new Date(preview.signUpDeadline).toLocaleDateString('zh-CN')}</span></div>
+              <div><span className="meta-label">报名截止</span><span className="meta-value">{formatDeadline(preview.signUpDeadline)}</span></div>
             ) : null}
           </div>
 
@@ -306,10 +328,10 @@ export default function EventDetailPage() {
         {event.note && <p style={{ color: 'var(--gift-text-secondary)', marginBottom: 12 }}>{event.note}</p>}
 
         <div className="event-meta-grid">
-          <div><span className="meta-label">预算</span><span className="meta-value">¥{event.budget}</span></div>
+          <div><span className="meta-label">预算</span><span className="meta-value">{formatMoney(event.budget)}</span></div>
           <div><span className="meta-label">参与人数</span><span className="meta-value">{event.participantCount}</span></div>
           {event.drawDate && (
-            <div><span className="meta-label">报名截止</span><span className="meta-value">{new Date(event.drawDate).toLocaleDateString('zh-CN')}</span></div>
+            <div><span className="meta-label">报名截止</span><span className="meta-value">{formatDeadline(event.drawDate)}</span></div>
           )}
           {event.maxParticipants && (
             <div><span className="meta-label">人数上限</span><span className="meta-value">{event.maxParticipants}</span></div>
@@ -472,7 +494,7 @@ export default function EventDetailPage() {
             我要送给 <b style={{ color: 'var(--gift-brand)' }}>{myMatch.receiverDisplayName}</b>
           </p>
           <div style={{ marginTop: 12, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
-            <p>💰 预算参考：¥{event.budget}</p>
+            <p>💰 预算参考：{formatMoney(event.budget)}</p>
             {myMatch.preference.likes && <p>❤️ 喜欢：{myMatch.preference.likes}</p>}
             {myMatch.preference.dislikes && <p>🚫 不喜欢：{myMatch.preference.dislikes}</p>}
             {myMatch.preference.size && <p>📏 尺码：{myMatch.preference.size}</p>}
@@ -551,18 +573,34 @@ export default function EventDetailPage() {
           )}
         </div>
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {participants.map((p) => {
-            const status = p.status ?? (p.contactComplete ? 'ready' : 'joined')
-            const meta = MEMBER_STATUS_META[status]
-            return (
-              <div key={p.id} className="participant-row">
-                <span style={{ fontWeight: 500 }}>{p.displayName || p.username}</span>
-                <span style={{ display: 'flex', gap: 6 }}>
-                  <Badge tone={meta.tone}>{meta.label}</Badge>
-                </span>
-              </div>
-            )
-          })}
+          {participants.length === 0 ? (
+            <div className="empty-state" style={{ padding: 'var(--gift-space-xl) var(--gift-space-lg)' }}>
+              <div className="empty-title" style={{ fontSize: 'var(--gift-font-md)' }}>还没有人加入</div>
+              <p className="empty-sub">
+                {isOwner
+                  ? '分享邀请码或复制邀请链接，把朋友拉进来一起玩'
+                  : '等组织者邀请更多朋友后，就可以开始抽签啦'}
+              </p>
+              {isOwner && (
+                <button className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 12 }} onClick={copyInviteLink}>
+                  📋 复制邀请链接
+                </button>
+              )}
+            </div>
+          ) : (
+            participants.map((p) => {
+              const status = p.status ?? (p.contactComplete ? 'ready' : 'joined')
+              const meta = MEMBER_STATUS_META[status]
+              return (
+                <div key={p.id} className="participant-row">
+                  <span style={{ fontWeight: 500 }}>{p.displayName || p.username}</span>
+                  <span style={{ display: 'flex', gap: 6 }}>
+                    <Badge tone={meta.tone}>{meta.label}</Badge>
+                  </span>
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
 
@@ -896,7 +934,7 @@ function ReceivedGiftSection({ code }: { code: string }) {
                   key={n}
                   type="button"
                   className={`gw-star${n <= rating ? ' on' : ''}`}
-                  style={{ background: 'none', border: 'none', fontSize: 28, padding: '0 4px', cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', fontSize: 28, padding: '0 4px', cursor: 'pointer', minWidth: 40, minHeight: 40 }}
                   onClick={() => setRating(n)}
                   aria-label={`${n} 星`}
                 >

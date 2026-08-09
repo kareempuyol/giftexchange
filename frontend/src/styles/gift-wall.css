@@ -293,6 +293,7 @@
   font-size: var(--gift-font-sm);
   font-weight: var(--gift-font-medium);
   cursor: pointer;
+  min-height: 40px; /* 点击目标 ≥40px */
   transition: all var(--gift-motion-fast) var(--gift-ease);
 }
 

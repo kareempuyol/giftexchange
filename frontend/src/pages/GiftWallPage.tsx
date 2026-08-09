@@ -148,7 +148,9 @@ export default function GiftWallPage() {
       {!unlocked ? (
         <div className="gw-progress-card">
           <div className="gw-progress-text">
-            {posted}/{total} 已送出并晒图，还差 {remaining} 人解锁 🔒
+            {total === 0
+              ? '还没有人加入活动，礼物墙稍后揭晓 🎁'
+              : `${posted}/${total} 已送出并晒图，还差 ${remaining} 人解锁 🔒`}
           </div>
           <div className="gw-progress-bar">
             <div className="gw-progress-fill" style={{ width: `${pct}%` }} />
@@ -158,9 +160,17 @@ export default function GiftWallPage() {
           ) : (
             <p className="gw-lock-note">所有参与者送出礼物并晒图后，礼物墙自动解锁，敬请期待 ✨</p>
           )}
+          <Link to={`/events/${code}`} className="btn btn-primary" style={{ width: 'auto', marginTop: 16, padding: '0 28px' }}>
+            去晒出你的礼物
+          </Link>
         </div>
       ) : items.length === 0 ? (
-        <div className="gw-empty">礼物墙已解锁，但还没有晒出的礼物 🎁</div>
+        <div className="gw-empty">
+          <p>礼物墙已解锁，但还没有晒出的礼物 🎁</p>
+          <Link to={`/events/${code}`} className="btn btn-primary" style={{ width: 'auto', marginTop: 16, padding: '0 28px' }}>
+            返回活动晒出第一份礼物
+          </Link>
+        </div>
       ) : (
         <>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 20 }}>

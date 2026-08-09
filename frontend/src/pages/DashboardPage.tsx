@@ -49,30 +49,51 @@ export default function DashboardPage() {
   const [unpostedGifts, setUnpostedGifts] = useState(0)
   const [reminders, setReminders] = useState<DashboardReminder[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+
+  const load = async () => {
+    setLoading(true)
+    setLoadError('')
+    try {
+      const [ev, data] = await Promise.all([
+        api.get<EventInfo>(`/events/${code}`),
+        api.get<DashboardData>(`/events/${code}/dashboard`),
+      ])
+      setEvent(ev)
+      setRows(data.participants)
+      setPendingShipments(data.pendingShipments ?? 0)
+      setUnpostedGifts(data.unpostedGifts ?? 0)
+      setReminders(data.reminders ?? [])
+    } catch (err) {
+      // 可能是非组织者，也可能是网络/服务异常：统一给错误说明 + 重试
+      setLoadError(err instanceof Error ? err.message : '加载失败，请稍后重试')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [ev, data] = await Promise.all([
-          api.get<EventInfo>(`/events/${code}`),
-          api.get<DashboardData>(`/events/${code}/dashboard`),
-        ])
-        setEvent(ev)
-        setRows(data.participants)
-        setPendingShipments(data.pendingShipments ?? 0)
-        setUnpostedGifts(data.unpostedGifts ?? 0)
-        setReminders(data.reminders ?? [])
-      } catch {
-        // 非组织者无法查看
-      } finally {
-        setLoading(false)
-      }
-    }
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
 
-  if (loading) return <div className="page-loading">加载中…</div>
-  if (!event) return <div className="page-container">无权限或活动不存在</div>
+  if (loading) return <div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>
+  if (loadError || !event)
+    return (
+      <div className="page-container" style={{ maxWidth: 860 }}>
+        <div className="page-header">
+          <h1 className="page-title">活动管理台</h1>
+          <Link to={`/events/${code}`} className="btn btn-ghost btn-sm">返回活动</Link>
+        </div>
+        <div className="empty-state gift-card">
+          <div className="empty-title">无法查看管理台</div>
+          <p className="empty-sub">{loadError || '无权限或活动不存在'}</p>
+          <button className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }} onClick={load}>
+            重试
+          </button>
+        </div>
+      </div>
+    )
 
   const shipped = rows.filter((r) => r.shipmentStatus !== 'pending').length
   const received = rows.filter((r) => r.received).length
@@ -107,6 +128,16 @@ export default function DashboardPage() {
 
       <div className="gift-card">
         <h2 className="section-title" style={{ marginBottom: 12 }}>进度明细</h2>
+        {rows.length === 0 ? (
+          <div className="empty-state" style={{ padding: 'var(--gift-space-xl)' }}>
+            <div className="empty-title" style={{ fontSize: 'var(--gift-font-md)' }}>还没有参与者</div>
+            <p className="empty-sub">邀请朋友加入后，这里会显示每个人的进度</p>
+            <Link to={`/events/${code}`} className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }}>
+              去复制邀请链接
+            </Link>
+          </div>
+        ) : (
+        <div className="dash-table-wrap">
         <table className="dash-table">
           <thead>
             <tr>
@@ -145,6 +176,8 @@ export default function DashboardPage() {
             ))}
           </tbody>
         </table>
+        </div>
+        )}
       </div>
     </div>
   )

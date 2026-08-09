@@ -56,9 +56,49 @@ select {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: var(--gift-space-md);
   min-height: 60vh;
   color: var(--gift-text-secondary);
   font-size: var(--gift-font-md);
+}
+
+/* 纯 CSS spinner（无库）：所有页共用 */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid var(--gift-brand-light);
+  border-top-color: var(--gift-brand);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 错误边界兜底页（渲染崩溃时不白屏） ===== */
+.error-boundary {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gift-space-sm);
+  text-align: center;
+  padding: var(--gift-space-xxl) var(--gift-space-lg);
+}
+.error-boundary-icon {
+  font-size: 48px;
+}
+.error-boundary-title {
+  font-size: var(--gift-font-lg);
+  font-weight: var(--gift-font-bold);
+  color: var(--gift-text-primary);
+}
+.error-boundary-desc {
+  font-size: var(--gift-font-sm);
+  color: var(--gift-text-secondary);
+  margin-bottom: var(--gift-space-md);
 }
 
 /* ===== 卡片 ===== */

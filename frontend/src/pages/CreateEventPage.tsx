@@ -95,6 +95,39 @@ export default function CreateEventPage() {
       return
     }
 
+    // 预算：负数或非数字直接拦截（type=number 的 min 不阻止手输）
+    const budgetNum = budget === '' ? 0 : Number(budget)
+    if (budget !== '' && (!Number.isFinite(budgetNum) || budgetNum < 0)) {
+      setError('预算不能为负数或无效数字')
+      return
+    }
+
+    // 报名截止：不能早于当前时间
+    if (drawDate) {
+      const d = new Date(drawDate)
+      if (Number.isNaN(d.getTime())) {
+        setError('报名截止日期格式无效')
+        return
+      }
+      if (d.getTime() <= Date.now()) {
+        setError('报名截止日期不能早于现在')
+        return
+      }
+    }
+
+    // 人数上限：填写时至少 2 人
+    if (maxParticipants !== '') {
+      const maxNum = Number(maxParticipants)
+      if (!Number.isFinite(maxNum) || maxNum < 2) {
+        setError('人数上限至少为 2 人')
+        return
+      }
+      if (maxNum > 999) {
+        setError('人数上限不能超过 999')
+        return
+      }
+    }
+
     // 互避规则：解析 → 数量预警 → 用户名解析为 userId（成员名单来自「再开一局」草稿）
     const parsed = parseRules()
     if (parsed.error) {

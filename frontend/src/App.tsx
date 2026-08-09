@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ToastProvider } from './components/Toast'
+import ErrorBoundary from './components/ErrorBoundary'
 import Header from './components/Header'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -37,19 +38,23 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/events" element={<RequireAuth><Layout><EventsPage /></Layout></RequireAuth>} />
-          <Route path="/events/new" element={<RequireAuth><Layout><CreateEventPage /></Layout></RequireAuth>} />
-          <Route path="/events/:code" element={<Layout><EventDetailPage /></Layout>} />
-          <Route path="/events/:code/dashboard" element={<RequireAuth><Layout><DashboardPage /></Layout></RequireAuth>} />
-          <Route path="/events/:code/gift-wall" element={<RequireAuth><Layout><GiftWallPage /></Layout></RequireAuth>} />
-          <Route path="/profile" element={<RequireAuth><Layout><ProfilePage /></Layout></RequireAuth>} />
-          <Route path="/" element={<Navigate to="/events" replace />} />
-          <Route path="*" element={<Navigate to="/events" replace />} />
-        </Routes>
+        {/* App 级错误边界：任何页面渲染崩溃都不白屏 */}
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/events" element={<RequireAuth><Layout><EventsPage /></Layout></RequireAuth>} />
+            <Route path="/events/new" element={<RequireAuth><Layout><CreateEventPage /></Layout></RequireAuth>} />
+            {/* 活动详情级错误边界：详情页渲染崩溃不影响全局（如数据异常） */}
+            <Route path="/events/:code" element={<Layout><ErrorBoundary><EventDetailPage /></ErrorBoundary></Layout>} />
+            <Route path="/events/:code/dashboard" element={<RequireAuth><Layout><DashboardPage /></Layout></RequireAuth>} />
+            <Route path="/events/:code/gift-wall" element={<RequireAuth><Layout><GiftWallPage /></Layout></RequireAuth>} />
+            <Route path="/profile" element={<RequireAuth><Layout><ProfilePage /></Layout></RequireAuth>} />
+            <Route path="/" element={<Navigate to="/events" replace />} />
+            <Route path="*" element={<Navigate to="/events" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </ToastProvider>
     </AuthProvider>
   )

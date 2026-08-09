@@ -4,6 +4,7 @@ import { api, EventInfo } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import { useToast } from '../components/Toast'
+import { formatDeadline, formatMoney } from '../utils/format'
 
 function statusBadge(status: string) {
   if (status === 'open') return <Badge tone="success">报名中</Badge>
@@ -17,6 +18,9 @@ export default function EventsPage() {
   const [tab, setTab] = useState<'mine' | 'joined' | 'public' | 'archived'>('mine')
   const [events, setEvents] = useState<EventInfo[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  // 恢复操作在途的活动码（防连点）
+  const [restoring, setRestoring] = useState<Record<string, boolean>>({})
   const [search, setSearch] = useState('')
   // 「用邀请码加入」弹窗
   const [joinOpen, setJoinOpen] = useState(false)
@@ -36,6 +40,7 @@ export default function EventsPage() {
 
   const load = async (t: typeof tab) => {
     setLoading(true)
+    setLoadError('')
     try {
       if (t === 'mine') {
         const data = await api.get<EventInfo[]>('/events/mine')
@@ -52,8 +57,10 @@ export default function EventsPage() {
         )
         setEvents(data.events)
       }
-    } catch {
+    } catch (err) {
+      // 网络/服务异常：不误导成空态，显示错误 + 重试
       setEvents([])
+      setLoadError(err instanceof Error ? err.message : '加载失败，请稍后重试')
     } finally {
       setLoading(false)
     }
@@ -67,12 +74,16 @@ export default function EventsPage() {
   const onSearch = () => load('public')
 
   const onRestore = async (code: string) => {
+    if (restoring[code]) return
+    setRestoring((prev) => ({ ...prev, [code]: true }))
     try {
       await api.post(`/events/${code}/unarchive`)
       toast('活动已恢复')
       load(tab)
-    } catch {
-      toast('恢复失败', 'error')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : '恢复失败', 'error')
+    } finally {
+      setRestoring((prev) => ({ ...prev, [code]: false }))
     }
   }
 
@@ -130,7 +141,19 @@ export default function EventsPage() {
       )}
 
       {loading ? (
-        <div className="page-loading">加载中…</div>
+        <div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>
+      ) : loadError ? (
+        <div className="empty-state gift-card">
+          <div className="empty-title">加载失败</div>
+          <p className="empty-sub">{loadError}</p>
+          <button
+            className="btn btn-secondary btn-sm"
+            style={{ width: 'auto', marginTop: 12 }}
+            onClick={() => load(tab)}
+          >
+            重试
+          </button>
+        </div>
       ) : events.length === 0 ? (
         <div className="empty-state gift-card">
           <div className="empty-title">
@@ -157,7 +180,12 @@ export default function EventsPage() {
             </>
           )}
           {tab === 'public' && (
-            <p className="empty-sub">{search ? '换个关键词试试' : '还没有公开活动，试试搜索或自己创建一个'}</p>
+            <>
+              <p className="empty-sub">{search ? '换个关键词试试' : '还没有公开活动，发起一个让大家一起玩吧'}</p>
+              <Link to="/events/new" className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 12 }}>
+                创建公开活动
+              </Link>
+            </>
           )}
         </div>
       ) : (
@@ -180,16 +208,21 @@ export default function EventsPage() {
                   </div>
                   <div className="event-card-meta">
                     {ev.note && <span className="event-card-note">{ev.note}</span>}
-                    <span>预算 ¥{ev.budget}</span>
+                    <span>{formatMoney(ev.budget)}</span>
                     <span>{ev.participantCount} 人参与</span>
-                    {ev.drawDate && <span>截止 {new Date(ev.drawDate).toLocaleDateString('zh-CN')}</span>}
+                    {ev.drawDate && <span>报名 {formatDeadline(ev.drawDate)}</span>}
                   </div>
                 </div>
                 <div className="event-card-arrow">›</div>
               </Link>
               {tab === 'archived' && (
-                <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0, width: 'auto' }} onClick={() => onRestore(ev.code)}>
-                  恢复
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ flexShrink: 0, width: 'auto' }}
+                  onClick={() => onRestore(ev.code)}
+                  disabled={!!restoring[ev.code]}
+                >
+                  {restoring[ev.code] ? '恢复中…' : '恢复'}
                 </button>
               )}
             </div>
