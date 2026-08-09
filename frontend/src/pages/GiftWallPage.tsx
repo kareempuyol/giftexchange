@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { api, ApiError, GiftWall, GiftWallItem } from '../api/client'
+import { api, ApiError, GiftWall, GiftWallItem, Participant } from '../api/client'
 import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
 
@@ -19,6 +19,41 @@ export default function GiftWallPage() {
   const [viewPhoto, setViewPhoto] = useState<Record<number, boolean>>({})
   // 点赞请求在途的卡片（matchId 集合）：防连点
   const [likingIds, setLikingIds] = useState<Set<number>>(() => new Set())
+  // 「再开一局」弹窗：勾选复制成员名单（默认开）
+  const [replayOpen, setReplayOpen] = useState(false)
+  const [copyMembers, setCopyMembers] = useState(true)
+  const [replayBusy, setReplayBusy] = useState(false)
+
+  // 再开一局：复制 title/budget/note（互避规则暂不复制，未来可做）到草稿，
+  // 勾选时把当前活动成员用户名（含 userId，供创建页互避规则解析）一并带入
+  const startReplay = async () => {
+    setReplayBusy(true)
+    const base = { title: wall.title, note: wall.note, budget: wall.budget }
+    try {
+      if (copyMembers) {
+        try {
+          const data = await api.get<{ participants: Participant[] }>(`/events/${code}/participants`)
+          const members = data.participants.map((p) => ({
+            username: p.username,
+            userId: p.userId,
+            displayName: p.displayName,
+          }))
+          localStorage.setItem('gift_draft', JSON.stringify({ ...base, members }))
+          toast(`已复制 ${members.length} 位成员名单`)
+        } catch {
+          // 未登录/接口失败：降级为仅复制活动配置
+          localStorage.setItem('gift_draft', JSON.stringify(base))
+          toast('成员名单获取失败，已仅复制活动配置', 'error')
+        }
+      } else {
+        localStorage.setItem('gift_draft', JSON.stringify(base))
+      }
+      setReplayOpen(false)
+      navigate('/events/new')
+    } finally {
+      setReplayBusy(false)
+    }
+  }
 
   const reveal = (matchId: number) => {
     setRevealed((prev) => (prev[matchId] ? prev : { ...prev, [matchId]: true }))
@@ -148,10 +183,7 @@ export default function GiftWallPage() {
           <button
             className="btn btn-secondary"
             style={{ width: 'auto', padding: '0 28px' }}
-            onClick={() => {
-              localStorage.setItem('gift_draft', JSON.stringify({ title: wall.title, note: wall.note, budget: wall.budget }))
-              navigate('/events/new')
-            }}
+            onClick={() => setReplayOpen(true)}
           >
             🔁 再开一局
           </button>
@@ -251,6 +283,47 @@ export default function GiftWallPage() {
       )}
 
       <PosterModal data={poster} onClose={() => setPoster(null)} />
+
+      {replayOpen && (
+        <div className="modal-overlay" onClick={() => !replayBusy && setReplayOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>🔁 再开一局</h3>
+            <p style={{ marginTop: 8, color: 'var(--gift-text-secondary)' }}>
+              用当前活动的标题、预算和说明创建新活动
+            </p>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 16, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={copyMembers}
+                onChange={(e) => setCopyMembers(e.target.checked)}
+                style={{ marginTop: 4, flexShrink: 0 }}
+              />
+              <span>
+                复制成员名单
+                <span className="form-hint" style={{ display: 'block' }}>
+                  带入上期成员用户名，方便复制邀请（不会自动加入）
+                </span>
+              </span>
+            </label>
+            <p className="form-hint" style={{ marginTop: 10 }}>
+              互避规则暂不复制，新活动需重新配置
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button
+                className="btn btn-secondary"
+                style={{ flex: 1 }}
+                onClick={() => setReplayOpen(false)}
+                disabled={replayBusy}
+              >
+                取消
+              </button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={startReplay} disabled={replayBusy}>
+                {replayBusy ? '准备中…' : '确认再开一局'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

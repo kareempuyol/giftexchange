@@ -55,3 +55,10 @@
   color: var(--gift-brand);
   font-weight: var(--gift-font-medium);
 }
+
+/* 空状态副文案 */
+.empty-state .empty-sub {
+  font-size: var(--gift-font-sm);
+  color: var(--gift-text-secondary);
+  margin-top: var(--gift-space-xs);
+}

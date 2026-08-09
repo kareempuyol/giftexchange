@@ -17,6 +17,10 @@ export default function CreateEventPage() {
   const [coverImage, setCoverImage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  // 「再开一局」带入的成员名单（含 userId，供互避规则解析）
+  const [draftMembers, setDraftMembers] = useState<{ username: string; userId: number; displayName?: string }[]>([])
+  // 互避规则输入（每行一对用户名）
+  const [rulesText, setRulesText] = useState('')
 
   // 读取「再开一局」草稿（GiftWallPage 写入）或 URL 预填
   useEffect(() => {
@@ -27,12 +31,47 @@ export default function CreateEventPage() {
         if (d.title) setTitle(d.title)
         if (d.note) setNote(d.note)
         if (d.budget) setBudget(String(d.budget))
+        if (Array.isArray(d.members)) {
+          // 兼容纯字符串名单与 {username, userId} 对象名单
+          const members: { username: string; userId: number; displayName?: string }[] = []
+          for (const m of d.members) {
+            if (typeof m === 'string') {
+              if (m) members.push({ username: m, userId: 0 })
+            } else if (m && typeof m === 'object' && 'username' in m && typeof m.username === 'string' && m.username) {
+              members.push({
+                username: m.username,
+                userId: 'userId' in m && typeof m.userId === 'number' ? m.userId : 0,
+                displayName: 'displayName' in m && typeof m.displayName === 'string' ? m.displayName : undefined,
+              })
+            }
+          }
+          setDraftMembers(members)
+        }
         localStorage.removeItem('gift_draft')
       }
     } catch {
       /* 忽略损坏草稿 */
     }
   }, [])
+
+  // 解析互避规则文本：每行「用户名1, 用户名2」，返回配对列表或格式错误
+  const parseRules = (): { pairs: string[][]; error: string } => {
+    const pairs: string[][] = []
+    const lines = rulesText.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+      const names = line
+        .split(/[,，、]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (names.length !== 2) {
+        return { pairs: [], error: `第 ${i + 1} 行格式应为「用户名1, 用户名2」` }
+      }
+      pairs.push(names)
+    }
+    return { pairs, error: '' }
+  }
 
   // 季节模板
   const templates = [
@@ -55,6 +94,50 @@ export default function CreateEventPage() {
       setError('请填写活动名称')
       return
     }
+
+    // 互避规则：解析 → 数量预警 → 用户名解析为 userId（成员名单来自「再开一局」草稿）
+    const parsed = parseRules()
+    if (parsed.error) {
+      setError(parsed.error)
+      return
+    }
+    const rulePairs = parsed.pairs
+    let excludedPairs: number[][] = []
+    if (rulePairs.length > 0) {
+      // 预期成员数：优先带入名单，其次人数上限；已知时提前预警（后端抽签 400 兜底）
+      const expected =
+        draftMembers.length > 0 ? draftMembers.length : maxParticipants ? Number(maxParticipants) : 0
+      if (expected > 0 && rulePairs.length >= Math.ceil(expected / 2)) {
+        setError(`互避规则过多可能导致无法抽签（计划 ${expected} 人、已配置 ${rulePairs.length} 组），请减少规则数量`)
+        return
+      }
+      if (draftMembers.length === 0) {
+        setError('互避规则需与成员用户名对应。请使用「再开一局」带入成员名单后配置，或创建活动邀请成员后再配置')
+        return
+      }
+      // 用户名 → userId（username 优先，displayName 兜底）
+      const uidByName = new Map<string, number>()
+      for (const m of draftMembers) {
+        if (m.userId > 0 && !uidByName.has(m.username)) uidByName.set(m.username, m.userId)
+        if (m.displayName && m.userId > 0 && !uidByName.has(m.displayName)) uidByName.set(m.displayName, m.userId)
+      }
+      const unknown = new Set<string>()
+      for (const [a, b] of rulePairs) {
+        const ua = uidByName.get(a)
+        const ub = uidByName.get(b)
+        if (!ua || !ub) {
+          if (!ua) unknown.add(a)
+          if (!ub) unknown.add(b)
+          continue
+        }
+        if (ua !== ub) excludedPairs.push([ua, ub])
+      }
+      if (unknown.size > 0) {
+        setError(`无法识别的成员用户名：${[...unknown].join('、')}，请与名单保持一致`)
+        return
+      }
+    }
+
     setSubmitting(true)
     setError('')
     try {
@@ -67,6 +150,7 @@ export default function CreateEventPage() {
         isPublic,
         matchVisibility,
         ...(coverImage ? { coverImage } : {}),
+        ...(excludedPairs.length > 0 ? { excludedPairs } : {}),
       })
       toast('活动创建成功！')
       navigate(`/events/${ev.code}`)
@@ -162,6 +246,34 @@ export default function CreateEventPage() {
           />
         </div>
 
+        {draftMembers.length > 0 && (
+          <div className="form-group">
+            <label className="form-label">成员名单（每行一个用户名）</label>
+            <textarea
+              className="form-textarea"
+              readOnly
+              value={draftMembers.map((m) => m.username).join('\n')}
+              style={{ background: 'var(--gift-bg-muted)' }}
+            />
+            <div className="form-hint">来自上期活动，不会自动加入新活动，方便你复制邀请名单</div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ width: 'auto', marginTop: 8 }}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(draftMembers.map((m) => m.username).join('\n'))
+                  toast('成员名单已复制')
+                } catch {
+                  toast('复制失败，请手动选择复制', 'error')
+                }
+              }}
+            >
+              📋 复制名单
+            </button>
+          </div>
+        )}
+
         <div className="form-group">
           <label className="form-label">谁可以看到这个活动</label>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -205,6 +317,21 @@ export default function CreateEventPage() {
             </button>
           </div>
           <div className="form-hint">仅个人可见时，每个人只能看到自己送谁</div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">互避规则（选填）</label>
+          <div style={{ fontSize: 'var(--gift-font-xs)', color: 'var(--gift-text-secondary)', marginBottom: 8 }}>
+            互避 = 这两人不会互送礼物（如情侣/夫妻）
+          </div>
+          <textarea
+            className="form-textarea"
+            placeholder={'每行一对，用逗号分隔用户名\n例如：小明, 小红'}
+            value={rulesText}
+            onChange={(e) => setRulesText(e.target.value)}
+            maxLength={500}
+          />
+          <div className="form-hint">规则按用户名填写；从「再开一局」带入成员名单时提交即生效，抽签时自动避开这些配对</div>
         </div>
 
         <div className="form-group">
