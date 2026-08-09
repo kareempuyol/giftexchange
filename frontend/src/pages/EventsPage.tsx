@@ -11,7 +11,7 @@ function statusBadge(status: string) {
 }
 
 export default function EventsPage() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
   const [tab, setTab] = useState<'mine' | 'joined' | 'public' | 'archived'>('mine')
@@ -82,7 +82,6 @@ export default function EventsPage() {
         <h1 className="page-title">互送礼物</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Link to="/events/new" className="btn btn-primary btn-sm">+ 创建活动</Link>
-          <button className="btn btn-ghost btn-sm" onClick={logout}>退出</button>
         </div>
       </div>
 

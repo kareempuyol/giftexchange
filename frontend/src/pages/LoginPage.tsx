@@ -87,7 +87,12 @@ export default function LoginPage() {
 
         <div className="auth-footer">
           <span>还没有账号？</span>
-          <Link to="/register">立即注册</Link>
+          <Link to={(() => {
+            const from = new URLSearchParams(window.location.search).get('from')
+            return from ? `/register?from=${encodeURIComponent(from)}` : '/register'
+          })()}>
+            立即注册
+          </Link>
         </div>
       </div>
     </div>

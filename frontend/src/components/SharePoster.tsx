@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import QRCode from 'qrcode'
 
 export interface PosterData {
   kind: 'invite' | 'highlight'
@@ -119,22 +120,34 @@ export default function SharePoster({ data }: { data: PosterData }) {
         ctx.font = 'bold 40px "PingFang SC", sans-serif'
         ctx.fillText(`邀请码 ${data.shortCode || ''}`, W / 2, 540)
 
-        // 二维码占位（未来换真二维码/小程序码）
+        // 真实二维码：指向邀请落地页（游客可访问 /events/<shortCode>）
         const qx = W / 2 - 70, qy = 590, qs = 140
-        ctx.fillStyle = '#2C211E'
-        ctx.fillRect(qx, qy, qs, qs)
-        ctx.fillStyle = '#FFFFFF'
-        for (let i = 0; i < 5; i++) {
-          for (let j = 0; j < 5; j++) {
-            if ((i + j) % 2 === 0) {
-              ctx.fillRect(qx + 10 + i * 24, qy + 10 + j * 24, 20, 20)
+        try {
+          const inviteUrl =
+            typeof window !== 'undefined'
+              ? `${window.location.origin}/events/${data.shortCode || ''}`
+              : `https://gift.local/events/${data.shortCode || ''}`
+          const qr = QRCode.create(inviteUrl, { errorCorrectionLevel: 'M' })
+          const n = qr.modules.size
+          const cell = qs / n
+          ctx.fillStyle = '#FFFFFF'
+          ctx.fillRect(qx, qy, qs, qs)
+          ctx.fillStyle = '#2C211E'
+          for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+              if (qr.modules.data[r * n + c]) {
+                ctx.fillRect(qx + c * cell, qy + r * cell, Math.ceil(cell) + 0.5, Math.ceil(cell) + 0.5)
+              }
             }
           }
+        } catch {
+          // 二维码生成失败兜底：画灰色占位框（不阻断海报）
+          ctx.fillStyle = '#DDD'
+          ctx.fillRect(qx, qy, qs, qs)
+          ctx.fillStyle = '#7A6B5D'
+          ctx.font = '20px "PingFang SC", sans-serif'
+          ctx.fillText('二维码生成失败', W / 2, qy + qs / 2 + 7)
         }
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(qx + 55, qy + 55, 30, 30)
-        ctx.fillStyle = '#2C211E'
-        ctx.fillRect(qx + 60, qy + 60, 20, 20)
 
         ctx.fillStyle = '#7A6B5D'
         ctx.font = '22px "PingFang SC", sans-serif'

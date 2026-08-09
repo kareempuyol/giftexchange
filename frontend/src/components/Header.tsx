@@ -128,7 +128,14 @@ export default function Header() {
           {/* 用户菜单 */}
           <div className="app-user">
             <Link to="/profile" className="app-username" title="个人资料" style={{ cursor: 'pointer' }}>
-              {user.displayName || user.username} ⚙️
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" className="app-avatar" />
+              ) : (
+                <span className="app-avatar app-avatar-fallback">
+                  {(user.displayName || user.username || '?').slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span className="app-username-text">{user.displayName || user.username}</span>
             </Link>
             <button className="btn btn-ghost btn-sm" onClick={onLogout}>退出</button>
           </div>

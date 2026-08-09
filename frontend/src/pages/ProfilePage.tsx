@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import { useToast } from '../components/Toast'
@@ -34,12 +34,15 @@ const PREF_ITEMS: { key: keyof NotificationPrefs; label: string; desc: string }[
 
 export default function ProfilePage() {
   const { toast } = useToast()
-  const { logout } = useAuth()
+  const { logout, updateUser } = useAuth()
   const navigate = useNavigate()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   // 常用信息表单
   const [displayName, setDisplayName] = useState('')
@@ -74,6 +77,7 @@ export default function ProfilePage() {
         setAddress(p.address)
         setReceiverName(p.receiverName)
         setGiftPreference(p.giftPreference)
+        setAvatarUrl(p.avatarUrl || '')
       })
       .catch((e) => toast(e instanceof ApiError ? e.message : '加载失败', 'error'))
       .finally(() => setLoading(false))
@@ -107,13 +111,50 @@ export default function ProfilePage() {
         address,
         receiverName,
         giftPreference,
+        avatarUrl: avatarUrl,
       })
       setProfile(updated)
+      // 同步 Header（昵称/头像即时生效）
+      updateUser({ displayName: updated.displayName, avatarUrl: updated.avatarUrl })
       toast('个人资料已保存 ✅')
     } catch (e) {
       toast(e instanceof ApiError ? e.message : '保存失败', 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // 头像上传（先传后引用：/api/upload → 相对 URL → 存 profile）
+  const uploadAvatar = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast('请选择图片文件', 'error')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast('图片不能超过 5MB', 'error')
+      return
+    }
+    setAvatarUploading(true)
+    try {
+      const res = await api.upload<{ url: string }>('/upload', file)
+      const url = res.url
+      setAvatarUrl(url)
+      // 立即保存到头像字段
+      const updated = await api.put<Profile>('/profile', {
+        displayName,
+        phone,
+        address,
+        receiverName,
+        giftPreference,
+        avatarUrl: url,
+      })
+      setProfile(updated)
+      updateUser({ displayName: updated.displayName, avatarUrl: updated.avatarUrl })
+      toast('头像已更新 ✨')
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : '头像上传失败', 'error')
+    } finally {
+      setAvatarUploading(false)
     }
   }
 
@@ -181,20 +222,43 @@ export default function ProfilePage() {
         <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
       </div>
 
-      {/* 基本信息（只读） */}
+      {/* 基本信息（只读 + 头像可上传） */}
       <div className="gift-card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: '50%', background: 'var(--gift-brand-light)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0,
-          }}>
-            {profile?.avatarUrl ? (
-              <img src={profile.avatarUrl} alt="头像" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover' }} />
-            ) : '👤'}
-          </div>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={avatarUploading}
+            title="点击更换头像"
+            style={{
+              width: 56, height: 56, borderRadius: '50%', background: 'var(--gift-brand-light)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+              flexShrink: 0, cursor: 'pointer', border: '2px dashed var(--gift-brand)', padding: 0,
+              overflow: 'hidden',
+            }}
+          >
+            {(avatarUrl || profile?.avatarUrl) ? (
+              <img src={avatarUrl || profile?.avatarUrl} alt="头像" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : avatarUploading ? (
+              <span style={{ fontSize: 13, color: 'var(--gift-brand)' }}>上传中…</span>
+            ) : (
+              <span style={{ fontSize: 22 }}>👤</span>
+            )}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) uploadAvatar(f)
+              e.target.value = ''
+            }}
+          />
           <div>
             <div style={{ fontWeight: 'bold', fontSize: 18 }}>{profile?.displayName}</div>
             <div style={{ color: 'var(--gift-text-secondary)', fontSize: 14 }}>@{profile?.username} · {profile?.email}</div>
+            <div style={{ fontSize: 12, color: 'var(--gift-brand)', marginTop: 4 }}>点击头像更换 ✏️</div>
           </div>
         </div>
         <div style={{ fontSize: 13, color: 'var(--gift-text-secondary)' }}>
@@ -214,7 +278,7 @@ export default function ProfilePage() {
         </div>
         <div className="form-group">
           <label className="form-label">手机号</label>
-          <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} placeholder="收礼人电话" />
+          <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} placeholder="手机号" />
         </div>
         <div className="form-group">
           <label className="form-label">常用收件人</label>

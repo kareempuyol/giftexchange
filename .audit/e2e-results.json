@@ -1,0 +1,268 @@
+{
+  "runAt": "2026-08-09T15:57:08.607Z",
+  "eventCode": "3a922509-fa30-4996-8208-3c0a2673b4a4",
+  "eventShortCode": "AW9BCN",
+  "users": {
+    "alice": {
+      "username": "e2e_alice_mslziob9",
+      "email": "e2e_alice_mslziob9@test.com",
+      "pwd": "Alice123"
+    },
+    "bob": {
+      "username": "e2e_bob_mslziob9",
+      "email": "e2e_bob_mslziob9@test.com",
+      "pwd": "Bob12345"
+    },
+    "carol": {
+      "username": "e2e_carol_mslziob9",
+      "email": "e2e_carol_mslziob9@test.com",
+      "pwd": "Carol123"
+    }
+  },
+  "totalSteps": 48,
+  "passed": 48,
+  "failed": 0,
+  "defects": [],
+  "results": [
+    {
+      "step": "1",
+      "name": "注册后自动登录进入活动列表",
+      "pass": true
+    },
+    {
+      "step": "1",
+      "name": "列表页显示用户名",
+      "pass": true
+    },
+    {
+      "step": "2",
+      "name": "创建后跳转活动详情页",
+      "pass": true
+    },
+    {
+      "step": "2",
+      "name": "邀请短码可见",
+      "pass": true
+    },
+    {
+      "step": "2",
+      "name": "详情页显示活动标题",
+      "pass": true
+    },
+    {
+      "step": "2",
+      "name": "组织者加入活动（创建者需主动加入）",
+      "pass": true
+    },
+    {
+      "step": "3",
+      "name": "复制邀请链接反馈",
+      "pass": true
+    },
+    {
+      "step": "4",
+      "name": "游客落地页展示",
+      "pass": true
+    },
+    {
+      "step": "4",
+      "name": "游客落地页标题正确",
+      "pass": true
+    },
+    {
+      "step": "4",
+      "name": "落地页跳登录且带 from 回跳",
+      "pass": true
+    },
+    {
+      "step": "4",
+      "name": "注册后回跳活动页",
+      "pass": true
+    },
+    {
+      "step": "4",
+      "name": "B 加入成功（你已加入）",
+      "pass": true
+    },
+    {
+      "step": "5",
+      "name": "C 加入成功",
+      "pass": true
+    },
+    {
+      "step": "5",
+      "name": "组织者看到 3 名参与者",
+      "pass": true
+    },
+    {
+      "step": "6",
+      "name": "抽签完成提示",
+      "pass": true
+    },
+    {
+      "step": "6",
+      "name": "状态变为已抽签",
+      "pass": true
+    },
+    {
+      "step": "7",
+      "name": "A 看到我的送礼任务",
+      "pass": true
+    },
+    {
+      "step": "7",
+      "name": "A 有明确送礼对象",
+      "pass": true
+    },
+    {
+      "step": "7",
+      "name": "B 看到我的送礼任务",
+      "pass": true
+    },
+    {
+      "step": "7",
+      "name": "B 有明确送礼对象",
+      "pass": true
+    },
+    {
+      "step": "7",
+      "name": "C 看到我的送礼任务",
+      "pass": true
+    },
+    {
+      "step": "7",
+      "name": "C 有明确送礼对象",
+      "pass": true
+    },
+    {
+      "step": "8",
+      "name": "发货保存成功",
+      "pass": true
+    },
+    {
+      "step": "9",
+      "name": "Alice 晒图成功（仅文字模式）",
+      "pass": true
+    },
+    {
+      "step": "9",
+      "name": "B 晒图成功（仅文字模式）",
+      "pass": true
+    },
+    {
+      "step": "9",
+      "name": "C 晒图成功（公开照片）",
+      "pass": true
+    },
+    {
+      "step": "10",
+      "name": "礼物墙已解锁（3/3 晒图）",
+      "pass": true
+    },
+    {
+      "step": "10",
+      "name": "点击揭晓礼物卡片",
+      "pass": true
+    },
+    {
+      "step": "10",
+      "name": "高光海报弹窗",
+      "pass": true
+    },
+    {
+      "step": "11",
+      "name": "资料保存成功",
+      "pass": true
+    },
+    {
+      "step": "11",
+      "name": "Header 立即显示新昵称",
+      "pass": true
+    },
+    {
+      "step": "11",
+      "name": "头像上传保存成功",
+      "pass": true
+    },
+    {
+      "step": "11",
+      "name": "Header 头像立即更新为图片",
+      "pass": true
+    },
+    {
+      "step": "11",
+      "name": "地址/收件人/偏好保存成功",
+      "pass": true
+    },
+    {
+      "step": "12",
+      "name": "修改密码成功",
+      "pass": true
+    },
+    {
+      "step": "12",
+      "name": "退出回到登录页",
+      "pass": true
+    },
+    {
+      "step": "12",
+      "name": "旧密码登录被拒绝",
+      "pass": true
+    },
+    {
+      "step": "12",
+      "name": "新密码登录成功",
+      "pass": true
+    },
+    {
+      "step": "13",
+      "name": "铃铛有未读角标",
+      "pass": true
+    },
+    {
+      "step": "13",
+      "name": "通知面板有通知条目",
+      "pass": true
+    },
+    {
+      "step": "13",
+      "name": "全部已读后角标消失",
+      "pass": true
+    },
+    {
+      "step": "13",
+      "name": "清空已读后暂无通知",
+      "pass": true
+    },
+    {
+      "step": "14",
+      "name": "归档后回到活动列表",
+      "pass": true
+    },
+    {
+      "step": "14",
+      "name": "归档后从「我创建的」消失",
+      "pass": true
+    },
+    {
+      "step": "14",
+      "name": "归档 tab 中可见活动",
+      "pass": true
+    },
+    {
+      "step": "14",
+      "name": "归档 tab 标记已归档",
+      "pass": true
+    },
+    {
+      "step": "14",
+      "name": "恢复活动成功",
+      "pass": true
+    },
+    {
+      "step": "14",
+      "name": "恢复后回到「我创建的」",
+      "pass": true
+    }
+  ]
+}

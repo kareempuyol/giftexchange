@@ -7,6 +7,8 @@ interface AuthState {
   login: (username: string, password: string) => Promise<void>
   register: (username: string, email: string, password: string) => Promise<void>
   logout: () => void
+  /** 局部更新当前用户（如个人中心改昵称/头像后同步 Header） */
+  updateUser: (patch: Partial<User>) => void
 }
 
 const AuthContext = createContext<AuthState>({
@@ -15,6 +17,7 @@ const AuthContext = createContext<AuthState>({
   login: async () => {},
   register: async () => {},
   logout: () => {},
+  updateUser: () => {},
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,8 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const updateUser = (patch: Partial<User>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev))
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

@@ -196,18 +196,46 @@
 }
 
 .app-username {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--gift-font-md);
   color: var(--gift-text-primary);
-  max-width: 120px;
+  max-width: 160px;
+}
+
+.app-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--gift-border);
+}
+
+.app-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gift-brand);
+  color: var(--gift-text-on-primary);
+  font-weight: var(--gift-font-bold);
+  font-size: 15px;
+}
+
+.app-username-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 移动端：隐藏用户名，保留核心 */
+/* 移动端：显示头像入口（不隐藏），用户名文字隐藏 */
 @media (max-width: 640px) {
-  .app-username {
+  .app-username-text {
     display: none;
+  }
+  .app-username {
+    max-width: 40px;
   }
   .app-header-inner {
     gap: var(--gift-space-sm);

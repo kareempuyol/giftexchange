@@ -330,10 +330,6 @@ export default function EventDetailPage() {
           </button>
         )}
 
-        {joined && event.status === 'open' && !isOwner && (
-          <p style={{ marginTop: 12, color: 'var(--gift-success)' }}>✅ 你已加入，等待组织者抽签</p>
-        )}
-
         {isOwner && event.status === 'open' && (
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
             <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>活动管理台</Link>
@@ -1184,10 +1180,10 @@ function ShipmentSection({
         </button>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input
               className="form-input"
-              style={{ flex: 1 }}
+              style={{ flex: '1 1 160px' }}
               placeholder="快递公司（选填）"
               value={carrier}
               onChange={(e) => setCarrier(e.target.value)}
@@ -1195,7 +1191,7 @@ function ShipmentSection({
             />
             <input
               className="form-input"
-              style={{ flex: 2 }}
+              style={{ flex: '2 1 160px' }}
               placeholder="快递单号 *"
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value)}
