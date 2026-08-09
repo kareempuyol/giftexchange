@@ -1,21 +1,21 @@
 {
-  "runAt": "2026-08-09T15:57:08.607Z",
-  "eventCode": "3a922509-fa30-4996-8208-3c0a2673b4a4",
-  "eventShortCode": "AW9BCN",
+  "runAt": "2026-08-09T19:02:35.619Z",
+  "eventCode": "914dcf67-ae6b-4a8a-9814-ea6f2daa070f",
+  "eventShortCode": "5LP2BQ",
   "users": {
     "alice": {
-      "username": "e2e_alice_mslziob9",
-      "email": "e2e_alice_mslziob9@test.com",
+      "username": "e2e_alice_msm64kxg",
+      "email": "e2e_alice_msm64kxg@test.com",
       "pwd": "Alice123"
     },
     "bob": {
-      "username": "e2e_bob_mslziob9",
-      "email": "e2e_bob_mslziob9@test.com",
+      "username": "e2e_bob_msm64kxg",
+      "email": "e2e_bob_msm64kxg@test.com",
       "pwd": "Bob12345"
     },
     "carol": {
-      "username": "e2e_carol_mslziob9",
-      "email": "e2e_carol_mslziob9@test.com",
+      "username": "e2e_carol_msm64kxg",
+      "email": "e2e_carol_msm64kxg@test.com",
       "pwd": "Carol123"
     }
   },

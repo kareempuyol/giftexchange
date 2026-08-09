@@ -505,5 +505,57 @@ class TestDashboardCounts:
         assert by_user[uid1]["postedGift"] is False
 
 
+class TestNotePermissionBoundary:
+    """PUT /events/<code>/note 权限边界：非参与者 403、他人 match 拒绝、缺 matchId 400。
+
+    成功路径（幂等、字段保留）已在 TestConsistency.test_shipment_note_two_write_retry
+    覆盖，此处补齐未登录/越权/参数缺失边界。
+    """
+
+    def test_note_requires_auth_and_match_id(self, client):
+        h1, uid1 = register_and_login(client, "note_alice")
+        h2, _ = register_and_login(client, "note_bob")
+        h3, _ = register_and_login(client, "note_carol")
+        code = create_event(client, h1, "note 权限测试活动")
+        join_event(client, h1, code)
+        join_event(client, h2, code)
+        join_event(client, h3, code)
+        draw(client, h1, code)
+
+        m2 = matches_for_user(client, h1, code, uid1)  # h1 收礼的 match（送礼人可能是 h2/h3）
+        # 未登录
+        assert client.put(f"/api/events/{code}/note", json={"matchId": m2["id"], "note": "x"}).status_code == 401
+        # 缺 matchId
+        r = client.put(f"/api/events/{code}/note", json={"note": "x"}, headers=h1)
+        assert r.status_code == 400 and r.get_json()["message"] == "matchId is required"
+        # 非参与者（他人 match 也拒绝，且 403 优先于 match 归属检查）
+        outsider, _ = register_and_login(client, "note_outsider")
+        r = client.put(f"/api/events/{code}/note", json={"matchId": m2["id"], "note": "x"}, headers=outsider)
+        assert r.status_code == 403 and "不是该活动的参与者" in r.get_json()["message"]
+
+    def test_note_rejects_others_giver_match(self, client):
+        h1, uid1 = register_and_login(client, "note_d_alice")
+        h2, _ = register_and_login(client, "note_d_bob")
+        h3, _ = register_and_login(client, "note_d_carol")
+        code = create_event(client, h1, "note 归属测试活动")
+        join_event(client, h1, code)
+        join_event(client, h2, code)
+        join_event(client, h3, code)
+        draw(client, h1, code)
+
+        # h1 作为收礼人的 match（giver 是 h2）——h1 无权改这张卡片的悄悄话
+        m_received = matches_for_user(client, h1, code, uid1)
+        r = client.put(f"/api/events/{code}/note", json={"matchId": m_received["id"], "note": "篡改"}, headers=h1)
+        assert r.status_code == 400 and "未找到对应的送礼任务" in r.get_json()["message"]
+
+        # 合法路径：h1 自己的送礼任务可写
+        m_own = my_match(client, h1, code)
+        r = client.put(f"/api/events/{code}/note", json={"matchId": m_own["matchId"], "note": "合法悄悄话"}, headers=h1)
+        assert r.status_code == 200, r.get_json()
+        with DB() as db:
+            row = db.get("SELECT note FROM matches WHERE id = ?", (m_own["matchId"],))
+        assert row["note"] == "合法悄悄话"
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
