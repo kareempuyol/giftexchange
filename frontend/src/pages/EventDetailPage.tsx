@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError, EventInfo, EventPreview, GiftPrivacy, MemberStatus, Participant, MyMatch, ReceivedGift } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
@@ -19,6 +19,7 @@ export default function EventDetailPage() {
   const { code = '' } = useParams()
   const { user } = useAuth()
   const { toast } = useToast()
+  const navigate = useNavigate()
 
   const [event, setEvent] = useState<EventInfo | null>(null)
   const [preview, setPreview] = useState<EventPreview | null>(null)
@@ -33,6 +34,10 @@ export default function EventDetailPage() {
   const [redrawing, setRedrawing] = useState(false)
   const [reminding, setReminding] = useState(false)
   const [poster, setPoster] = useState<PosterData | null>(null)
+  const [confirmArchive, setConfirmArchive] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [confirmResetCode, setConfirmResetCode] = useState(false)
+  const [resetting, setResetting] = useState(false)
 
   const isOwner = user?.id === event?.ownerId
 
@@ -129,6 +134,36 @@ export default function EventDetailPage() {
       toast(`邀请码 ${sc} 已复制！`)
     } catch {
       toast(`邀请码：${sc}`, 'info')
+    }
+  }
+
+  // 归档活动：仅组织者、drawn 态；归档后从「我创建的」列表隐藏，进「已归档」（可恢复）
+  const onArchive = async () => {
+    setArchiving(true)
+    try {
+      await api.post(`/events/${code}/archive`)
+      toast('活动已归档')
+      setConfirmArchive(false)
+      navigate('/events')
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '归档失败', 'error')
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  // 重置邀请短码：旧码立即失效，刷新后显示新码
+  const onResetShortCode = async () => {
+    setResetting(true)
+    try {
+      await api.post(`/events/${code}/reset-short-code`)
+      toast('邀请码已重置，旧邀请码已失效')
+      setConfirmResetCode(false)
+      load()
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '重置失败', 'error')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -251,6 +286,15 @@ export default function EventDetailPage() {
             >
               🖼️ 邀请海报
             </button>
+            {isOwner && (
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ width: 'auto', flexShrink: 0 }}
+                onClick={() => setConfirmResetCode(true)}
+              >
+                🔄 重置邀请码
+              </button>
+            )}
           </div>
         )}
 
@@ -292,14 +336,23 @@ export default function EventDetailPage() {
         )}
 
         {isOwner && event.status === 'drawn' && (
-          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-            <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>活动管理台</Link>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>活动管理台</Link>
+              <button
+                className="btn btn-secondary"
+                style={{ flex: 1, color: 'var(--gift-warning)', borderColor: 'var(--gift-warning)' }}
+                onClick={() => setConfirmRedraw(true)}
+              >
+                重新抽签
+              </button>
+            </div>
             <button
               className="btn btn-secondary"
-              style={{ flex: 1, color: 'var(--gift-warning)', borderColor: 'var(--gift-warning)' }}
-              onClick={() => setConfirmRedraw(true)}
+              style={{ marginTop: 8, width: '100%', color: 'var(--gift-error)', borderColor: 'var(--gift-error)' }}
+              onClick={() => setConfirmArchive(true)}
             >
-              重新抽签
+              归档活动
             </button>
           </div>
         )}
@@ -354,6 +407,49 @@ export default function EventDetailPage() {
                 disabled={redrawing}
               >
                 {redrawing ? '重抽中…' : '确认重新抽签'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmArchive && (
+        <div className="modal-overlay" onClick={() => setConfirmArchive(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>归档活动？</h3>
+            <p style={{ marginTop: 8 }}>
+              归档后活动将从「我创建的」列表隐藏，进入「已归档」。详情页、礼物墙、管理台数据不受影响，可随时恢复。
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmArchive(false)} disabled={archiving}>
+                取消
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1, background: 'var(--gift-error)' }}
+                onClick={onArchive}
+                disabled={archiving}
+              >
+                {archiving ? '归档中…' : '确认归档'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmResetCode && (
+        <div className="modal-overlay" onClick={() => setConfirmResetCode(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>重置邀请码？</h3>
+            <p style={{ marginTop: 8 }}>
+              旧邀请码将立即失效，已转发的旧邀请链接将无法再进入活动，此操作不可撤销。
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmResetCode(false)} disabled={resetting}>
+                取消
+              </button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={onResetShortCode} disabled={resetting}>
+                {resetting ? '重置中…' : '确认重置'}
               </button>
             </div>
           </div>

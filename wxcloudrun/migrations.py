@@ -138,6 +138,13 @@ MIGRATIONS = [
             _add_column("users", "deactivated", mysql="TINYINT DEFAULT 0", sqlite="INTEGER DEFAULT 0"),
         ],
     },
+    {
+        "version": 10,
+        "name": "events.archived 活动归档标记（P0 归档，本任务独占）",
+        "up": [
+            _add_column("events", "archived", mysql="TINYINT DEFAULT 0", sqlite="INTEGER DEFAULT 0"),
+        ],
+    },
 ]
 
 

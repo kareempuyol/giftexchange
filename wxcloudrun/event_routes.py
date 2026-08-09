@@ -17,6 +17,7 @@ from wxcloudrun.helpers import (
     fetch_event,
     generate_short_code,
     image_ref_valid,
+    log_event,
     login_required,
     notify,
     ok,
@@ -75,6 +76,9 @@ def create_event(user):
             (code, title, note, budget, user["userId"], draw_date, match_visibility,
              1 if is_public else 0, max_participants, cover_image, short_code, excluded_pairs),
         )
+        # 可观测性埋点：event_created（INSERT 成功后打；generate_short_code 已无副作用，
+        # reset-short-code 不会误报活动创建）
+        log_event("event_created")
         return ok(api_event(fetch_event(db, code)), "Event created", 201)
 
 
@@ -86,7 +90,24 @@ def my_events(user):
             """
             SELECT e.*, u.username AS owner_username
             FROM events e JOIN users u ON u.id = e.creator_id
-            WHERE e.creator_id = ?
+            WHERE e.creator_id = ? AND e.archived = 0
+            ORDER BY e.created_at DESC
+            """,
+            (user["userId"],),
+        )
+        return ok([api_event(row) for row in rows])
+
+
+@api.route("/events/archived")
+@login_required
+def archived_events(user):
+    """组织者视角的已归档活动列表（归档只影响列表可见性，详情仍可访问）。"""
+    with DB() as db:
+        rows = db.all(
+            """
+            SELECT e.*, u.username AS owner_username
+            FROM events e JOIN users u ON u.id = e.creator_id
+            WHERE e.creator_id = ? AND e.archived = 1
             ORDER BY e.created_at DESC
             """,
             (user["userId"],),
@@ -104,7 +125,7 @@ def joined_events(user):
             FROM participants p
             JOIN events e ON e.id = p.event_id
             JOIN users u ON u.id = e.creator_id
-            WHERE p.user_id = ?
+            WHERE p.user_id = ? AND e.archived = 0
             ORDER BY e.created_at DESC
             """,
             (user["userId"],),
@@ -133,7 +154,7 @@ def public_events(_user):
         filter_type = "all"
 
     with DB() as db:
-        conditions = ["e.status = 'open'", "e.is_public = 1"]
+        conditions = ["e.status = 'open'", "e.is_public = 1", "e.archived = 0"]
         params = []
 
         if search:
@@ -302,6 +323,54 @@ def delete_event(user, code):
             return fail("Event not found or no permission", 403)
         db.execute("DELETE FROM events WHERE id = ?", (event["id"],))
         return ok(None, "Event deleted")
+
+
+@api.route("/events/<code>/archive", methods=["POST"])
+@login_required
+def archive_event(user, code):
+    """归档活动：仅组织者；已抽签（drawn）才能归档，open 直接删除。归档只影响列表可见性。"""
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if event["creator_id"] != user["userId"]:
+                return fail("Only the event creator can archive", 403)
+            if event["status"] != "drawn":
+                return fail("未抽签活动请直接删除", 400)
+            db.execute("UPDATE events SET archived = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (event["id"],))
+            return ok(api_event(fetch_event(db, code)), "Event archived")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/unarchive", methods=["POST"])
+@login_required
+def unarchive_event(user, code):
+    """恢复归档活动：仅组织者，置回 archived=0（回到默认列表）。"""
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if event["creator_id"] != user["userId"]:
+                return fail("Only the event creator can unarchive", 403)
+            db.execute("UPDATE events SET archived = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (event["id"],))
+            return ok(api_event(fetch_event(db, code)), "Event unarchived")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/reset-short-code", methods=["POST"])
+@login_required
+def reset_short_code(user, code):
+    """重置邀请短码：仅组织者；生成新 6 位短码覆盖旧码，旧链接立即失效（短码查不到活动）。"""
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if event["creator_id"] != user["userId"]:
+                return fail("Only the event creator can reset the short code", 403)
+            new_code = generate_short_code(db)
+            db.execute("UPDATE events SET short_code = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (new_code, event["id"]))
+            return ok({"code": event["code"], "shortCode": new_code}, "Short code reset")
+    except ValueError as exc:
+        return fail(str(exc), 404)
 
 
 @api.route("/events/<code>/join", methods=["POST"])

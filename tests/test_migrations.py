@@ -75,20 +75,21 @@ def _legacy_schema(db):
 
 class TestRunMigrationsV2:
     def test_fresh_db_applies_all_migrations(self, monkeypatch):
-        """全新库（init_schema 建表后）：9 个迁移全部应用并记录。"""
+        """全新库（init_schema 建表后）：10 个迁移全部应用并记录。"""
         monkeypatch.setenv("DB_PATH", _new_db_path("gift_mig_fresh_"))
         init_schema()  # 建表 + run_migrations（内部跑版本化链）
         with DB() as db:
             # 清空记录，直接验证 run_migrations_v2 的“本次应用数”语义
             db.execute("DELETE FROM schema_migrations")
-            assert run_migrations_v2(db) == 9
+            assert run_migrations_v2(db) == 10
             rows = db.all("SELECT version, name FROM schema_migrations ORDER BY version")
-            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             assert all(r["name"] for r in rows)
             # 版本化链涉及的列/表齐备
             for table, column in [
                 ("events", "short_code"),
                 ("events", "excluded_pairs"),
+                ("events", "archived"),
                 ("participants", "preference_likes"),
                 ("participants", "preference_dislikes"),
                 ("participants", "preference_notes"),
@@ -111,14 +112,14 @@ class TestRunMigrationsV2:
         with DB() as db:
             assert run_migrations_v2(db) == 0
             rows = db.all("SELECT version FROM schema_migrations ORDER BY version")
-            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
     def test_legacy_db_with_existing_columns_skips_duplicates(self, monkeypatch):
         """旧库模拟：表已建、short_code 已存在 → 跳过不报 duplicate column，缺失列照常补齐。"""
         monkeypatch.setenv("DB_PATH", _new_db_path("gift_mig_legacy_"))
         with DB() as db:
             _legacy_schema(db)
-            assert run_migrations_v2(db) == 9  # 全部记录，且不抛异常
+            assert run_migrations_v2(db) == 10  # 全部记录，且不抛异常
             events_cols = _columns(db, "events")
             # 未重复加列：short_code 在 pragma_table_info 里只出现一次
             dup = db.get("SELECT COUNT(*) AS count FROM pragma_table_info('events') WHERE name = 'short_code'")
@@ -139,7 +140,7 @@ class TestRunMigrationsEntry:
             run_migrations(db)  # 版本化链 + 遗留 ALTER + 数据兜底，不抛异常
         with DB() as db:
             rows = db.all("SELECT version FROM schema_migrations ORDER BY version")
-            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             # 遗留兜底列也齐备（preference_size 等未入册列仍由 run_migrations 兜底）
             assert {"preference_size", "preference_color", "wish_links"} <= _columns(db, "participants")
 

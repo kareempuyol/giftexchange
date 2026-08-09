@@ -121,6 +121,7 @@ export interface EventInfo {
   isPublic: boolean
   maxParticipants?: number | null
   excludedPairs: number[][]
+  archived: boolean
   createdAt: string
   updatedAt: string
 }

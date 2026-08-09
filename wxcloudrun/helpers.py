@@ -93,6 +93,7 @@ def api_event(row):
         "isPublic": bool(row.get("is_public")) if row.get("is_public") is not None else True,
         "maxParticipants": row.get("max_participants"),
         "excludedPairs": excluded_pairs_list(row.get("excluded_pairs")),
+        "archived": bool(row.get("archived")),
         "createdAt": str(row.get("created_at") or ""),
         "updatedAt": str(row.get("updated_at") or ""),
     }
@@ -152,9 +153,11 @@ SHORT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def generate_short_code(db, length=6):
-    # 可观测性埋点：event_created（当前唯一调用点 = event_routes.create_event，
-    # 在 INSERT 之前触发；DB 层异常属罕见误报。精确落点待路由模块接入后迁移）
-    log_event("event_created")
+    """生成唯一 6 位短码（create_event 与 reset-short-code 共用，无副作用）。
+
+    event_created 埋点由调用方（event_routes.create_event）在 INSERT 成功后打，
+    避免 reset-short-code 误报活动创建。
+    """
     for _ in range(20):
         candidate = "".join(secrets.SystemRandom().choice(SHORT_CODE_ALPHABET) for _ in range(length))
         exists = db.get("SELECT id FROM events WHERE short_code = ?", (candidate,))
@@ -175,6 +178,9 @@ def fetch_event(db, code):
         (code,),
     )
     if not row and code and len(code) <= 16:
+        # 短码查找：先按 IP 查限速（防陌生人刷无效短码），超限直接 429
+        if short_code_rate_limited(request.remote_addr or ""):
+            raise ShortCodeRateLimited("Too many invalid short code attempts")
         row = db.get(
             """
             SELECT e.*, u.username AS owner_username
@@ -183,9 +189,54 @@ def fetch_event(db, code):
             """,
             (code,),
         )
+        if not row:
+            record_short_code_failure(request.remote_addr or "")
     if not row:
         raise ValueError("Event not found")
     return row
+
+
+# ===== 短码查找限速（防邀请链接滥用：陌生人刷无效短码）=====
+# 内存滑动窗口：同一 IP 1 小时内短码查找失败（查不到活动）达 10 次 → 429。
+# 单实例内存 dict 足够；多实例部署时替换为 Redis
+# （key: shortcode_fail:<ip>，TTL 1h，INCR + EXPIRE，读写需原子）。过期条目命中时惰性清理。
+_SHORT_CODE_WINDOW_SECONDS = 60 * 60
+_SHORT_CODE_MAX_FAILURES = 10
+_short_code_failures = {}  # ip -> list[timestamp]
+_short_code_failures_lock = threading.Lock()
+
+
+class ShortCodeRateLimited(Exception):
+    """短码查找超限（429）：由 api blueprint 的 errorhandler 统一转 429，不逐路由捕获。"""
+
+
+def _short_code_failures_for(ip):
+    """返回窗口内的失败时间戳列表（惰性清理过期条目）。线程安全。"""
+    with _short_code_failures_lock:
+        now = time.time()
+        timestamps = [t for t in _short_code_failures.get(ip, []) if (now - t) <= _SHORT_CODE_WINDOW_SECONDS]
+        _short_code_failures[ip] = timestamps
+        return timestamps
+
+
+def short_code_rate_limited(ip):
+    """该 IP 短码查找失败是否已达上限（达上限返回 True，调用方应 429）。"""
+    return len(_short_code_failures_for(ip)) >= _SHORT_CODE_MAX_FAILURES
+
+
+def record_short_code_failure(ip):
+    """记录一次短码查找失败（查不到活动）。线程安全。"""
+    with _short_code_failures_lock:
+        now = time.time()
+        timestamps = [t for t in _short_code_failures.get(ip, []) if (now - t) <= _SHORT_CODE_WINDOW_SECONDS]
+        timestamps.append(now)
+        _short_code_failures[ip] = timestamps
+
+
+@api.errorhandler(ShortCodeRateLimited)
+def _short_code_rate_limited_handler(exc):
+    """短码查找超限 → 429（保持 ok/fail {code, data, message} 结构）。"""
+    return fail(str(exc), 429)
 
 
 def create_notification(db, user_id, event_id, match_id, type_name, title, message):
