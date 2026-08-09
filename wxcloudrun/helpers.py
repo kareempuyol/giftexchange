@@ -188,7 +188,7 @@ def fetch_event(db, code):
         if not row:
             record_short_code_failure(request.remote_addr or "")
     if not row:
-        raise ValueError("Event not found")
+        raise ValueError("活动不存在或已失效")
     return row
 
 

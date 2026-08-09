@@ -121,6 +121,8 @@ def update_received_gift(user, code):
         return fail("请给出评分")
     if rating_value < 1 or rating_value > 5:
         return fail("评分需在 1-5 之间")
+    if not review:
+        return fail("请填写评价内容")
     if len(review) > 500:
         return fail("评价内容过长")
     if privacy not in {"photo", "text", "blur"}:

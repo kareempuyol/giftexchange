@@ -421,7 +421,8 @@ def join_event(user, code):
     try:
         with DB() as db:
             event = fetch_event(db, code)
-            if event["status"] != "open":
+            # 报名截止（抽签日已过）或活动已抽签：一律拒绝新加入
+            if event["status"] != "open" or draw_deadline_passed(event):
                 return fail("活动已截止报名")
             max_ppl = event.get("max_participants")
             if max_ppl is not None and int(event.get("participant_count") or 0) >= int(max_ppl):
@@ -466,7 +467,7 @@ def join_event(user, code):
             )
     except ValueError as exc:
         message = str(exc)
-        return fail(message, 404 if message == "Event not found" else 400)
+        return fail(message, 404 if message == "活动不存在或已失效" else 400)
 
 
 @api.route("/events/<code>/leave", methods=["DELETE"])

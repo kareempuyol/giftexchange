@@ -36,6 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
+  // 服务端 401（token 失效/账号注销/会话过期）：置空 user → RequireAuth 自动跳登录（带 from 回跳）
+  useEffect(() => {
+    const onUnauthorized = () => setUser(null)
+    window.addEventListener('gift:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('gift:unauthorized', onUnauthorized)
+  }, [])
+
   const login = async (username: string, password: string) => {
     const data = await api.post<{ token: string; user: User }>('/auth/login', { username, password })
     setToken(data.token)

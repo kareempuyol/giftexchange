@@ -29,6 +29,7 @@ export default function EventDetailPage() {
   const [joined, setJoined] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [loadErrStatus, setLoadErrStatus] = useState(0)
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [confirmDraw, setConfirmDraw] = useState(false)
   const [drawing, setDrawing] = useState(false)
@@ -65,6 +66,7 @@ export default function EventDetailPage() {
       setJoined(!!match || parts?.participants.some((p) => p.userId === user?.id))
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : '加载活动失败，请稍后重试')
+      setLoadErrStatus(err instanceof ApiError ? err.status : 0)
     } finally {
       setLoading(false)
     }
@@ -172,8 +174,9 @@ export default function EventDetailPage() {
 
   if (loading) return <div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>
 
-  // 加载失败：给出错误说明 + 重试，不误导为「活动不存在」
+  // 加载失败：404 给「活动不存在」友好页；其他错误给出说明 + 重试
   if (loadError) {
+    const notFound = loadErrStatus === 404
     return (
       <div className="page-container" style={{ maxWidth: 760 }}>
         <div className="page-header">
@@ -181,11 +184,19 @@ export default function EventDetailPage() {
           <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
         </div>
         <div className="empty-state gift-card">
-          <div className="empty-title">加载失败</div>
-          <p className="empty-sub">{loadError}</p>
-          <button className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }} onClick={load}>
-            重试
-          </button>
+          <div className="empty-title">{notFound ? '活动不存在' : '加载失败'}</div>
+          <p className="empty-sub">
+            {notFound ? '活动不存在或已失效，链接可能有误' : loadError}
+          </p>
+          {notFound ? (
+            <Link to="/events" className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 12 }}>
+              回我的活动
+            </Link>
+          ) : (
+            <button className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }} onClick={load}>
+              重试
+            </button>
+          )}
         </div>
       </div>
     )
@@ -846,6 +857,10 @@ function ReceivedGiftSection({ code }: { code: string }) {
     if (!received) return
     if (rating < 1 || rating > 5) {
       toast('请先给礼物评分 ⭐', 'error')
+      return
+    }
+    if (!review.trim()) {
+      toast('请填写评价内容', 'error')
       return
     }
     if (privacy !== 'text' && !photoUrl.trim()) {

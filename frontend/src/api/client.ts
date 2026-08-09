@@ -88,8 +88,11 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   }
 
   if (body.code !== 0) {
-    // 401 时清理 token（会话过期）
-    if (resp.status === 401) setToken(null)
+    // 401 时清理 token 并广播会话失效（AuthContext 监听后置空 user → RequireAuth 跳登录）
+    if (resp.status === 401) {
+      setToken(null)
+      window.dispatchEvent(new CustomEvent('gift:unauthorized'))
+    }
     throw new ApiError(body.message || '请求失败', body.code, resp.status)
   }
   return body.data
@@ -126,7 +129,10 @@ export const api = {
       throw new ApiError(`服务响应异常 (${resp.status})`, -1, resp.status)
     }
     if (body.code !== 0) {
-      if (resp.status === 401) setToken(null)
+      if (resp.status === 401) {
+        setToken(null)
+        window.dispatchEvent(new CustomEvent('gift:unauthorized'))
+      }
       throw new ApiError(body.message || '上传失败', body.code, resp.status)
     }
     return body.data

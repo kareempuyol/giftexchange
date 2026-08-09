@@ -1,0 +1,172 @@
+{
+  "results": [
+    {
+      "scenario": "S1",
+      "name": "前置：另一处加入成功（构造竞态）",
+      "pass": true
+    },
+    {
+      "scenario": "S1",
+      "name": "前端弹窗内提示「你已加入该活动」不崩溃",
+      "pass": true
+    },
+    {
+      "scenario": "S2",
+      "name": "第 3 人加入 → 400 活动人数已满",
+      "pass": true
+    },
+    {
+      "scenario": "S2",
+      "name": "前端弹窗内提示「活动人数已满」不崩溃",
+      "pass": true
+    },
+    {
+      "scenario": "S3",
+      "name": "已过 drawDate 加入 → 400 活动已截止报名",
+      "pass": true
+    },
+    {
+      "scenario": "S3",
+      "name": "前端弹窗内提示「活动已截止报名」不崩溃",
+      "pass": true
+    },
+    {
+      "scenario": "S4",
+      "name": "抽签成功（3 人）",
+      "pass": true
+    },
+    {
+      "scenario": "S4",
+      "name": "非参与者访问礼物墙 → 提示「无权访问」非白屏",
+      "pass": true
+    },
+    {
+      "scenario": "S5",
+      "name": "open 态 my-match → 200 无数据非报错",
+      "pass": true
+    },
+    {
+      "scenario": "S5",
+      "name": "详情页友好提示「等待组织者抽签」且无报错",
+      "pass": true
+    },
+    {
+      "scenario": "S6",
+      "name": "并发抽签 → 恰一个成功",
+      "pass": true
+    },
+    {
+      "scenario": "S6",
+      "name": "并发抽签 → 恰一个 409",
+      "pass": true
+    },
+    {
+      "scenario": "S7",
+      "name": "rating=0 → 400 评分需在 1-5 之间",
+      "pass": true
+    },
+    {
+      "scenario": "S7",
+      "name": "rating=6 → 400 评分需在 1-5 之间",
+      "pass": true
+    },
+    {
+      "scenario": "S7",
+      "name": "空评价 → 400 请填写评价内容",
+      "pass": true
+    },
+    {
+      "scenario": "S7",
+      "name": "UI 0 星 → toast「请先给礼物评分」",
+      "pass": true
+    },
+    {
+      "scenario": "S8",
+      "name": "空单号 → 400 请填写快递单号",
+      "pass": true
+    },
+    {
+      "scenario": "S8",
+      "name": "超长单号(121) → 400 快递单号过长",
+      "pass": true
+    },
+    {
+      "scenario": "S8",
+      "name": "UI 空单号 → toast「请填写快递单号」",
+      "pass": true
+    },
+    {
+      "scenario": "S9",
+      "name": "/events/new 未登录 → 跳登录带 from=events/new",
+      "pass": true
+    },
+    {
+      "scenario": "S9",
+      "name": "/profile 未登录 → 跳登录带 from=profile",
+      "pass": true
+    },
+    {
+      "scenario": "S9",
+      "name": "登录后回跳 /profile",
+      "pass": true
+    },
+    {
+      "scenario": "S10",
+      "name": "断网操作 → toast「网络连接失败，请检查网络后重试」",
+      "pass": true
+    },
+    {
+      "scenario": "S10",
+      "name": "断网后页面非白屏/非无限 loading",
+      "pass": true
+    },
+    {
+      "scenario": "S11",
+      "name": "无效短码 → 友好 404「活动不存在」",
+      "pass": true
+    },
+    {
+      "scenario": "S11",
+      "name": "无效 uuid → 友好 404「活动不存在」",
+      "pass": true
+    },
+    {
+      "scenario": "S12",
+      "name": "归档成功回列表",
+      "pass": true
+    },
+    {
+      "scenario": "S12",
+      "name": "归档后直接 URL 详情可看（不报错）",
+      "pass": true
+    },
+    {
+      "scenario": "S13",
+      "name": "注销接口成功",
+      "pass": true
+    },
+    {
+      "scenario": "S13",
+      "name": "旧会话访问受限页 → 401 后跳登录带 from=profile",
+      "pass": true
+    },
+    {
+      "scenario": "S13",
+      "name": "401 后本地 token 已清除",
+      "pass": true
+    },
+    {
+      "scenario": "S13",
+      "name": "旧 token 调 API → 401 账号已注销",
+      "pass": true
+    },
+    {
+      "scenario": "S14",
+      "name": "100 条未读 → 角标显示 9+",
+      "pass": true
+    }
+  ],
+  "defects": [],
+  "pass": 33,
+  "total": 33
+}

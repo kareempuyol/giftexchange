@@ -198,7 +198,7 @@ class TestGiftPrivacy:
         draw(client, h1, code)
 
         m = matches_for_user(client, h1, code, uid1)
-        r = put_gift(client, h1, code, m["id"], {"matchId": m["id"], "rating": 5, "privacy": "vip"})
+        r = put_gift(client, h1, code, m["id"], {"matchId": m["id"], "rating": 5, "review": "晒图", "privacy": "vip"})
         assert r.status_code == 400, r.get_json()
         assert "隐私设置无效" in r.get_json()["message"]
 
