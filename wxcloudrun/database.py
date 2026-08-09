@@ -100,19 +100,6 @@ def init_schema():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """,
             """
-            CREATE TABLE IF NOT EXISTS password_reset_tokens (
-              id INT AUTO_INCREMENT PRIMARY KEY,
-              user_id INT NOT NULL,
-              token_hash VARCHAR(128) UNIQUE NOT NULL,
-              expires_at DATETIME NOT NULL,
-              used_at DATETIME NULL,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              INDEX idx_reset_user (user_id),
-              INDEX idx_reset_token (token_hash),
-              CONSTRAINT fk_reset_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """,
-            """
             CREATE TABLE IF NOT EXISTS events (
               id INT AUTO_INCREMENT PRIMARY KEY,
               code VARCHAR(64) UNIQUE NOT NULL,
@@ -232,16 +219,6 @@ def init_schema():
               key_name TEXT PRIMARY KEY,
               value TEXT,
               updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS password_reset_tokens (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-              token_hash TEXT UNIQUE NOT NULL,
-              expires_at TEXT NOT NULL,
-              used_at TEXT,
-              created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
             """,
             """

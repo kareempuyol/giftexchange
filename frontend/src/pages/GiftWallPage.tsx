@@ -17,6 +17,8 @@ export default function GiftWallPage() {
   const [revealed, setRevealed] = useState<Record<number, boolean>>({})
   // 模糊照片：点击查看原图（matchId -> true = 已查看）
   const [viewPhoto, setViewPhoto] = useState<Record<number, boolean>>({})
+  // 点赞请求在途的卡片（matchId 集合）：防连点
+  const [likingIds, setLikingIds] = useState<Set<number>>(() => new Set())
 
   const reveal = (matchId: number) => {
     setRevealed((prev) => (prev[matchId] ? prev : { ...prev, [matchId]: true }))
@@ -41,6 +43,9 @@ export default function GiftWallPage() {
 
   // 点赞/取消点赞：前端乐观更新，再按服务端返回校正
   const toggleLike = async (item: GiftWallItem) => {
+    // 防连点：同一卡片请求在途时忽略后续点击
+    if (likingIds.has(item.matchId)) return
+    setLikingIds((prev) => new Set(prev).add(item.matchId))
     const wasLiked = item.likedByMe
     const prev = wall
     setWall(
@@ -72,6 +77,12 @@ export default function GiftWallPage() {
     } catch (err) {
       toast(err instanceof ApiError ? err.message : '操作失败', 'error')
       load()
+    } finally {
+      setLikingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(item.matchId)
+        return next
+      })
     }
   }
 
@@ -211,6 +222,7 @@ export default function GiftWallPage() {
                     <button
                       className={`gw-like-btn${item.likedByMe ? ' liked' : ''}`}
                       onClick={() => toggleLike(item)}
+                      disabled={likingIds.has(item.matchId)}
                       aria-pressed={item.likedByMe}
                     >
                       <span className="gw-heart">{item.likedByMe ? '❤️' : '🤍'}</span>

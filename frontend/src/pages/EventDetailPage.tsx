@@ -226,6 +226,11 @@ export default function EventDetailPage() {
 
   if (!event) return <div className="page-container">活动不存在</div>
 
+  // 活动级流程状态（Task A）：由后端 detail 接口推导；旧后端缺失时按 status 兜底
+  const flowState =
+    (event as EventInfo & { flowState?: string }).flowState ||
+    (event.status === 'open' ? 'recruiting' : 'active')
+
   return (
     <div className="page-container" style={{ maxWidth: 760 }}>
       <div className="page-header">
@@ -253,9 +258,17 @@ export default function EventDetailPage() {
           {isOwner && <Badge tone="gold">我是组织者</Badge>}
         </div>
 
+        {/* 活动级流程步骤条（区别于下方"我的送礼任务"状态机） */}
+        <FlowSteps
+          state={flowState}
+          isOwner={isOwner}
+          joined={joined}
+          participantCount={event.participantCount}
+        />
+
         {/* 邀请区：短码 + 复制链接 + 复制短码 */}
         {event.shortCode && (
-          <div className="invite-box">
+          <div className="invite-box" style={{ flexWrap: 'wrap' }}>
             <div className="invite-info">
               <span className="invite-label">邀请码</span>
               <button className="invite-code-btn" onClick={copyShortCode} title="点击复制邀请码">
@@ -533,7 +546,7 @@ export default function EventDetailPage() {
           {isOwner && (
             <button
               className="btn btn-primary btn-sm"
-              style={{ flexShrink: 0 }}
+              style={{ width: 'auto', flexShrink: 0 }}
               onClick={onRemind}
               disabled={reminding}
             >
@@ -1032,6 +1045,65 @@ function ShipmentProgress({ state }: { state: string }) {
           )}
         </div>
       ))}
+    </div>
+  )
+}
+
+// ===== 活动流程步骤条（活动级）：📣 招募中 → 🎯 已截止待抽签 → 🎁 送礼进行中 → 🏆 已完结 =====
+const FLOW_STEPS = [
+  { key: 'recruiting', icon: '📣', label: '招募中' },
+  { key: 'drawing', icon: '🎯', label: '已截止待抽签' },
+  { key: 'active', icon: '🎁', label: '送礼进行中' },
+  { key: 'completed', icon: '🏆', label: '已完结' },
+] as const
+
+// 当前用户在该阶段的一句行动指引（组织者/参与者视角区分）
+function flowHint(state: string, opts: { isOwner: boolean; joined: boolean; participantCount: number }): string {
+  switch (state) {
+    case 'recruiting':
+      if (opts.isOwner) return `招募中：分享邀请码让朋友加入（当前 ${opts.participantCount} 人）`
+      return opts.joined ? '你已加入，等待组织者抽签' : '招募中：点击「加入这个活动」参与'
+    case 'drawing':
+      return opts.isOwner ? '报名已截止，点击「开始抽签」' : '报名已截止，等待组织者抽签'
+    case 'active':
+      return opts.joined ? '去完成你的送礼任务，收到礼物记得晒图' : '送礼进行中，看看大家的礼物墙'
+    case 'completed':
+      return '活动已完结，去礼物墙看看大家的分享'
+    default:
+      return ''
+  }
+}
+
+function FlowSteps({
+  state,
+  isOwner,
+  joined,
+  participantCount,
+}: {
+  state: string
+  isOwner: boolean
+  joined: boolean
+  participantCount: number
+}) {
+  // 未知状态兜底：定位到「送礼进行中」，避免步骤条空态
+  const currentIndex = FLOW_STEPS.findIndex((s) => s.key === state)
+  const idx = currentIndex === -1 ? 2 : currentIndex
+  return (
+    <div className="flow-steps" role="list" aria-label="活动流程">
+      {FLOW_STEPS.map((s, i) => (
+        <div className="flow-step-wrap" key={s.key}>
+          <div className={`flow-step${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`}>
+            <div className="flow-step-dot" aria-hidden="true">
+              {i < idx ? '✓' : s.icon}
+            </div>
+            <div className="flow-step-label">{s.label}</div>
+          </div>
+          {i < FLOW_STEPS.length - 1 && (
+            <div className={`flow-step-line${i < idx ? ' done' : ''}`} />
+          )}
+        </div>
+      ))}
+      <div className="flow-hint">{flowHint(state, { isOwner, joined, participantCount })}</div>
     </div>
   )
 }

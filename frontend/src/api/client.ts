@@ -37,7 +37,13 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const resp = await fetch(`/api${path}`, { ...options, headers })
+  let resp: Response
+  try {
+    resp = await fetch(`/api${path}`, { ...options, headers })
+  } catch {
+    // 网络层错误（断网/超时/跨域等 fetch TypeError）→ 统一中文提示
+    throw new ApiError('网络连接失败，请检查网络后重试', -1, 0)
+  }
   let body: ApiResult<T>
   try {
     body = await resp.json()
@@ -70,7 +76,13 @@ export const api = {
     const token = getToken()
     if (token) headers['Authorization'] = `Bearer ${token}`
     // 注意：不设置 Content-Type，让浏览器自动带 multipart boundary
-    const resp = await fetch(`/api${path}`, { method: 'POST', body: form, headers })
+    let resp: Response
+    try {
+      resp = await fetch(`/api${path}`, { method: 'POST', body: form, headers })
+    } catch {
+      // 网络层错误（断网/超时/跨域等 fetch TypeError）→ 统一中文提示
+      throw new ApiError('网络连接失败，请检查网络后重试', -1, 0)
+    }
     let body: ApiResult<T>
     try {
       body = await resp.json()

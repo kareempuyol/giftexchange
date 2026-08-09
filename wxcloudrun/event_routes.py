@@ -196,12 +196,41 @@ def public_events(_user):
         })
 
 
+def derive_flow_state(event_row, posted, total):
+    """活动级流程状态推导（纯函数，event detail 用）：
+    recruiting（open 且未过截止）→ drawing（已过截止未抽签）→ active（drawn 未全晒）→ completed（drawn 且全部 posted）。
+    sign_up_deadline 为空视为未截止；未知状态兜底 active。
+    """
+    if event_row.get("status") == "drawn":
+        return "completed" if total > 0 and posted >= total else "active"
+    if event_row.get("status") == "open":
+        return "drawing" if draw_deadline_passed(event_row) else "recruiting"
+    return "active"
+
+
+def _event_flow_state(db, event):
+    """detail 接口用：统计已晒图数（收礼 match 有评分/评价/照片）+ 参与总数，推导流程状态。"""
+    total = int(event.get("participant_count") or 0)
+    posted = 0
+    if event["status"] == "drawn":
+        row = db.get(
+            "SELECT COUNT(*) AS c FROM matches WHERE event_id = ? "
+            "AND (gift_rating IS NOT NULL OR gift_review IS NOT NULL OR gift_photo_url IS NOT NULL)",
+            (event["id"],),
+        )
+        posted = int(row["c"]) if row else 0
+    return derive_flow_state(event, posted, total)
+
+
 @api.route("/events/<code>", methods=["GET"])
 @login_required
 def event_detail(_user, code):
     try:
         with DB() as db:
-            return ok(api_event(fetch_event(db, code)))
+            event = fetch_event(db, code)
+            payload = api_event(event)
+            payload["flowState"] = _event_flow_state(db, event)
+            return ok(payload)
     except ValueError as exc:
         return fail(str(exc), 404)
 

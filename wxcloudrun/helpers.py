@@ -11,14 +11,11 @@ wxcloudrun/views.py 保留为兼容导入层（import wxcloudrun.views 不报错
 import json
 import os
 import secrets
-import smtplib
 import threading
 import time
 import uuid
 from datetime import datetime, timezone
-from email.message import EmailMessage
 from functools import wraps
-from hashlib import sha256
 from pathlib import Path
 
 from flask import Blueprint, request
@@ -41,7 +38,6 @@ SETTING_DEFINITIONS = {
     "kdniao_ebusiness_id": {"label": "KDNiao business ID", "default": "", "type": "secret"},
     "kdniao_app_key": {"label": "KDNiao app key", "default": "", "type": "secret"},
     "cors_origin": {"label": "CORS origin", "default": "*", "type": "text"},
-    "password_reset_enabled": {"label": "Enable password reset", "default": "false", "type": "boolean"},
     "app_base_url": {"label": "App base URL", "default": "", "type": "text"},
     "smtp_host": {"label": "SMTP host", "default": "", "type": "text"},
     "smtp_port": {"label": "SMTP port", "default": "587", "type": "text"},
@@ -432,47 +428,6 @@ def save_setting(db, key, value):
     cur = db.execute("UPDATE app_settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key_name = ?", (value, key))
     if cur.rowcount == 0:
         db.execute("INSERT INTO app_settings (key_name, value) VALUES (?, ?)", (key, value))
-
-
-def token_hash(token):
-    return sha256(token.encode("utf-8")).hexdigest()
-
-
-def absolute_app_url(db):
-    configured = setting_value(db, "app_base_url").strip().rstrip("/")
-    if configured:
-        return configured
-    return request.host_url.rstrip("/")
-
-
-def send_reset_email(db, email, reset_url):
-    host = setting_value(db, "smtp_host").strip()
-    sender = setting_value(db, "smtp_sender").strip() or setting_value(db, "smtp_username").strip()
-    if not host or not sender:
-        raise RuntimeError("Email service is not configured")
-
-    port = int(setting_value(db, "smtp_port") or 587)
-    username = setting_value(db, "smtp_username").strip()
-    password = setting_value(db, "smtp_password")
-    use_tls = setting_value(db, "smtp_use_tls").lower() == "true"
-    site_name = setting_value(db, "site_name")
-
-    message = EmailMessage()
-    message["Subject"] = f"{site_name} password reset"
-    message["From"] = sender
-    message["To"] = email
-    message.set_content(
-        "Use the link below to reset your password. The link expires in 30 minutes.\n\n"
-        f"{reset_url}\n\n"
-        "If you did not request this, you can ignore this email."
-    )
-
-    with smtplib.SMTP(host, port, timeout=12) as smtp:
-        if use_tls:
-            smtp.starttls()
-        if username or password:
-            smtp.login(username, password)
-        smtp.send_message(message)
 
 
 def parse_datetime(value):

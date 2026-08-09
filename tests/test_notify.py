@@ -39,7 +39,6 @@ def clean_db():
             "participants",
             "notifications",
             "events",
-            "password_reset_tokens",
             "users",
             "app_settings",
         ):
