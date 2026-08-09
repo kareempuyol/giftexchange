@@ -103,3 +103,34 @@
   --gift-z-modal: 1000;
   --gift-z-toast: 1100;
 }
+
+/* ===== 暗色模式（架构预留 + 可用实现）=====
+   只覆盖语义层变量，UI 组件零改动。由 src/utils/theme.ts 按系统偏好/
+   localStorage 在 <html data-theme="dark"> 上生效。色板为暖深色系，
+   保持品牌色（暗底提亮一档保证对比度）。 */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --gift-bg: #161110;
+  --gift-bg-muted: #221B17;
+  --gift-card: #251E1A;
+  --gift-border: #372C26;
+  --gift-border-strong: #4A3B33;
+  --gift-text-primary: #F2ECE6;
+  --gift-text-secondary: #B9A99C;
+  --gift-text-on-primary: #FFFFFF;
+  --gift-text-disabled: #5C5046;
+  --gift-brand: #F57F68;
+  --gift-brand-hover: #FBA492;
+  --gift-brand-active: #E8553D;
+  --gift-brand-light: #3A211A;
+  --gift-success-bg: #17301F;
+  --gift-warning-bg: #33260F;
+  --gift-error-bg: #331A1A;
+  --gift-info-bg: #182A3B;
+
+  --gift-overlay: rgba(0, 0, 0, 0.6);
+  --gift-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --gift-shadow-raised: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --gift-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.6);
+}

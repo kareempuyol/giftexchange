@@ -14,6 +14,9 @@
   transform: translateY(-2px);
   box-shadow: var(--gift-shadow-raised);
 }
+.event-card:active {
+  transform: scale(0.98);
+}
 
 .event-card-main {
   flex: 1;
@@ -61,4 +64,29 @@
   font-size: var(--gift-font-sm);
   color: var(--gift-text-secondary);
   margin-top: var(--gift-space-xs);
+}
+
+/* ===== 下拉刷新（EventsPage，移动端）===== */
+.ptr-indicator {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--gift-space-sm);
+  overflow: hidden;
+  color: var(--gift-text-secondary);
+  font-size: var(--gift-font-sm);
+  transition: height var(--gift-motion-fast) var(--gift-ease);
+}
+.ptr-indicator .ptr-spinner {
+  width: 14px;
+  height: 14px;
+  margin-bottom: 2px;
+  border: 2px solid var(--gift-brand-light);
+  border-top-color: var(--gift-brand);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+.ptr-indicator.ptr-ready {
+  color: var(--gift-brand);
+  font-weight: var(--gift-font-medium);
 }

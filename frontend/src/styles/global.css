@@ -5,6 +5,11 @@
   padding: 0;
 }
 
+html {
+  /* iOS/Android 点按高亮去除：反馈统一走 :active 态 */
+  -webkit-tap-highlight-color: transparent;
+}
+
 html,
 body {
   font-family: var(--gift-font-family);
@@ -41,15 +46,27 @@ input,
 textarea,
 select {
   font-family: inherit;
+  /* 输入框字号 ≥16px：iOS 聚焦时字号 <16px 会自动放大页面 */
   font-size: var(--gift-font-md);
   color: var(--gift-text-primary);
+}
+
+/* 交互元素：消除双击缩放延迟（iOS 300ms / Android），保留 :active 即时反馈 */
+button,
+a,
+input,
+select,
+textarea,
+[role='button'] {
+  touch-action: manipulation;
 }
 
 /* ===== 通用布局 ===== */
 .page-container {
   max-width: 960px;
   margin: 0 auto;
-  padding: var(--gift-space-lg) var(--gift-space-lg) var(--gift-space-xxl);
+  padding: var(--gift-space-lg) var(--gift-space-lg)
+    calc(var(--gift-space-xxl) + env(safe-area-inset-bottom, 0px));
 }
 
 .page-loading {
@@ -128,6 +145,11 @@ select {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+/* 触觉反馈：所有按钮统一 active 缩放/变暗（移动端点按即时响应） */
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+  opacity: 0.9;
 }
 .btn-primary {
   background: var(--gift-brand);
@@ -385,7 +407,7 @@ select {
 .toast-container {
   position: fixed;
   /* 底部弹出：移动端顶部被固定顶栏与页面标题占用，顶部 toast 会遮挡导航/操作按钮 */
-  bottom: var(--gift-space-xl);
+  bottom: calc(var(--gift-space-xl) + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--gift-z-toast);
@@ -408,14 +430,21 @@ select {
   background: var(--gift-error);
 }
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* ===== 响应式 ===== */
 @media (max-width: 640px) {
   .page-container {
-    padding: var(--gift-space-md);
+    padding: var(--gift-space-md) var(--gift-space-md)
+      calc(var(--gift-space-xl) + env(safe-area-inset-bottom, 0px));
   }
   .gift-card {
     padding: var(--gift-space-lg);

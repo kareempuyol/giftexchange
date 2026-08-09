@@ -57,6 +57,28 @@ def vite_assets(filename):
     return send_from_directory("static/assets", filename)
 
 
+@site.route("/manifest.json")
+def pwa_manifest():
+    # PWA manifest：显式 MIME，旧浏览器按 application/json 也能解析
+    return send_from_directory("static", "manifest.json", mimetype="application/manifest+json")
+
+
+@site.route("/sw.js")
+def pwa_service_worker():
+    # SW 必须由同源路径注册且 MIME 为 JS，否则浏览器拒绝安装
+    return send_from_directory("static", "sw.js", mimetype="text/javascript")
+
+
+@site.route("/icons/<path:filename>")
+def pwa_icons(filename):
+    return send_from_directory("static/icons", filename)
+
+
+@site.route("/app-icon-mondrian.svg")
+def pwa_favicon():
+    return send_from_directory("static", "app-icon-mondrian.svg", mimetype="image/svg+xml")
+
+
 @api.route("/upload", methods=["POST"])
 @login_required
 def upload_image(_user):

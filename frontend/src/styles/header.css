@@ -6,6 +6,8 @@
   background: var(--gift-card);
   border-bottom: 1px solid var(--gift-border);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  /* 刘海屏：顶栏背景延伸到安全区外，内容不被刘海遮挡 */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .app-header-inner {

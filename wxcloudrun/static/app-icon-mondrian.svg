@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 互送礼物 App 图标：暖橙渐变底 + 蒙德里安角标 + 白色礼物盒 -->
+  <defs>
+    <linearGradient id="gift-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F57F68"/>
+      <stop offset="1" stop-color="#D44028"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#gift-bg)"/>
+
+  <!-- 蒙德里安装饰角标（左上，与现有 favicon 命名呼应） -->
+  <rect x="72" y="72" width="64" height="64" rx="14" fill="#FFFAF5" opacity="0.92"/>
+  <rect x="152" y="72" width="44" height="44" rx="11" fill="#FFE0D9" opacity="0.9"/>
+  <rect x="72" y="152" width="44" height="44" rx="11" fill="#D4A017" opacity="0.95"/>
+
+  <!-- 礼物盒（主体在中心 80% 安全区内，可作 maskable） -->
+  <rect x="136" y="304" width="240" height="104" rx="24" fill="#FFFFFF"/>
+  <path d="M136 304 L376 304 V352 a24 24 0 0 1 -24 24 h-192 a24 24 0 0 1 -24 -24 Z" fill="#FFFFFF"/>
+
+  <!-- 盒盖：顶角圆角、底边直角 -->
+  <path d="M136 304 L136 272 a24 24 0 0 1 24 -24 h192 a24 24 0 0 1 24 24 v32 h-240 Z" fill="#FFE0D9"/>
+
+  <!-- 丝带 -->
+  <rect x="238" y="248" width="36" height="160" fill="#E8553D"/>
+  <rect x="168" y="270" width="176" height="14" rx="7" fill="#E8553D"/>
+
+  <!-- 蝴蝶结 -->
+  <circle cx="232" cy="234" r="26" fill="#FFF1EE"/>
+  <circle cx="280" cy="234" r="26" fill="#FFF1EE"/>
+  <circle cx="256" cy="244" r="20" fill="#E8553D"/>
+  <path d="M240 252 L228 302 Q226 312 236 310 L256 298 L276 310 Q286 312 284 302 L272 252 Z" fill="#D44028"/>
+</svg>

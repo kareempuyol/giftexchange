@@ -163,7 +163,8 @@
   background: var(--gift-card);
   border-radius: var(--gift-radius-card);
   box-shadow: var(--gift-shadow-modal);
-  padding: var(--gift-space-xl);
+  padding: var(--gift-space-xl) var(--gift-space-xl)
+    calc(var(--gift-space-xl) + env(safe-area-inset-bottom, 0px));
   width: 100%;
   max-width: 400px;
   max-height: 85vh;

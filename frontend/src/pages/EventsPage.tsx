@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, EventInfo } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
@@ -11,6 +11,22 @@ function statusBadge(status: string) {
   if (status === 'open') return <Badge tone="success">报名中</Badge>
   return <Badge tone="gold">已抽签</Badge>
 }
+
+/** 从剪贴板文本识别邀请码：完整分享链接（/events/<code>）或纯 6 位字母数字 */
+function detectInviteCode(text: string): string | null {
+  const t = (text || '').trim()
+  if (!t) return null
+  const urlMatch = t.match(/\/events\/([A-Za-z0-9-]{6,40})/)
+  if (urlMatch) return urlMatch[1]
+  if (/^[A-Za-z0-9]{6}$/.test(t)) return t
+  return null
+}
+
+// 下拉刷新参数
+const PULL_THRESHOLD = 72
+const PULL_MAX = 96
+const PULL_HOLD = 44
+type PullState = 'idle' | 'pulling' | 'ready' | 'refreshing'
 
 export default function EventsPage() {
   const { user } = useAuth()
@@ -27,6 +43,130 @@ export default function EventsPage() {
   const [joinOpen, setJoinOpen] = useState(false)
   const [joinCode, setJoinCode] = useState('')
 
+  // ===== 下拉刷新（移动端）=====
+  // React 合成 touchmove 是 passive 监听，preventDefault 无效，
+  // 必须在容器上挂原生非 passive 监听来接管下拉手势。
+  const containerRef = useRef<HTMLDivElement>(null)
+  const pull = useRef<{ state: PullState; dist: number; startY: number | null; dragging: boolean }>({
+    state: 'idle',
+    dist: 0,
+    startY: null,
+    dragging: false,
+  })
+  const [pullState, setPullState] = useState<PullState>('idle')
+  const [pullDist, setPullDist] = useState(0)
+  const loadRef = useRef<(t: typeof tab) => Promise<void>>(async () => {})
+  const loadingRef = useRef(loading)
+  loadingRef.current = loading
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const onStart = (e: TouchEvent) => {
+      const p = pull.current
+      if (p.state === 'refreshing' || loadingRef.current) return
+      if (window.scrollY > 0) return // 不在页面顶部时不进入下拉
+      p.startY = e.touches[0].clientY
+      p.dragging = true
+    }
+
+    const onMove = (e: TouchEvent) => {
+      const p = pull.current
+      if (!p.dragging || p.startY == null) return
+      const dy = e.touches[0].clientY - p.startY
+      if (dy <= 0 || window.scrollY > 0) {
+        // 上滑/滚动离开顶部：复位并放行
+        if (p.dist !== 0 || p.state !== 'idle') {
+          p.dist = 0
+          p.state = 'idle'
+          setPullDist(0)
+          setPullState('idle')
+        }
+        p.dragging = false
+        return
+      }
+      // 下拉：接管手势（阻止原生滚动/原生下拉刷新），带阻尼
+      e.preventDefault()
+      p.dist = Math.min(dy * 0.45, PULL_MAX)
+      p.state = p.dist >= PULL_THRESHOLD ? 'ready' : 'pulling'
+      setPullDist(p.dist)
+      setPullState(p.state)
+    }
+
+    const onEnd = () => {
+      const p = pull.current
+      if (!p.dragging) return
+      p.dragging = false
+      p.startY = null
+      if (p.state === 'ready') {
+        p.state = 'refreshing'
+        p.dist = PULL_HOLD
+        setPullState('refreshing')
+        setPullDist(PULL_HOLD)
+        loadRef.current().finally(() => {
+          p.dist = 0
+          p.state = 'idle'
+          setPullDist(0)
+          setPullState('idle')
+        })
+      } else {
+        p.dist = 0
+        p.state = 'idle'
+        setPullDist(0)
+        setPullState('idle')
+      }
+    }
+
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    el.addEventListener('touchcancel', onEnd)
+
+    // 关闭浏览器原生下拉刷新，避免与自定义 PTR 双触发（Chrome Android / iOS 16.4+）
+    const prevOverscroll = document.body.style.overscrollBehaviorY
+    document.body.style.overscrollBehaviorY = 'contain'
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+      document.body.style.overscrollBehaviorY = prevOverscroll
+    }
+  }, [])
+
+  // ===== 剪贴板邀请码检测（每会话一次）：复制邀请码后进入列表页自动弹窗 =====
+  useEffect(() => {
+    if (!('clipboard' in navigator) || typeof navigator.clipboard.readText !== 'function') return
+    try {
+      if (sessionStorage.getItem('gift-clip-prompted')) return
+    } catch {
+      return
+    }
+    let cancelled = false
+    navigator.clipboard
+      .readText()
+      .then((text) => {
+        if (cancelled) return
+        const code = detectInviteCode(text)
+        if (!code) return
+        try {
+          sessionStorage.setItem('gift-clip-prompted', '1')
+        } catch {
+          /* ignore */
+        }
+        setJoinCode(code)
+        setJoinOpen(true)
+        toast(`检测到剪贴板邀请码 ${code}，已为你填入`)
+      })
+      .catch(() => {
+        /* 无权限/非安全上下文：静默忽略 */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [toast])
+
   const onJoinByCode = () => {
     const raw = joinCode.trim()
     if (!raw) {
@@ -37,6 +177,21 @@ export default function EventsPage() {
     const target = raw.includes('-') ? raw : raw.toUpperCase()
     setJoinOpen(false)
     navigate(`/events/${target}`)
+  }
+
+  // 打开邀请码弹窗时尝试从剪贴板预填
+  const openJoin = async () => {
+    setJoinOpen(true)
+    if (joinCode) return
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+        const text = await navigator.clipboard.readText()
+        const code = detectInviteCode(text)
+        if (code) setJoinCode(code)
+      }
+    } catch {
+      /* 忽略 */
+    }
   }
 
   const load = async (t: typeof tab) => {
@@ -66,6 +221,7 @@ export default function EventsPage() {
       setLoading(false)
     }
   }
+  loadRef.current = load
 
   useEffect(() => {
     load(tab)
@@ -89,7 +245,19 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container" ref={containerRef}>
+      {/* 下拉刷新指示器（高度随下拉距离伸展） */}
+      <div
+        className={`ptr-indicator${pullState === 'ready' ? ' ptr-ready' : ''}${pullState === 'refreshing' ? ' ptr-refreshing' : ''}`}
+        style={{ height: pullDist }}
+        aria-hidden={pullState === 'idle'}
+      >
+        <span className="ptr-spinner" aria-hidden="true" />
+        <span>
+          {pullState === 'ready' ? '松开刷新' : pullState === 'refreshing' ? '刷新中…' : '下拉刷新'}
+        </span>
+      </div>
+
       <div className="page-header">
         <h1 className="page-title">{tab === 'public' ? '发现活动' : tab === 'joined' ? '我参与的' : tab === 'archived' ? '已归档' : '我的活动'}</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -174,7 +342,7 @@ export default function EventsPage() {
               <button
                 className="btn btn-secondary btn-sm"
                 style={{ width: 'auto', marginTop: 12 }}
-                onClick={() => setJoinOpen(true)}
+                onClick={openJoin}
               >
                 用邀请码加入
               </button>
