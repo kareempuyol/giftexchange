@@ -72,10 +72,20 @@ def create_app():
         )
         return response
 
-    # 生产安全：500 错误不泄露堆栈/内部信息
+    # 生产安全：500 错误不泄露堆栈/内部信息，统一友好提示（用户可感知「服务开小差」而非裸堆栈/英文报错）
     @flask_app.errorhandler(500)
-    def internal_error(_e):
-        return jsonify({"code": -1, "data": None, "message": "Internal server error"}), 500
+    def internal_error(exc):
+        # 异常只进日志（stdout 结构化 JSON），绝不进响应体
+        try:
+            log_event(
+                "error_500",
+                path=request.path,
+                method=request.method,
+                error=repr(exc) if exc else "",
+            )
+        except Exception:
+            pass
+        return jsonify({"code": -1, "data": None, "message": "服务开小差了，请重试"}), 500
 
     @flask_app.errorhandler(404)
     def not_found(_e):

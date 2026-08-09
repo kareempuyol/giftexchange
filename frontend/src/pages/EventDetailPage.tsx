@@ -264,11 +264,10 @@ export default function EventDetailPage() {
         {/* 活动封面（登录态也展示） */}
         {event.coverImage && (
           <div style={{ margin: '-16px -16px 12px' }}>
-            <img
+            <SafeImage
               src={event.coverImage}
               alt="活动封面"
               style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
           </div>
         )}
@@ -910,7 +909,7 @@ function ReceivedGiftSection({ code }: { code: string }) {
           )}
           {received.giftPost.photoUrl && (
             <div className="gw-photo-wrap" style={{ marginTop: 8 }}>
-              <img
+              <SafeImage
                 className={`gw-photo${curPrivacy === 'blur' ? ' gw-photo-blur' : ''}${curPrivacy === 'blur' && blurView ? ' viewing' : ''}`}
                 src={received.giftPost.photoUrl}
                 alt={curPrivacy === 'blur' ? '模糊照片，点击查看原图' : '礼物照片'}

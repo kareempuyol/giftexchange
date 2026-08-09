@@ -421,3 +421,17 @@ select {
     padding: var(--gift-space-lg);
   }
 }
+
+/* ===== 图片加载失败占位块（SafeImage 组件，稳定性）=====
+   裂图兜底：颜色全部走 --gift-* token；尺寸由组件失败瞬间测量后内联覆盖 */
+.safe-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  background: var(--gift-bg-muted);
+  color: var(--gift-text-secondary);
+  font-size: var(--gift-font-sm);
+  overflow: hidden;
+  box-sizing: border-box;
+}

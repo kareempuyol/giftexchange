@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { api, ApiError, UploadResult } from '../api/client'
+import SafeImage from './SafeImage'
 
 interface ImageUploadProps {
   /** 当前已上传的图片 URL（相对路径，如 /uploads/xxx.png） */
@@ -54,7 +55,7 @@ export default function ImageUpload({ value, onChange, label = '上传图片', h
         onChange={handleFile}
         className="iu-input"
       />
-      {value && <img className="iu-preview" src={value} alt="图片预览" />}
+      {value && <SafeImage className="iu-preview" src={value} alt="图片预览" />}
       <button
         type="button"
         className="btn btn-secondary btn-sm"

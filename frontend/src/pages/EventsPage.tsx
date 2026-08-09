@@ -194,12 +194,11 @@ export default function EventsPage() {
             <div key={ev.code} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <Link to={`/events/${ev.code}`} className="event-card" style={{ flex: 1, minWidth: 0 }}>
                 {ev.coverImage && (
-                  <img
+                  <SafeImage
                     src={ev.coverImage}
                     alt=""
                     loading="lazy"
                     style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                   />
                 )}
                 <div className="event-card-main">

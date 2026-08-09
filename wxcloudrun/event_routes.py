@@ -35,7 +35,10 @@ def create_event(user):
     title = str(data.get("title") or "").strip()
     note = str(data.get("note") or "").strip()
     draw_date = str(data.get("drawDate") or "")
-    budget = int(data.get("budget") or 0)
+    try:
+        budget = int(data.get("budget") or 0)
+    except (TypeError, ValueError):
+        return fail("预算格式无效")
     match_visibility = str(data.get("matchVisibility") or data.get("match_visibility") or "private").strip()
     is_public = bool(data.get("isPublic")) if data.get("isPublic") is not None else True
     max_participants = data.get("maxParticipants")
@@ -354,6 +357,9 @@ def delete_event(user, code):
         event = db.get("SELECT id FROM events WHERE code = ? AND creator_id = ?", (code, user["userId"]))
         if not event:
             return fail("活动不存在或无权访问", 403)
+        # 级联清理：participants/matches/gift_likes 由 FK ON DELETE CASCADE 兜底（双引擎已建 FK）；
+        # notifications 无 event_id 外键（站内通知按 user 级联），必须显式清理，否则删活动留孤儿通知
+        db.execute("DELETE FROM notifications WHERE event_id = ?", (event["id"],))
         db.execute("DELETE FROM events WHERE id = ?", (event["id"],))
         return ok(None, "Event deleted")
 

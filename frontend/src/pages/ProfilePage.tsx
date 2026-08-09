@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../auth/AuthContext'
+import SafeImage from '../components/SafeImage'
 
 interface Profile {
   id: number
@@ -237,7 +238,7 @@ export default function ProfilePage() {
             }}
           >
             {(avatarUrl || profile?.avatarUrl) ? (
-              <img src={avatarUrl || profile?.avatarUrl} alt="头像" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <SafeImage src={avatarUrl || profile?.avatarUrl} alt="头像" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : avatarUploading ? (
               <span style={{ fontSize: 13, color: 'var(--gift-brand)' }}>上传中…</span>
             ) : (

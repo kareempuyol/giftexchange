@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, NotificationItem } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { useToast } from '../components/Toast'
+import SafeImage from '../components/SafeImage'
 
 /** 全局顶栏：品牌 + 导航 + 通知铃铛 + 用户菜单 */
 export default function Header() {
@@ -140,7 +141,7 @@ export default function Header() {
           <div className="app-user">
             <Link to="/profile" className="app-username" title="个人资料" style={{ cursor: 'pointer' }}>
               {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt="" className="app-avatar" />
+                <SafeImage src={user.avatarUrl} alt="" className="app-avatar" />
               ) : (
                 <span className="app-avatar app-avatar-fallback">
                   {(user.displayName || user.username || '?').slice(0, 1).toUpperCase()}

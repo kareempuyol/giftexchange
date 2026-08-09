@@ -29,6 +29,33 @@ export class ApiError extends Error {
   }
 }
 
+// 请求硬超时 15s：服务端挂起/网络黑洞时前端不无限等待（AbortController 实现）
+const REQUEST_TIMEOUT_MS = 15000
+
+/** fetch + 超时取消：内部 15s 定时器 + 透传外部 signal（外部取消一并 abort）。 */
+async function fetchWithTimeout(path: string, options: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const { signal } = options
+  if (signal) {
+    if (signal.aborted) controller.abort()
+    else signal.addEventListener('abort', () => controller.abort(), { once: true })
+  }
+  try {
+    return await fetch(`/api${path}`, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** 网络层错误统一翻译：超时/外部取消/断网 → 可操作中文提示。 */
+function networkError(err: unknown, options?: RequestInit): ApiError {
+  if (err instanceof DOMException && err.name === 'AbortError') {
+    return new ApiError(options?.signal?.aborted ? '请求已取消' : '请求超时，请稍后重试', -1, 0)
+  }
+  return new ApiError('网络连接失败，请检查网络后重试', -1, 0)
+}
+
 async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -37,12 +64,21 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
 
+  const method = (options.method || 'GET').toUpperCase()
   let resp: Response
   try {
-    resp = await fetch(`/api${path}`, { ...options, headers })
-  } catch {
-    // 网络层错误（断网/超时/跨域等 fetch TypeError）→ 统一中文提示
-    throw new ApiError('网络连接失败，请检查网络后重试', -1, 0)
+    resp = await fetchWithTimeout(path, { ...options, headers })
+  } catch (err) {
+    // 幂等 GET：网络层失败（断网/超时）自动重试一次；写操作不重试（避免重复副作用）
+    if (method === 'GET') {
+      try {
+        resp = await fetchWithTimeout(path, { ...options, headers })
+      } catch (err2) {
+        throw networkError(err2, options)
+      }
+    } else {
+      throw networkError(err, options)
+    }
   }
   let body: ApiResult<T>
   try {
@@ -78,10 +114,10 @@ export const api = {
     // 注意：不设置 Content-Type，让浏览器自动带 multipart boundary
     let resp: Response
     try {
-      resp = await fetch(`/api${path}`, { method: 'POST', body: form, headers })
-    } catch {
-      // 网络层错误（断网/超时/跨域等 fetch TypeError）→ 统一中文提示
-      throw new ApiError('网络连接失败，请检查网络后重试', -1, 0)
+      resp = await fetchWithTimeout(path, { method: 'POST', body: form, headers })
+    } catch (err) {
+      // 网络层错误（断网/超时/跨域等）→ 统一中文提示；上传不自动重试（大文件重复上传浪费流量）
+      throw networkError(err)
     }
     let body: ApiResult<T>
     try {
