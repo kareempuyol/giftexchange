@@ -410,6 +410,11 @@ export const zhKeys = [
   "至少 6 位，需包含字母和数字",
   "获取重置码",
   "获取重置码失败，请稍后重试",
+  "热度",
+  "总心意数",
+  "平均评分",
+  "最高评分",
+  "平均每人 {perPerson}",
   "规则按用户名填写；从「再开一局」带入成员名单时提交即生效，抽签时自动避开这些配对",
   "让送礼的人更懂你（全部选填，但填得越多礼物越合心意 🎁）",
   "评价（选填）",
@@ -1058,6 +1063,12 @@ const en: Record<string, string> = {
   "🎁 TA 的心愿：{wish}": "🎁 Their wishlist: {wish}",
   "⏰ 已过截止时间，请尽快抽签": "⏰ Deadline passed — draw now!",
   "{count}/{max} 人": "{count}/{max} people",
+  // ===== hackathon 轮17 收官补充 =====
+  "热度": "Hot",
+  "总心意数": "Gifts shared",
+  "平均评分": "Avg rating",
+  "最高评分": "Top rating",
+  "平均每人 {perPerson}": "{perPerson} per person",
 }
 export function detectLocale(): Locale {
   try {

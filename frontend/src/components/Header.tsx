@@ -86,6 +86,17 @@ export default function Header() {
     navigate('/login')
   }
 
+  // 铃铛点击：打开面板即视为已读 → 角标立即清零（乐观更新 + 服务端同步，失败由 30s 轮询校正）
+  const onBellClick = () => {
+    const opening = !showNotif
+    setShowNotif(opening)
+    if (opening && unread > 0) {
+      setNotifs((prev) => prev.map((n) => ({ ...n, read: true })))
+      setUnread(0)
+      api.post('/notifications/read', {}).catch(() => { /* 静默 */ })
+    }
+  }
+
   if (!user) return null
 
   return (
@@ -103,7 +114,7 @@ export default function Header() {
           <div className="notif-wrap" ref={notifRef}>
             <button
               className="notif-bell"
-              onClick={() => setShowNotif(v => !v)}
+              onClick={onBellClick}
               aria-label={t('通知')}
               aria-haspopup="true"
               aria-expanded={showNotif}

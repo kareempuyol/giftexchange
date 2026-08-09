@@ -13,9 +13,12 @@ import type { ListTab } from '../utils/listState'
 import { usePageTitle } from '../utils/usePageTitle'
 import { t, useLocale } from '../i18n'
 
-function statusBadge(status: string) {
-  if (status === 'open') return <Badge tone="success">{t('报名中')}</Badge>
-  return <Badge tone="gold">{t('已抽签')}</Badge>
+/** 列表角标（纯前端计算，EventsPage 全部 tab 共用）：已抽签 → 🎯 已抽签；报名中且参与者 ≥5 → 🔥 热度；否则报名中
+ *  注：/events/public 后端只返回 open 活动，因此 🔥 热度主要出现在公开列表，🎯 已抽签出现在我创建的/我参与的列表 */
+function heatBadge(status: string, participantCount: number) {
+  if (status !== 'open') return <Badge tone="gold">🎯 {t('已抽签')}</Badge>
+  if (participantCount >= 5) return <Badge tone="error">🔥 {t('热度')}</Badge>
+  return <Badge tone="success">{t('报名中')}</Badge>
 }
 
 /** 从剪贴板文本识别邀请码：完整分享链接（/events/<code>）或纯 6 位字母数字 */
@@ -455,7 +458,7 @@ export default function EventsPage() {
                 )}
                 <div className="event-card-main">
                   <div className="event-card-title">
-                    {ev.title} {statusBadge(ev.status)}
+                    {ev.title} {heatBadge(ev.status, ev.participantCount)}
                     {tab === 'archived' && <Badge tone="warning">{t('已归档')}</Badge>}
                   </div>
                   <div className="event-card-meta">

@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { api, ApiError } from '../api/client'
 import { t, useLocale } from '../i18n'
 import { usePageTitle } from '../utils/usePageTitle'
+import AuthBrand from '../components/AuthBrand'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -56,11 +57,7 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-brand">
-          <div className="auth-logo">🎁</div>
-          <h1 className="auth-title">{t('互送礼物')}</h1>
-          <p className="auth-slogan">{t('和朋友们交换惊喜')}</p>
-        </div>
+        <AuthBrand />
 
         <h2 className="auth-subtitle">{t('登录')}</h2>
 

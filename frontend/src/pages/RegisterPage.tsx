@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import { t, useLocale } from '../i18n'
 import { usePageTitle } from '../utils/usePageTitle'
+import AuthBrand from '../components/AuthBrand'
 
 export default function RegisterPage() {
   const { register } = useAuth()
@@ -58,11 +59,7 @@ export default function RegisterPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-brand">
-          <div className="auth-logo">🎁</div>
-          <h1 className="auth-title">{t('互送礼物')}</h1>
-          <p className="auth-slogan">{t('和朋友们交换惊喜')}</p>
-        </div>
+        <AuthBrand />
 
         <h2 className="auth-subtitle">{t('注册')}</h2>
         <p className="form-hint" style={{ marginBottom: 16 }}>{t('加入礼物互赠的乐趣')}</p>

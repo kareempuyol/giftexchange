@@ -275,7 +275,19 @@ export default function EventDetailPage() {
           {preview.note && <p style={{ color: 'var(--gift-text-secondary)', marginBottom: 12 }}>{preview.note}</p>}
 
           <div className="event-meta-grid">
-            {preview.budget ? <div><span className="meta-label">{t('预算')}</span><span className="meta-value">{formatMoney(preview.budget)}</span></div> : null}
+            {preview.budget ? (
+              <div>
+                <span className="meta-label">{t('预算')}</span>
+                <span className="meta-value">
+                  {formatMoney(preview.budget)}
+                  {preview.participantCount > 0 && (
+                    <span className="meta-sub">
+                      {' · '}{t('平均每人 {perPerson}', { perPerson: formatMoney(Math.round(preview.budget / preview.participantCount)) })}
+                    </span>
+                  )}
+                </span>
+              </div>
+            ) : null}
             <div><span className="meta-label">{t('参与人数')}</span><span className="meta-value">{t('{count} 人', { count: preview.participantCount })}</span></div>
             {preview.signUpDeadline ? (
               <div><span className="meta-label">{t('报名截止')}</span><span className="meta-value">{formatDeadline(preview.signUpDeadline)}</span></div>
@@ -394,7 +406,17 @@ export default function EventDetailPage() {
         {event.note && <p style={{ color: 'var(--gift-text-secondary)', marginBottom: 12 }}>{event.note}</p>}
 
         <div className="event-meta-grid">
-          <div><span className="meta-label">{t('预算')}</span><span className="meta-value">{formatMoney(event.budget)}</span></div>
+          <div>
+            <span className="meta-label">{t('预算')}</span>
+            <span className="meta-value">
+              {formatMoney(event.budget)}
+              {event.budget > 0 && event.participantCount > 0 && (
+                <span className="meta-sub">
+                  {' · '}{t('平均每人 {perPerson}', { perPerson: formatMoney(Math.round(event.budget / event.participantCount)) })}
+                </span>
+              )}
+            </span>
+          </div>
           <div><span className="meta-label">{t('参与人数')}</span><span className="meta-value">{event.participantCount}</span></div>
           {event.drawDate && (
             <div><span className="meta-label">{t('报名截止')}</span><span className="meta-value">{formatDeadline(event.drawDate)}</span></div>

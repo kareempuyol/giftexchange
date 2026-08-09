@@ -42,6 +42,13 @@
   font-weight: var(--gift-font-medium);
 }
 
+/* 预算均摊副文案（¥100 · 平均每人 ¥33） */
+.meta-sub {
+  font-size: var(--gift-font-xs);
+  font-weight: var(--gift-font-normal);
+  color: var(--gift-text-secondary);
+}
+
 .section-title {
   font-size: var(--gift-font-lg);
   font-weight: var(--gift-font-bold);

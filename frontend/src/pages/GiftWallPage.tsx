@@ -160,6 +160,14 @@ export default function GiftWallPage() {
   const { unlocked, posted, total, items } = wall
   const { remaining } = wall.progress
   const pct = total > 0 ? Math.round((posted / total) * 100) : 0
+  // 礼物墙统计（纯前端，从 items 计算）：总心意数/平均评分/最高评分（未评分卡片不参与平均）
+  const rated = items.filter((it) => it.giftPost.rating != null && it.giftPost.rating > 0)
+  const avgRating = rated.length
+    ? rated.reduce((sum, it) => sum + (it.giftPost.rating || 0), 0) / rated.length
+    : 0
+  const maxRating = rated.length
+    ? Math.max(...rated.map((it) => it.giftPost.rating || 0))
+    : 0
 
   return (
     <div className="page-container page-container--wide">
@@ -167,6 +175,24 @@ export default function GiftWallPage() {
         <h1 className="page-title">{t('🎁 礼物墙')}</h1>
         <Link to={`/events/${code}`} className="btn btn-ghost btn-sm">{t('返回')}</Link>
       </div>
+
+      {/* 统计卡（解锁后顶部展示）：总心意数/平均评分/最高评分，纯前端计算 */}
+      {unlocked && (
+        <div className="gw-stats">
+          <div className="gw-stat">
+            <span className="gw-stat-value">{t('{totalPosted} 份心意', { totalPosted: posted })}</span>
+            <span className="gw-stat-label">{t('总心意数')}</span>
+          </div>
+          <div className="gw-stat">
+            <span className="gw-stat-value">{rated.length ? avgRating.toFixed(1) : '—'}</span>
+            <span className="gw-stat-label">{t('平均评分')}</span>
+          </div>
+          <div className="gw-stat">
+            <span className="gw-stat-value">{rated.length ? `⭐ ${maxRating}` : '—'}</span>
+            <span className="gw-stat-label">{t('最高评分')}</span>
+          </div>
+        </div>
+      )}
 
       {!unlocked ? (
         <div className="gw-progress-card">

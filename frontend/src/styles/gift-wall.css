@@ -333,3 +333,39 @@
   border: 1px dashed var(--gift-border-strong);
   border-radius: var(--gift-radius-card);
 }
+
+/* ===== 统计卡（解锁后顶部展示，纯前端计算） ===== */
+.gw-stats {
+  display: flex;
+  gap: var(--gift-space-md);
+  justify-content: center;
+  margin-bottom: var(--gift-space-lg);
+  flex-wrap: wrap;
+}
+
+.gw-stat {
+  flex: 1 1 0;
+  min-width: 96px;
+  max-width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gift-space-xs);
+  padding: var(--gift-space-md) var(--gift-space-sm);
+  background: var(--gift-card);
+  border: 1px solid var(--gift-border);
+  border-radius: var(--gift-radius-card);
+  box-shadow: var(--gift-shadow-card);
+}
+
+.gw-stat-value {
+  font-size: var(--gift-font-lg);
+  font-weight: var(--gift-font-bold);
+  color: var(--gift-brand);
+  white-space: nowrap;
+}
+
+.gw-stat-label {
+  font-size: var(--gift-font-sm);
+  color: var(--gift-text-secondary);
+}
