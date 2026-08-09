@@ -5,6 +5,11 @@
 
 全部报告位于 `.audit/`，按轮次排列：
 
+## 轮16 — 真实使用模式负载（2026-08-10）
+- `LOAD_REPORT.md` — 50 虚拟用户 × 5 分钟真实节奏负载：10,646 请求 0 5xx / 0 错误事件 / 0 锁死，
+  p99 33ms（服务端），可上线结论；慢端点 TOP3 与瓶颈分析
+- 数据：`load_results.json`（含 59 次资源采样）、脚本 `load_sim.py`（独立 DB + 端口，跑完清理）
+
 ## 轮15 — 最终全量回归 + 报告更新（2026-08-10）
 - `FINAL2_CHECK.md` — 全量回归核对（pytest 269 / CI 5 连绿 / build+重启+health+公网冒烟 / E2E 48/48 复跑 / 工作区状态）
 - 本轮文档更新：`HACKATHON_DELIVERY.md`（轮13/14 入时间线、commit 25、测试 269）、`CHANGELOG.md`（补轮12/13/14 条目）、`REPORTS_INDEX.md`（本文件）

@@ -1,0 +1,889 @@
+{
+  "summary": {
+    "total_requests": 10646,
+    "2xx": 10378,
+    "2xx_pct": 97.48,
+    "5xx": 0,
+    "5xx_pct": 0.0,
+    "network_errors": 0,
+    "4xx": 268
+  },
+  "per_endpoint": [
+    {
+      "endpoint": "events.mine",
+      "n": 1474,
+      "ok": 1474,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 1474
+      },
+      "p50": 7.26,
+      "p95": 16.77,
+      "p99": 25.81,
+      "max": 80.89,
+      "mean": 8.28
+    },
+    {
+      "endpoint": "events.gift-wall",
+      "n": 1448,
+      "ok": 1448,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 1448
+      },
+      "p50": 7.43,
+      "p95": 18.54,
+      "p99": 29.72,
+      "max": 84.18,
+      "mean": 7.84
+    },
+    {
+      "endpoint": "events.joined",
+      "n": 1401,
+      "ok": 1401,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 1401
+      },
+      "p50": 8.22,
+      "p95": 18.44,
+      "p99": 25.59,
+      "max": 72.39,
+      "mean": 9.31
+    },
+    {
+      "endpoint": "events.public",
+      "n": 1151,
+      "ok": 1151,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 1151
+      },
+      "p50": 10.95,
+      "p95": 20.69,
+      "p99": 33.51,
+      "max": 86.62,
+      "mean": 12.0
+    },
+    {
+      "endpoint": "events.my-match",
+      "n": 1086,
+      "ok": 1086,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 1086
+      },
+      "p50": 7.08,
+      "p95": 17.44,
+      "p99": 23.02,
+      "max": 55.96,
+      "mean": 7.12
+    },
+    {
+      "endpoint": "events.join",
+      "n": 847,
+      "ok": 609,
+      "ok_pct": 71.9,
+      "codes": {
+        "201": 609,
+        "400": 238
+      },
+      "p50": 6.27,
+      "p95": 15.79,
+      "p99": 25.37,
+      "max": 73.35,
+      "mean": 7.39
+    },
+    {
+      "endpoint": "events.received-gift.get",
+      "n": 627,
+      "ok": 627,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 627
+      },
+      "p50": 6.36,
+      "p95": 17.38,
+      "p99": 26.28,
+      "max": 60.26,
+      "mean": 6.31
+    },
+    {
+      "endpoint": "events.detail",
+      "n": 450,
+      "ok": 450,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 450
+      },
+      "p50": 9.74,
+      "p95": 19.6,
+      "p99": 28.18,
+      "max": 46.26,
+      "mean": 10.46
+    },
+    {
+      "endpoint": "notifications.list",
+      "n": 349,
+      "ok": 349,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 349
+      },
+      "p50": 9.61,
+      "p95": 20.59,
+      "p99": 31.3,
+      "max": 74.99,
+      "mean": 10.83
+    },
+    {
+      "endpoint": "events.create",
+      "n": 203,
+      "ok": 203,
+      "ok_pct": 100.0,
+      "codes": {
+        "201": 203
+      },
+      "p50": 11.55,
+      "p95": 20.83,
+      "p99": 35.12,
+      "max": 38.98,
+      "mean": 12.38
+    },
+    {
+      "endpoint": "notifications.read",
+      "n": 203,
+      "ok": 203,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 203
+      },
+      "p50": 10.65,
+      "p95": 22.11,
+      "p99": 29.64,
+      "max": 34.5,
+      "mean": 11.66
+    },
+    {
+      "endpoint": "events.preview",
+      "n": 172,
+      "ok": 172,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 172
+      },
+      "p50": 7.59,
+      "p95": 15.56,
+      "p99": 20.19,
+      "max": 23.78,
+      "mean": 8.15
+    },
+    {
+      "endpoint": "site.config",
+      "n": 171,
+      "ok": 171,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 171
+      },
+      "p50": 7.27,
+      "p95": 17.06,
+      "p99": 21.07,
+      "max": 33.89,
+      "mean": 8.2
+    },
+    {
+      "endpoint": "events.received-gift.put",
+      "n": 167,
+      "ok": 167,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 167
+      },
+      "p50": 7.81,
+      "p95": 14.61,
+      "p99": 16.76,
+      "max": 32.37,
+      "mean": 8.09
+    },
+    {
+      "endpoint": "events.participants",
+      "n": 162,
+      "ok": 162,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 162
+      },
+      "p50": 10.6,
+      "p95": 20.43,
+      "p99": 37.53,
+      "max": 75.07,
+      "mean": 11.42
+    },
+    {
+      "endpoint": "events.draw",
+      "n": 132,
+      "ok": 118,
+      "ok_pct": 89.4,
+      "codes": {
+        "200": 118,
+        "400": 14
+      },
+      "p50": 12.48,
+      "p95": 25.39,
+      "p99": 33.11,
+      "max": 33.71,
+      "mean": 13.51
+    },
+    {
+      "endpoint": "events.matches",
+      "n": 112,
+      "ok": 112,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 112
+      },
+      "p50": 9.64,
+      "p95": 23.97,
+      "p99": 35.98,
+      "max": 38.03,
+      "mean": 11.52
+    },
+    {
+      "endpoint": "notifications.prefs.get",
+      "n": 108,
+      "ok": 108,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 108
+      },
+      "p50": 10.47,
+      "p95": 20.69,
+      "p99": 72.85,
+      "max": 84.27,
+      "mean": 12.16
+    },
+    {
+      "endpoint": "events.leave",
+      "n": 96,
+      "ok": 80,
+      "ok_pct": 83.3,
+      "codes": {
+        "200": 80,
+        "400": 16
+      },
+      "p50": 11.09,
+      "p95": 19.52,
+      "p99": 29.78,
+      "max": 39.39,
+      "mean": 11.65
+    },
+    {
+      "endpoint": "events.archive",
+      "n": 70,
+      "ok": 70,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 70
+      },
+      "p50": 10.23,
+      "p95": 19.48,
+      "p99": 21.92,
+      "max": 23.94,
+      "mean": 10.97
+    },
+    {
+      "endpoint": "notifications.prefs.put",
+      "n": 59,
+      "ok": 59,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 59
+      },
+      "p50": 9.99,
+      "p95": 22.97,
+      "p99": 25.67,
+      "max": 26.03,
+      "mean": 11.61
+    },
+    {
+      "endpoint": "notifications.clear",
+      "n": 41,
+      "ok": 41,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 41
+      },
+      "p50": 11.26,
+      "p95": 21.11,
+      "p99": 47.52,
+      "max": 64.52,
+      "mean": 13.04
+    },
+    {
+      "endpoint": "events.like",
+      "n": 31,
+      "ok": 31,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 31
+      },
+      "p50": 7.77,
+      "p95": 10.73,
+      "p99": 14.16,
+      "max": 15.28,
+      "mean": 7.61
+    },
+    {
+      "endpoint": "events.remind",
+      "n": 30,
+      "ok": 30,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 30
+      },
+      "p50": 11.26,
+      "p95": 17.23,
+      "p99": 27.17,
+      "max": 31.15,
+      "mean": 11.77
+    },
+    {
+      "endpoint": "events.unarchive",
+      "n": 29,
+      "ok": 29,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 29
+      },
+      "p50": 10.08,
+      "p95": 17.7,
+      "p99": 19.04,
+      "max": 19.5,
+      "mean": 11.29
+    },
+    {
+      "endpoint": "events.reset-short-code",
+      "n": 27,
+      "ok": 27,
+      "ok_pct": 100.0,
+      "codes": {
+        "200": 27
+      },
+      "p50": 10.34,
+      "p95": 16.9,
+      "p99": 18.77,
+      "max": 19.28,
+      "mean": 10.57
+    }
+  ],
+  "server_log": {
+    "request_log_lines": 10866,
+    "request_5xx": 0,
+    "error_500_events": 0,
+    "business_events": {
+      "login_success": 50,
+      "event_created": 217,
+      "draw_success": 128
+    }
+  },
+  "network_error_details": [],
+  "config": {
+    "users": 50,
+    "duration_s": 300.0,
+    "port": 8085,
+    "db_path": "/tmp/load_sim.db",
+    "seed": 20260810
+  },
+  "resources": {
+    "db_size_before": 180224,
+    "db_size_after": 737280,
+    "db_growth_bytes": 557056,
+    "samples": [
+      {
+        "t": 1786309682.259308,
+        "rss_kb": 43920,
+        "pcpu": 1.3,
+        "db_size": 180224,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309687.396402,
+        "rss_kb": 51920,
+        "pcpu": 0.6,
+        "db_size": 188416,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309692.618389,
+        "rss_kb": 52096,
+        "pcpu": 0.5,
+        "db_size": 192512,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309697.7824461,
+        "rss_kb": 52112,
+        "pcpu": 0.6,
+        "db_size": 192512,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309702.896374,
+        "rss_kb": 52032,
+        "pcpu": 0.7,
+        "db_size": 208896,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309708.0266938,
+        "rss_kb": 52176,
+        "pcpu": 0.7,
+        "db_size": 217088,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309713.171051,
+        "rss_kb": 52032,
+        "pcpu": 1.2,
+        "db_size": 233472,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309718.337183,
+        "rss_kb": 52128,
+        "pcpu": 4.9,
+        "db_size": 237568,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309723.486475,
+        "rss_kb": 52032,
+        "pcpu": 0.9,
+        "db_size": 245760,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309728.646209,
+        "rss_kb": 52032,
+        "pcpu": 0.4,
+        "db_size": 249856,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309733.802263,
+        "rss_kb": 52032,
+        "pcpu": 0.9,
+        "db_size": 266240,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309738.964442,
+        "rss_kb": 52032,
+        "pcpu": 0.7,
+        "db_size": 278528,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309744.107855,
+        "rss_kb": 52144,
+        "pcpu": 0.7,
+        "db_size": 282624,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309749.264521,
+        "rss_kb": 52032,
+        "pcpu": 0.4,
+        "db_size": 282624,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309754.417078,
+        "rss_kb": 52080,
+        "pcpu": 0.7,
+        "db_size": 290816,
+        "wal_count": 1,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309759.5678232,
+        "rss_kb": 52048,
+        "pcpu": 0.8,
+        "db_size": 294912,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309764.718803,
+        "rss_kb": 52048,
+        "pcpu": 1.0,
+        "db_size": 303104,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309769.857326,
+        "rss_kb": 52048,
+        "pcpu": 0.4,
+        "db_size": 311296,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309774.995651,
+        "rss_kb": 52160,
+        "pcpu": 0.3,
+        "db_size": 323584,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309780.0923579,
+        "rss_kb": 52160,
+        "pcpu": 0.7,
+        "db_size": 331776,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309785.237529,
+        "rss_kb": 52048,
+        "pcpu": 0.8,
+        "db_size": 356352,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309790.391336,
+        "rss_kb": 52144,
+        "pcpu": 0.5,
+        "db_size": 360448,
+        "wal_count": 1,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309795.508189,
+        "rss_kb": 52048,
+        "pcpu": 0.6,
+        "db_size": 376832,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309800.658231,
+        "rss_kb": 52128,
+        "pcpu": 0.9,
+        "db_size": 397312,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309805.70491,
+        "rss_kb": 52064,
+        "pcpu": 0.8,
+        "db_size": 405504,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309810.826696,
+        "rss_kb": 52128,
+        "pcpu": 0.4,
+        "db_size": 421888,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309815.857613,
+        "rss_kb": 52080,
+        "pcpu": 0.9,
+        "db_size": 438272,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309820.9756858,
+        "rss_kb": 52112,
+        "pcpu": 0.6,
+        "db_size": 442368,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309826.130369,
+        "rss_kb": 52192,
+        "pcpu": 0.6,
+        "db_size": 450560,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309831.289597,
+        "rss_kb": 52192,
+        "pcpu": 0.9,
+        "db_size": 458752,
+        "wal_count": 1,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309836.439532,
+        "rss_kb": 52160,
+        "pcpu": 0.9,
+        "db_size": 462848,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309841.565622,
+        "rss_kb": 52272,
+        "pcpu": 0.6,
+        "db_size": 483328,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309846.727028,
+        "rss_kb": 52208,
+        "pcpu": 0.6,
+        "db_size": 491520,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309851.782155,
+        "rss_kb": 52208,
+        "pcpu": 0.9,
+        "db_size": 499712,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309856.946168,
+        "rss_kb": 52256,
+        "pcpu": 0.9,
+        "db_size": 503808,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309862.092041,
+        "rss_kb": 52320,
+        "pcpu": 0.6,
+        "db_size": 520192,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309867.228965,
+        "rss_kb": 52320,
+        "pcpu": 0.7,
+        "db_size": 528384,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309872.262319,
+        "rss_kb": 52272,
+        "pcpu": 0.7,
+        "db_size": 532480,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309877.417894,
+        "rss_kb": 52320,
+        "pcpu": 0.7,
+        "db_size": 540672,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309882.5748322,
+        "rss_kb": 52208,
+        "pcpu": 0.8,
+        "db_size": 552960,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309887.724681,
+        "rss_kb": 52208,
+        "pcpu": 0.9,
+        "db_size": 552960,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309892.8860009,
+        "rss_kb": 52208,
+        "pcpu": 0.7,
+        "db_size": 569344,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309898.007058,
+        "rss_kb": 52208,
+        "pcpu": 0.6,
+        "db_size": 569344,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309903.126784,
+        "rss_kb": 52256,
+        "pcpu": 0.8,
+        "db_size": 573440,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309908.288085,
+        "rss_kb": 52400,
+        "pcpu": 0.5,
+        "db_size": 577536,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309913.4041119,
+        "rss_kb": 52400,
+        "pcpu": 1.0,
+        "db_size": 585728,
+        "wal_count": 2,
+        "wal_size": 12288
+      },
+      {
+        "t": 1786309918.5570402,
+        "rss_kb": 52336,
+        "pcpu": 1.0,
+        "db_size": 589824,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309923.698454,
+        "rss_kb": 52384,
+        "pcpu": 0.7,
+        "db_size": 602112,
+        "wal_count": 1,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309928.8327959,
+        "rss_kb": 52384,
+        "pcpu": 0.8,
+        "db_size": 610304,
+        "wal_count": 1,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309933.9743218,
+        "rss_kb": 52432,
+        "pcpu": 0.4,
+        "db_size": 614400,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309939.1043441,
+        "rss_kb": 52432,
+        "pcpu": 0.9,
+        "db_size": 614400,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309944.253314,
+        "rss_kb": 52432,
+        "pcpu": 1.0,
+        "db_size": 622592,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309949.4062998,
+        "rss_kb": 52432,
+        "pcpu": 0.9,
+        "db_size": 651264,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309954.477121,
+        "rss_kb": 52592,
+        "pcpu": 0.6,
+        "db_size": 655360,
+        "wal_count": 2,
+        "wal_size": 32768
+      },
+      {
+        "t": 1786309959.636481,
+        "rss_kb": 52432,
+        "pcpu": 0.7,
+        "db_size": 671744,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309964.77009,
+        "rss_kb": 52592,
+        "pcpu": 0.6,
+        "db_size": 688128,
+        "wal_count": 2,
+        "wal_size": 32800
+      },
+      {
+        "t": 1786309969.913306,
+        "rss_kb": 52464,
+        "pcpu": 0.7,
+        "db_size": 704512,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309975.066866,
+        "rss_kb": 52464,
+        "pcpu": 0.6,
+        "db_size": 712704,
+        "wal_count": 0,
+        "wal_size": 0
+      },
+      {
+        "t": 1786309980.209306,
+        "rss_kb": 52480,
+        "pcpu": 0.9,
+        "db_size": 733184,
+        "wal_count": 0,
+        "wal_size": 0
+      }
+    ],
+    "rss_kb": {
+      "min": 43920,
+      "max": 52592,
+      "avg": 52076
+    },
+    "pcpu": {
+      "min": 0.3,
+      "max": 4.9,
+      "avg": 0.8
+    },
+    "wal_count_max": 2,
+    "wal_size_max": 32800
+  }
+}
