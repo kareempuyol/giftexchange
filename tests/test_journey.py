@@ -254,3 +254,42 @@ class TestLogisticsDegradationCopy:
         r = client.post(f"/api/events/{code}/shipment/refresh", json={"matchId": match["matchId"]}, headers=h1)
         assert r.status_code == 400, r.get_json()
         assert "未找到" in r.get_json()["message"]
+
+
+class TestJoinSuccessNotification:
+    """加入活动后本人收到 join_success 确认通知（通知驱动回流依赖此契约）。"""
+
+    def _notifs(self, client, headers):
+        r = client.get("/api/notifications", headers=headers)
+        assert r.status_code == 200, r.get_json()
+        return r.get_json()["data"]["items"]
+
+    def test_joiner_gets_join_success_with_event_code(self, client):
+        h1, _uid1 = register_and_login(client, "j_js_creator")
+        h2, _uid2 = register_and_login(client, "j_js_member")
+        ev = create_event(client, h1, "J join success notif")
+
+        r = join_event(client, h2, ev["code"])
+        assert r.status_code == 201, r.get_json()
+
+        items = self._notifs(client, h2)
+        join_success = [n for n in items if n["type"] == "join_success"]
+        assert len(join_success) == 1
+        assert join_success[0]["eventCode"] == ev["code"]
+        assert "你已加入" in join_success[0]["title"]
+
+        # 组织者收到 participant_joined（既有契约不回退）
+        org_items = self._notifs(client, h1)
+        joined = [n for n in org_items if n["type"] == "participant_joined"]
+        assert len(joined) == 1
+        assert joined[0]["eventCode"] == ev["code"]
+
+    def test_creator_join_gets_confirmation_but_no_self_notify(self, client):
+        # 创建者自动加入：重复 join 幂等拒绝，不产生任何加入通知
+        h1, _uid1 = register_and_login(client, "j_js_creator2")
+        ev = create_event(client, h1, "J creator join notif")
+        r = join_event(client, h1, ev["code"])
+        assert r.status_code == 400, r.get_json()
+        items = self._notifs(client, h1)
+        assert all(n["type"] != "participant_joined" for n in items)
+        assert all(n["type"] != "join_success" for n in items)  # 未真正加入不产生确认

@@ -1,0 +1,138 @@
+{
+  "runAt": "2026-08-09T19:22:42Z",
+  "baselineRound2": {
+    "/api/events/mine": 5.99,
+    "/api/events/public": 4.73,
+    "/api/events/<code>": 4.29,
+    "/api/events/joined": 5.41,
+    "/api/events/<code>/gift-wall": 4.53,
+    "/api/events/<code>/participants": 4.86,
+    "/api/notifications": 5.99,
+    "/api/events/<code>/dashboard": 5.7,
+    "/api/profile": 5.18
+  },
+  "results": {
+    "mine": {
+      "url": "/api/events/mine",
+      "median_ms": 4.97,
+      "times": [
+        4.42,
+        4.92,
+        5.08,
+        4.97,
+        4.99
+      ]
+    },
+    "public": {
+      "url": "/api/events/public",
+      "median_ms": 4.65,
+      "times": [
+        6.01,
+        4.7,
+        4.65,
+        4.65,
+        4.55
+      ]
+    },
+    "detail": {
+      "url": "/api/events/<code>",
+      "median_ms": 4.12,
+      "times": [
+        4.25,
+        4.12,
+        4.21,
+        4.03,
+        3.87
+      ]
+    },
+    "joined": {
+      "url": "/api/events/joined",
+      "median_ms": 5.17,
+      "times": [
+        5.21,
+        4.35,
+        5.17,
+        11.87,
+        4.44
+      ]
+    },
+    "gift-wall": {
+      "url": "/api/events/<code>/gift-wall",
+      "median_ms": 4.63,
+      "times": [
+        4.8,
+        4.63,
+        13.38,
+        2.95,
+        3.42
+      ]
+    },
+    "participants": {
+      "url": "/api/events/<code>/participants",
+      "median_ms": 4.7,
+      "times": [
+        4.7,
+        4.86,
+        5.0,
+        4.65,
+        3.5
+      ]
+    },
+    "notifications": {
+      "url": "/api/notifications",
+      "median_ms": 4.48,
+      "times": [
+        7.28,
+        4.23,
+        3.86,
+        4.48,
+        4.49
+      ]
+    },
+    "dashboard": {
+      "url": "/api/events/<code>/dashboard",
+      "median_ms": 4.69,
+      "times": [
+        3.59,
+        4.65,
+        4.69,
+        4.89,
+        4.82
+      ]
+    },
+    "profile": {
+      "url": "/api/profile",
+      "median_ms": 4.47,
+      "times": [
+        4.81,
+        4.34,
+        4.62,
+        3.57,
+        4.47
+      ]
+    }
+  },
+  "counts": {
+    "before": {
+      "events": 259,
+      "participants": 826,
+      "matches": 544,
+      "notifications": 1389,
+      "users": 386
+    },
+    "afterSeed": {
+      "events": 309,
+      "participants": 1076,
+      "matches": 794,
+      "notifications": 1489,
+      "users": 390
+    },
+    "afterCleanup": {
+      "events": 259,
+      "participants": 826,
+      "matches": 544,
+      "notifications": 1389,
+      "users": 386
+    }
+  }
+}

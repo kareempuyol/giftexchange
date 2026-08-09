@@ -1,0 +1,85 @@
+{
+  "runAt": "2026-08-09T19:21:42.152Z",
+  "totalAssertions": 59,
+  "passed": 59,
+  "failed": 0,
+  "defects": [],
+  "byStep": {
+    "1a": {
+      "total": 1,
+      "pass": 1
+    },
+    "1b": {
+      "total": 1,
+      "pass": 1
+    },
+    "1c": {
+      "total": 3,
+      "pass": 3
+    },
+    "2a": {
+      "total": 2,
+      "pass": 2
+    },
+    "2b": {
+      "total": 4,
+      "pass": 4
+    },
+    "2c": {
+      "total": 6,
+      "pass": 6
+    },
+    "2d": {
+      "total": 3,
+      "pass": 3
+    },
+    "2e": {
+      "total": 4,
+      "pass": 4
+    },
+    "2f": {
+      "total": 1,
+      "pass": 1
+    },
+    "2g": {
+      "total": 3,
+      "pass": 3
+    },
+    "3a": {
+      "total": 4,
+      "pass": 4
+    },
+    "3b": {
+      "total": 2,
+      "pass": 2
+    },
+    "3c": {
+      "total": 5,
+      "pass": 5
+    },
+    "4a": {
+      "total": 5,
+      "pass": 5
+    },
+    "5a": {
+      "total": 7,
+      "pass": 7
+    },
+    "6a": {
+      "total": 3,
+      "pass": 3
+    },
+    "6b": {
+      "total": 1,
+      "pass": 1
+    },
+    "6c": {
+      "total": 1,
+      "pass": 1
+    },
+    "6d": {
+      "total": 3,
+      "pass": 3
+    }
+  }
+}

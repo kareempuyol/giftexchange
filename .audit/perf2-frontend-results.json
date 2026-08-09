@@ -1,0 +1,81 @@
+{
+  "runAt": "2026-08-09T19:24:14.490Z",
+  "login": {
+    "nav": {
+      "ttfbMs": 3,
+      "domContentLoadedMs": 25,
+      "loadMs": 25,
+      "transferSize": 1355
+    },
+    "mainBundle": {
+      "name": "index-CPTIH9ph.js",
+      "transferSize": 200868,
+      "durationMs": 7
+    },
+    "allJs": [
+      {
+        "name": "index-CPTIH9ph.js",
+        "transferSize": 200868,
+        "durationMs": 7
+      }
+    ],
+    "jsRequests": [
+      "index-CPTIH9ph.js"
+    ]
+  },
+  "events": {
+    "nav": {
+      "ttfbMs": 6,
+      "domContentLoadedMs": 23,
+      "loadMs": 23,
+      "transferSize": 1355
+    },
+    "mainBundle": {
+      "name": "index-CPTIH9ph.js",
+      "transferSize": 0,
+      "durationMs": 6
+    },
+    "allJs": [
+      {
+        "name": "index-CPTIH9ph.js",
+        "transferSize": 0,
+        "durationMs": 6
+      }
+    ],
+    "jsRequests": [
+      "index-CPTIH9ph.js"
+    ]
+  },
+  "assertions": [
+    {
+      "name": "/login 不加载海报 chunk（PosterModal）",
+      "pass": true
+    },
+    {
+      "name": "/login 不加载详情 chunk（EventDetailPage）",
+      "pass": true
+    },
+    {
+      "name": "/login 不加载任何页面懒加载 chunk",
+      "pass": true
+    },
+    {
+      "name": "/events 不加载详情 chunk（EventDetailPage）",
+      "pass": true
+    },
+    {
+      "name": "/events 不加载海报 chunk（PosterModal）",
+      "pass": true
+    },
+    {
+      "name": "/events 主 bundle 已加载",
+      "pass": true
+    },
+    {
+      "name": "/events 为登录态列表页（未重定向）",
+      "pass": true
+    }
+  ],
+  "passed": 7,
+  "total": 7
+}

@@ -1,7 +1,7 @@
 // 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, ApiError, EventInfo, EventPreview, GiftPrivacy, MemberStatus, Participant, MyMatch, ReceivedGift } from '../api/client'
+import { api, ApiError, EventInfo, EventPreview, GiftPrivacy, MemberStatus, Participant, MyMatch, ReceivedGift, User } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import ImageUpload from '../components/ImageUpload'
@@ -646,6 +646,28 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [prefilled, setPrefilled] = useState(false)
+
+  // 资料预填：个人中心已保存的收件人/电话/地址/偏好自动带入（仅填空字段，不覆盖用户手输）
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get<User>('/profile')
+      .then((p) => {
+        if (cancelled) return
+        if (p.receiverName) setReceiverName(p.receiverName)
+        if (p.phone) setPhone(p.phone)
+        if (p.address) setAddress(p.address)
+        if (p.giftPreference) setLikes(p.giftPreference)
+        if (p.receiverName || p.phone || p.address || p.giftPreference) setPrefilled(true)
+      })
+      .catch(() => {
+        /* 预填失败静默：表单保持空值 */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // 第一步校验通过才进第二步
   const goNext = () => {
@@ -699,6 +721,11 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
         <form onSubmit={onSubmit}>
           {step === 1 ? (
             <>
+              {prefilled && (
+                <p className="form-hint" style={{ marginBottom: 8, color: 'var(--gift-brand)' }}>
+                  📋 已从个人资料自动填入，可修改
+                </p>
+              )}
               <p className="form-hint" style={{ marginBottom: 16 }}>
                 抽签后，送你礼物的人会看到这些信息来寄礼物
               </p>

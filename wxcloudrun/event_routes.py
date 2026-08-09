@@ -468,6 +468,16 @@ def join_event(user, code):
                     ),
                 )
             user_row = current_user_row(db, user["userId"])
+            # 加入确认通知给本人（自己的动作，不受偏好过滤拦截）
+            notify(
+                db,
+                user["userId"],
+                event["id"],
+                None,
+                "join_success",
+                f"你已加入「{event['name']}」",
+                "加入成功，等待组织者抽签吧 🎁",
+            )
             # 通知组织者：新参与者加入（组织者自己加入不通知自己）
             if event["creator_id"] != user["userId"]:
                 joiner_name = user_row.get("display_name") or user_row["username"]
