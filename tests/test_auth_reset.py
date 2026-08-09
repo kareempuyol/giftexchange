@@ -3,7 +3,8 @@
 验证：
 - 生成 6 位数字码（15 分钟过期，单用户单码，新码覆盖旧码）→ 重置成功 → 新密码可登录、旧密码失效
 - 错误码 → 400；过期码（手动把 expires_at 改为过去）→ 400
-- 未注册用户名 → 404 友好提示（不泄露账号是否注册）
+- 安全默认（P0 修复）：未开演示模式时响应不返回 code，账号不存在统一 200（防枚举）；
+  演示模式（RESET_CODE_IN_RESPONSE=1）下响应返回 code（本模块 ctx 开启，测码语义）
 - 重置后码失效（不能重复使用）
 - 限速：同 IP+用户名 连发 6 次 → 第 6 次 429
 
@@ -20,12 +21,19 @@ PASSWORD = "Pass123!"
 
 @pytest.fixture(scope="module")
 def ctx():
-    """独立临时 DB：显式 init_schema 建表，结束后恢复环境变量。"""
+    """独立临时 DB：显式 init_schema 建表，结束后恢复环境变量。
+
+    本模块测「码的语义」（生成/覆盖/过期/单次使用），因此开演示模式
+    RESET_CODE_IN_RESPONSE=1（响应返回 code）；安全默认行为在
+    TestSecureDefault 里用 monkeypatch 关掉该变量单独验证。
+    """
     saved_db = os.environ.get("DB_PATH")
     saved_jwt = os.environ.get("JWT_SECRET")
+    saved_reset = os.environ.get("RESET_CODE_IN_RESPONSE")
     tmp = tempfile.mkdtemp(prefix="gift_test_reset_")
     os.environ["DB_PATH"] = os.path.join(tmp, "test.db")
     os.environ["JWT_SECRET"] = "test-secret-reset"
+    os.environ["RESET_CODE_IN_RESPONSE"] = "1"
     try:
         from wxcloudrun.database import init_schema  # noqa: E402
 
@@ -43,6 +51,10 @@ def ctx():
             os.environ.pop("JWT_SECRET", None)
         else:
             os.environ["JWT_SECRET"] = saved_jwt
+        if saved_reset is None:
+            os.environ.pop("RESET_CODE_IN_RESPONSE", None)
+        else:
+            os.environ["RESET_CODE_IN_RESPONSE"] = saved_reset
         # 治愈同仓其他测试文件的临时库（与 test_draw_api.py 相同的自愈逻辑）
         if saved_db and saved_db.startswith(tempfile.gettempdir()):
             try:
@@ -115,10 +127,12 @@ class TestForgotPassword:
         r = reset(client, "reset_overwrite", first)
         assert r.status_code == 400, r.get_json()
 
-    def test_unknown_username_friendly_404(self, client):
+    def test_unknown_username_no_enumeration(self, client):
+        """账号不存在统一 200 且无 code（防枚举，P0 修复）。"""
         r = forgot(client, "reset_ghost_user")
-        assert r.status_code == 404, r.get_json()
-        assert r.get_json()["data"] is None
+        assert r.status_code == 200, r.get_json()
+        data = r.get_json()["data"]
+        assert "code" not in data and data["expiresIn"] == 15 * 60
 
     def test_missing_account_400(self, client):
         r = client.post("/api/auth/forgot-password", json={})
@@ -202,6 +216,60 @@ class TestRateLimit:
         r = forgot(client, "reset_ratelimit")
         assert r.status_code == 429, r.get_json()
         assert r.get_json()["data"] is None
+
+
+class TestResetRateLimit:
+    """P0 残留修复：reset-password 必须与 forgot 共用限速窗口（防暴力猜 6 位码）"""
+
+    def test_reset_bruteforce_rate_limited(self, client):
+        # 先发一次 forgot 拿到一个有效码（消耗 1 次限额）
+        r = forgot(client, "reset_rl_victim")
+        assert r.status_code == 200
+        # 连续猜码：超过窗口上限后应 429
+        got_429 = False
+        for i in range(30):
+            r = client.post(
+                "/api/auth/reset-password",
+                json={"username": "reset_rl_victim", "code": f"{i:06d}", "newPassword": "Brute123"},
+            )
+            if r.status_code == 429:
+                got_429 = True
+                break
+        assert got_429, "reset-password 无限速：6 位码可被暴力猜解"
+
+
+class TestSecureDefault:
+    """P0 修复：默认（未开演示模式）响应绝不返回重置码，防止任意人重置他人密码。"""
+
+    def test_code_not_in_response_by_default(self, client, monkeypatch):
+        monkeypatch.delenv("RESET_CODE_IN_RESPONSE", raising=False)
+        register(client, "reset_secure_default")
+        r = forgot(client, "reset_secure_default")
+        assert r.status_code == 200, r.get_json()
+        data = r.get_json()["data"]
+        assert "code" not in data
+        assert data["expiresIn"] == 15 * 60
+        # 码仍落库（走邮件/短信通道时凭库内码重置）
+        row = user_reset_code("reset_secure_default")
+        assert row["reset_code"] and row["reset_code_expires_at"]
+
+    def test_reset_still_works_with_db_code(self, client, monkeypatch):
+        monkeypatch.delenv("RESET_CODE_IN_RESPONSE", raising=False)
+        register(client, "reset_secure_flow")
+        forgot(client, "reset_secure_flow")
+        row = user_reset_code("reset_secure_flow")
+        r = reset(client, "reset_secure_flow", row["reset_code"])
+        assert r.status_code == 200, r.get_json()
+        # 新密码可登录
+        r = client.post("/api/auth/login", json={"username": "reset_secure_flow", "password": "NewPass456"})
+        assert r.status_code == 200, r.get_json()
+
+    def test_unknown_account_200_no_code(self, client, monkeypatch):
+        """账号不存在不返回 404（原 404 是账号枚举 oracle）。"""
+        monkeypatch.delenv("RESET_CODE_IN_RESPONSE", raising=False)
+        r = forgot(client, "reset_secure_ghost")
+        assert r.status_code == 200, r.get_json()
+        assert "code" not in r.get_json()["data"]
 
 
 if __name__ == "__main__":

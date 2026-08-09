@@ -82,8 +82,24 @@ def create_app():
         return jsonify({"code": -1, "data": None, "message": "Not found"}), 404
 
     @flask_app.after_request
+    def add_security_headers(response):
+        # 安全头（P2 修复）：nosniff 防 MIME 嗅探、DENY 防点击劫持、Referrer 最小化泄露、
+        # CSP 收紧（前端资源全部自托管，index.html 无内联脚本，见 templates/index.html）
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; connect-src 'self'; font-src 'self'; "
+            "object-src 'none'; base-uri 'self'; form-action 'self'",
+        )
+        return response
+
+    @flask_app.after_request
     def add_cors_headers(response):
-        # CORS 收紧：优先级 环境变量 CORS_ORIGIN > DB app_settings.cors_origin > 同源（无跨域）
+        # CORS 收紧：优先级 环境变量 CORS_ORIGIN > DB app_settings.cors_origin > 同源（无跨域）。
+        # 仅当请求 Origin 与配置一致（或配置为 *）时才回显，防止任意 Origin 获得跨域读权限。
         origin = os.getenv("CORS_ORIGIN", "").strip()
         try:
             with DB() as db:
@@ -92,7 +108,13 @@ def create_app():
                     origin = row["value"].strip()
         except Exception:
             pass
-        if origin:
+        if not origin:
+            return response
+        if origin == "*":
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        elif request.headers.get("Origin") == origin:
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"

@@ -1,4 +1,5 @@
 """认证与账户路由（auth/*、profile、admin/settings、登录限速）。"""
+import os
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -14,8 +15,10 @@ from wxcloudrun.helpers import (
     api,
     body,
     clear_login_attempts,
+    client_ip,
     current_user_row,
     fail,
+    log_event,
     login_required,
     ok,
     parse_datetime,
@@ -80,23 +83,23 @@ def login():
     if not username or not password:
         return fail("用户名和密码为必填项")
 
-    # 登录限速：按 IP+用户名 双重限制，防暴力破解
-    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
-    check, retry_after = rate_limit_login(client_ip, username)
+    # 登录限速：按 IP+用户名 双重限制，防暴力破解（IP 取真实客户端 IP，防 XFF 伪造）
+    ip = client_ip()
+    check, retry_after = rate_limit_login(ip, username)
     if not check:
         return fail(f"登录尝试过于频繁，请 {retry_after} 秒后再试", 429, headers={"Retry-After": str(retry_after)})
 
     with DB() as db:
         row = db.get("SELECT * FROM users WHERE username = ?", (username,))
         if not row:
-            record_failed_login(client_ip, username)
+            record_failed_login(ip, username)
             return fail("用户名或密码错误", 401)
         if row.get("deactivated"):
             return fail("账号已注销", 401)
         if not check_password(password, row["password"]):
-            record_failed_login(client_ip, username)
+            record_failed_login(ip, username)
             return fail("用户名或密码错误", 401)
-        clear_login_attempts(client_ip, username)
+        clear_login_attempts(ip, username)
         return ok({"token": sign_token(row["id"]), "user": public_user(row)}, "Signed in")
 
 
@@ -121,8 +124,12 @@ def _forgot_rate_limited(client_ip, account):
 def forgot_password():
     """生成 6 位数字重置码（15 分钟有效，单用户单码，新码覆盖旧码）。
 
-    本项目无邮件/短信通道，演示模式直接返回 {code, expiresIn} 给前端；
-    生产环境应改为异步发送（邮件/短信），且响应体不返回 code。
+    安全（P0 修复）：重置码绝不默认返回给请求方（否则任意人可重置他人密码）。
+    - 默认（生产）：响应不含 code，应由邮件/短信通道异步下发；当前无通道时
+      服务端 log_event 记录 code 供运维取用，前端提示「重置码已发送」。
+    - 演示模式：显式设置环境变量 RESET_CODE_IN_RESPONSE=1 时响应才返回 code
+      （仅限本地演示，上线不得开启）。
+    - 账号不存在统一返回 200（无 code），不泄露账号是否注册（防枚举）。
     """
     data = body()
     username = str(data.get("username") or "").strip()
@@ -131,18 +138,20 @@ def forgot_password():
         return fail("用户名或邮箱不能为空")
 
     account = username or email
-    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
-    if _forgot_rate_limited(client_ip, account):
+    ip = client_ip()
+    if _forgot_rate_limited(ip, account):
         return fail("请求过于频繁，请 1 小时后再试", 429)
 
+    demo_mode = os.getenv("RESET_CODE_IN_RESPONSE", "0").strip().lower() in ("1", "true", "yes")
     with DB() as db:
         if username:
             row = db.get("SELECT id FROM users WHERE username = ?", (username,))
         else:
             row = db.get("SELECT id FROM users WHERE email = ?", (email,))
         if not row:
-            # 统一提示，不泄露账号是否注册
-            return fail("账号不存在或未注册", 404)
+            # 统一 200（无 code）：防账号枚举（原 404 会暴露账号是否注册）
+            log_event("password_reset_unknown", account=account)
+            return ok({"expiresIn": 15 * 60}, "重置码已发送")
 
         code = f"{secrets.randbelow(10**6):06d}"
         expires = datetime.now(timezone.utc) + timedelta(minutes=15)
@@ -150,7 +159,11 @@ def forgot_password():
             "UPDATE users SET reset_code = ?, reset_code_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (code, expires.isoformat(), row["id"]),
         )
-        return ok({"code": code, "expiresIn": 15 * 60}, "重置码已生成")
+        log_event("password_reset_code_issued", user_id=row["id"])
+        payload = {"expiresIn": 15 * 60}
+        if demo_mode:
+            payload["code"] = code
+        return ok(payload, "重置码已生成")
 
 
 @api.route("/auth/reset-password", methods=["POST"])
@@ -167,6 +180,11 @@ def reset_password():
         return fail("新密码长度需为 6-128 位")
     if not any(c.isalpha() for c in new_password) or not any(c.isdigit() for c in new_password):
         return fail("新密码需包含字母和数字")
+
+    # 防暴力猜码：与 forgot 共用 IP+账号 限速窗口（6 位码 100 万组合，无限速可几分钟内爆破）
+    ip = client_ip()
+    if _forgot_rate_limited(ip, username):
+        return fail("尝试过于频繁，请 1 小时后再试", 429)
 
     with DB() as db:
         row = db.get("SELECT id, reset_code, reset_code_expires_at FROM users WHERE username = ?", (username,))

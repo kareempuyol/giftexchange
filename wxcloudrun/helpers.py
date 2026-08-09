@@ -261,6 +261,22 @@ def participant_rows(db, event_id):
     )
 
 
+def event_visible_to(db, event, user_id):
+    """活动详情/参与者列表可见性（P1 修复）：
+    公开活动（is_public=1）对所有登录用户可见；私密活动仅创建者与参与者可见。
+    与 create_event 的「谁可以看到这个活动」语义一致。"""
+    if event.get("is_public"):
+        return True
+    if event.get("creator_id") == user_id:
+        return True
+    return bool(
+        db.get(
+            "SELECT id FROM participants WHERE event_id = ? AND user_id = ?",
+            (event["id"], user_id),
+        )
+    )
+
+
 def participant_payload(user_row, data=None):
     data = data or {}
     return {
@@ -577,6 +593,21 @@ def image_ref_valid(value):
     if value.startswith("data:"):
         return len(value) <= MAX_IMAGE_REF_BASE64
     return len(value) <= MAX_IMAGE_REF_URL
+
+
+# ===== 客户端真实 IP（防 X-Forwarded-For 伪造绕过限速，P1 修复）=====
+# 仅当直连来源 IP 在 TRUSTED_PROXIES 白名单（逗号分隔环境变量）内时，才信任
+# X-Forwarded-For 首段；否则一律用 request.remote_addr（客户端无法伪造）。
+# 默认（白名单为空）：伪造 X-Forwarded-For 无效 → 登录/找回密码限速的 IP 半区不可绕过。
+def client_ip():
+    """取客户端真实 IP：登录/找回密码限速共用。"""
+    remote = request.remote_addr or "unknown"
+    trusted = {ip.strip() for ip in os.getenv("TRUSTED_PROXIES", "").split(",") if ip.strip()}
+    if remote in trusted:
+        xff = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+        if xff:
+            return xff
+    return remote
 
 
 # ===== 登录限速（防暴力破解）=====

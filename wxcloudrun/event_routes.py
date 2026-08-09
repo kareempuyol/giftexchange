@@ -13,6 +13,7 @@ from wxcloudrun.helpers import (
     body,
     current_user_row,
     draw_deadline_passed,
+    event_visible_to,
     fail,
     fetch_event,
     generate_short_code,
@@ -224,10 +225,13 @@ def _event_flow_state(db, event):
 
 @api.route("/events/<code>", methods=["GET"])
 @login_required
-def event_detail(_user, code):
+def event_detail(user, code):
     try:
         with DB() as db:
             event = fetch_event(db, code)
+            # 可见性（P1 修复）：公开活动所有登录用户可见；私密活动仅创建者与参与者
+            if not event_visible_to(db, event, user["userId"]):
+                return fail("活动不存在或无权访问", 403)
             payload = api_event(event)
             payload["flowState"] = _event_flow_state(db, event)
             return ok(payload)
@@ -520,10 +524,13 @@ def member_status(row, match_row):
 
 @api.route("/events/<code>/participants")
 @login_required
-def participants(_user, code):
+def participants(user, code):
     try:
         with DB() as db:
             event = fetch_event(db, code)
+            # 可见性（P1 修复）：公开活动所有登录用户可见；私密活动仅创建者与参与者
+            if not event_visible_to(db, event, user["userId"]):
+                return fail("活动不存在或无权访问", 403)
             rows = participant_rows(db, event["id"])
             match_by_participant = {m["participant_id"]: m for m in _member_match_rows(db, event["id"])}
             data = [
