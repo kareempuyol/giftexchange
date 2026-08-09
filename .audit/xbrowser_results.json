@@ -1,0 +1,282 @@
+[
+  {
+    "browser": "chrome",
+    "viewport": "desktop",
+    "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+    "assertions": {
+      "login_renders": {
+        "pass": true,
+        "detail": "用户名+密码输入框与提交按钮渲染"
+      },
+      "login_and_list": {
+        "pass": true,
+        "detail": "path=/events cards=80 hscroll=false header=\"🎁 互送礼物\n我的活动\n+ 创建\n🔔\nV\nverify_user\n退出\""
+      },
+      "detail_renders": {
+        "pass": true,
+        "detail": "detailLayout=true hscroll=false text=\"🎁 互送礼物 | 我的活动 | + 创建 | 🔔 | V | verify_user | 退出 \""
+      },
+      "giftwall_renders": {
+        "pass": true,
+        "detail": "gwGrid=false hscroll=false text=\"🎁 互送礼物 | 我的活动 | + 创建 | 🔔 | V | verify_user | 退出 \""
+      },
+      "no_js_errors": {
+        "pass": true,
+        "detail": "全程 0 个 pageerror / console.error / HTTP>=400 / requestfailed"
+      }
+    },
+    "pages": [
+      {
+        "step": "list",
+        "url": "/events",
+        "path": "/events",
+        "cards": 80,
+        "headerName": "🎁 互送礼物\n我的活动\n+ 创建\n🔔\nV\nverify_user\n退出",
+        "hscroll": false
+      },
+      {
+        "step": "detail",
+        "url": "/events/93b41063-c8c3-4728-b097-828f18f69a76",
+        "path": "/events/93b41063-c8c3-4728-b097-828f18f69a76",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "hscroll": false,
+        "bodyText": "🎁 互送礼物 | 我的活动 | + 创建 | 🔔 | V | verify_user | 退出 | 旅程验证活动 | 返回 | 报名中 | 公开活动 | 我是组织者 | 邀请码 | HH83KR 📋 | 📋 ",
+        "gwGrid": false,
+        "detailLayout": true,
+        "eventCards": 0,
+        "title": "互送礼物"
+      },
+      {
+        "step": "giftwall",
+        "url": "/events/0d6cfd1a-b014-4e4f-8346-610cd392a718/gift-wall",
+        "path": "/events/0d6cfd1a-b014-4e4f-8346-610cd392a718/gift-wall",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "hscroll": false,
+        "bodyText": "🎁 互送礼物 | 我的活动 | + 创建 | 🔔 | V | verify_user | 退出 | 🎁 礼物墙 | 返回 | 还没有人加入活动，礼物墙稍后揭晓 🎁 |  | 还没有人晒出礼物，收到",
+        "gwGrid": false,
+        "detailLayout": false,
+        "eventCards": 0,
+        "title": "互送礼物"
+      }
+    ],
+    "errors": [],
+    "codes": {
+      "open": "93b41063-c8c3-4728-b097-828f18f69a76",
+      "drawn": "0d6cfd1a-b014-4e4f-8346-610cd392a718",
+      "openTitle": "旅程验证活动",
+      "drawnTitle": "smoke-delete-249814"
+    }
+  },
+  {
+    "browser": "chrome",
+    "viewport": "mobile",
+    "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+    "assertions": {
+      "login_renders": {
+        "pass": true,
+        "detail": "用户名+密码输入框与提交按钮渲染"
+      },
+      "login_and_list": {
+        "pass": true,
+        "detail": "path=/events cards=80 hscroll=false header=\"🎁 互送礼物\n+ 创建\n🔔\nV\n退出\""
+      },
+      "detail_renders": {
+        "pass": true,
+        "detail": "detailLayout=true hscroll=false text=\"🎁 互送礼物 | + 创建 | 🔔 | V | 退出 | 旅程验证活动 | 返回 | 报名中 |\""
+      },
+      "giftwall_renders": {
+        "pass": true,
+        "detail": "gwGrid=false hscroll=false text=\"🎁 互送礼物 | + 创建 | 🔔 | V | 退出 | 🎁 礼物墙 | 返回 | 还没有人加\""
+      },
+      "no_js_errors": {
+        "pass": true,
+        "detail": "全程 0 个 pageerror / console.error / HTTP>=400 / requestfailed"
+      }
+    },
+    "pages": [
+      {
+        "step": "list",
+        "url": "/events",
+        "path": "/events",
+        "cards": 80,
+        "headerName": "🎁 互送礼物\n+ 创建\n🔔\nV\n退出",
+        "hscroll": false
+      },
+      {
+        "step": "detail",
+        "url": "/events/93b41063-c8c3-4728-b097-828f18f69a76",
+        "path": "/events/93b41063-c8c3-4728-b097-828f18f69a76",
+        "scrollW": 390,
+        "clientW": 390,
+        "hscroll": false,
+        "bodyText": "🎁 互送礼物 | + 创建 | 🔔 | V | 退出 | 旅程验证活动 | 返回 | 报名中 | 公开活动 | 我是组织者 | 邀请码 | HH83KR 📋 | 📋 复制邀请链接 | 🖼️ 邀请海报 | \ud83d",
+        "gwGrid": false,
+        "detailLayout": true,
+        "eventCards": 0,
+        "title": "互送礼物"
+      },
+      {
+        "step": "giftwall",
+        "url": "/events/0d6cfd1a-b014-4e4f-8346-610cd392a718/gift-wall",
+        "path": "/events/0d6cfd1a-b014-4e4f-8346-610cd392a718/gift-wall",
+        "scrollW": 390,
+        "clientW": 390,
+        "hscroll": false,
+        "bodyText": "🎁 互送礼物 | + 创建 | 🔔 | V | 退出 | 🎁 礼物墙 | 返回 | 还没有人加入活动，礼物墙稍后揭晓 🎁 |  | 还没有人晒出礼物，收到礼物并晒图后，礼物墙就会揭晓 🎀",
+        "gwGrid": false,
+        "detailLayout": false,
+        "eventCards": 0,
+        "title": "互送礼物"
+      }
+    ],
+    "errors": [],
+    "codes": {
+      "open": "93b41063-c8c3-4728-b097-828f18f69a76",
+      "drawn": "0d6cfd1a-b014-4e4f-8346-610cd392a718",
+      "openTitle": "旅程验证活动",
+      "drawnTitle": "smoke-delete-249814"
+    }
+  },
+  {
+    "browser": "edge",
+    "viewport": "desktop",
+    "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0",
+    "assertions": {
+      "login_renders": {
+        "pass": true,
+        "detail": "用户名+密码输入框与提交按钮渲染"
+      },
+      "login_and_list": {
+        "pass": true,
+        "detail": "path=/events cards=80 hscroll=false header=\"🎁 互送礼物\n我的活动\n+ 创建\n🔔\nV\nverify_user\n退出\""
+      },
+      "detail_renders": {
+        "pass": true,
+        "detail": "detailLayout=true hscroll=false text=\"🎁 互送礼物 | 我的活动 | + 创建 | 🔔 | V | verify_user | 退出 \""
+      },
+      "giftwall_renders": {
+        "pass": true,
+        "detail": "gwGrid=false hscroll=false text=\"🎁 互送礼物 | 我的活动 | + 创建 | 🔔 | V | verify_user | 退出 \""
+      },
+      "no_js_errors": {
+        "pass": true,
+        "detail": "全程 0 个 pageerror / console.error / HTTP>=400 / requestfailed"
+      }
+    },
+    "pages": [
+      {
+        "step": "list",
+        "url": "/events",
+        "path": "/events",
+        "cards": 80,
+        "headerName": "🎁 互送礼物\n我的活动\n+ 创建\n🔔\nV\nverify_user\n退出",
+        "hscroll": false
+      },
+      {
+        "step": "detail",
+        "url": "/events/93b41063-c8c3-4728-b097-828f18f69a76",
+        "path": "/events/93b41063-c8c3-4728-b097-828f18f69a76",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "hscroll": false,
+        "bodyText": "🎁 互送礼物 | 我的活动 | + 创建 | 🔔 | V | verify_user | 退出 | 旅程验证活动 | 返回 | 报名中 | 公开活动 | 我是组织者 | 邀请码 | HH83KR 📋 | 📋 ",
+        "gwGrid": false,
+        "detailLayout": true,
+        "eventCards": 0,
+        "title": "互送礼物"
+      },
+      {
+        "step": "giftwall",
+        "url": "/events/0d6cfd1a-b014-4e4f-8346-610cd392a718/gift-wall",
+        "path": "/events/0d6cfd1a-b014-4e4f-8346-610cd392a718/gift-wall",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "hscroll": false,
+        "bodyText": "🎁 互送礼物 | 我的活动 | + 创建 | 🔔 | V | verify_user | 退出 | 🎁 礼物墙 | 返回 | 还没有人加入活动，礼物墙稍后揭晓 🎁 |  | 还没有人晒出礼物，收到",
+        "gwGrid": false,
+        "detailLayout": false,
+        "eventCards": 0,
+        "title": "互送礼物"
+      }
+    ],
+    "errors": [],
+    "codes": {
+      "open": "93b41063-c8c3-4728-b097-828f18f69a76",
+      "drawn": "0d6cfd1a-b014-4e4f-8346-610cd392a718",
+      "openTitle": "旅程验证活动",
+      "drawnTitle": "smoke-delete-249814"
+    }
+  },
+  {
+    "browser": "edge",
+    "viewport": "mobile",
+    "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36 Edg/151.0.0.0",
+    "assertions": {
+      "login_renders": {
+        "pass": true,
+        "detail": "用户名+密码输入框与提交按钮渲染"
+      },
+      "login_and_list": {
+        "pass": true,
+        "detail": "path=/events cards=80 hscroll=false header=\"🎁 互送礼物\n+ 创建\n🔔\nV\n退出\""
+      },
+      "detail_renders": {
+        "pass": true,
+        "detail": "detailLayout=true hscroll=false text=\"🎁 互送礼物 | + 创建 | 🔔 | V | 退出 | 旅程验证活动 | 返回 | 报名中 |\""
+      },
+      "giftwall_renders": {
+        "pass": true,
+        "detail": "gwGrid=false hscroll=false text=\"🎁 互送礼物 | + 创建 | 🔔 | V | 退出 | 🎁 礼物墙 | 返回 | 还没有人加\""
+      },
+      "no_js_errors": {
+        "pass": true,
+        "detail": "全程 0 个 pageerror / console.error / HTTP>=400 / requestfailed"
+      }
+    },
+    "pages": [
+      {
+        "step": "list",
+        "url": "/events",
+        "path": "/events",
+        "cards": 80,
+        "headerName": "🎁 互送礼物\n+ 创建\n🔔\nV\n退出",
+        "hscroll": false
+      },
+      {
+        "step": "detail",
+        "url": "/events/93b41063-c8c3-4728-b097-828f18f69a76",
+        "path": "/events/93b41063-c8c3-4728-b097-828f18f69a76",
+        "scrollW": 390,
+        "clientW": 390,
+        "hscroll": false,
+        "bodyText": "🎁 互送礼物 | + 创建 | 🔔 | V | 退出 | 旅程验证活动 | 返回 | 报名中 | 公开活动 | 我是组织者 | 邀请码 | HH83KR 📋 | 📋 复制邀请链接 | 🖼️ 邀请海报 | \ud83d",
+        "gwGrid": false,
+        "detailLayout": true,
+        "eventCards": 0,
+        "title": "互送礼物"
+      },
+      {
+        "step": "giftwall",
+        "url": "/events/0d6cfd1a-b014-4e4f-8346-610cd392a718/gift-wall",
+        "path": "/events/0d6cfd1a-b014-4e4f-8346-610cd392a718/gift-wall",
+        "scrollW": 390,
+        "clientW": 390,
+        "hscroll": false,
+        "bodyText": "🎁 互送礼物 | + 创建 | 🔔 | V | 退出 | 🎁 礼物墙 | 返回 | 还没有人加入活动，礼物墙稍后揭晓 🎁 |  | 还没有人晒出礼物，收到礼物并晒图后，礼物墙就会揭晓 🎀",
+        "gwGrid": false,
+        "detailLayout": false,
+        "eventCards": 0,
+        "title": "互送礼物"
+      }
+    ],
+    "errors": [],
+    "codes": {
+      "open": "93b41063-c8c3-4728-b097-828f18f69a76",
+      "drawn": "0d6cfd1a-b014-4e4f-8346-610cd392a718",
+      "openTitle": "旅程验证活动",
+      "drawnTitle": "smoke-delete-249814"
+    }
+  }
+]

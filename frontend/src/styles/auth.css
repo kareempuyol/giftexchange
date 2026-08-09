@@ -1,11 +1,13 @@
 /* 主内容区 */
 .app-main {
   min-height: calc(100vh - 52px);
+  min-height: calc(100dvh - 52px); /* iOS 地址栏可见视口跟随 */
 }
 
 /* 认证页布局（登录/注册） */
 .auth-page {
   min-height: 100vh;
+  min-height: 100dvh; /* iOS 地址栏可见视口跟随 */
   display: flex;
   align-items: center;
   justify-content: center;

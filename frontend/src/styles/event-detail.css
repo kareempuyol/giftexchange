@@ -188,6 +188,7 @@
   width: 100%;
   max-width: 400px;
   max-height: 85vh;
+  max-height: 85dvh; /* iOS 地址栏可见视口跟随 */
   overflow-y: auto;
 }
 .modal h3 {
