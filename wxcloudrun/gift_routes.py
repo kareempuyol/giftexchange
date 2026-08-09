@@ -15,6 +15,7 @@ from wxcloudrun.helpers import (
     ok,
     participant_rows,
     query_kdniao_tracking,
+    tracking_degradation_copy,
 )
 
 
@@ -439,11 +440,12 @@ def update_shipment(user, code):
             # 单号未变化时保留旧 summary（否则同单号重复提交会把已存摘要清空）
             tracking_summary = old_row.get("tracking_summary") or ""
             if status != "pending" and tracking_number and shipment_changed:
-                success, summary, _detail = query_kdniao_tracking(db, carrier, tracking_number)
+                success, summary, detail = query_kdniao_tracking(db, carrier, tracking_number)
                 if success:
                     tracking_summary = summary
                 else:
-                    tracking_summary = "物流查询暂不可用，稍后自动更新" if tracking_number else ""
+                    # 区分「未接入」与「查询失败」：未配置给自助指引，失败给可重试动作
+                    tracking_summary = tracking_degradation_copy(detail)
 
             cur = db.execute(
                 """
@@ -484,5 +486,44 @@ def update_shipment(user, code):
                     f"{row.get('giver_display_name') or row.get('giver_username')} 已填写快递信息，请留意收件。",
                 )
             return ok(api_shipment(row), "发货信息已保存")
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/shipment/refresh", methods=["POST"])
+@login_required
+def refresh_shipment_tracking(user, code):
+    """物流查询手动刷新：上次查询失败后的重试入口。
+
+    - 仅送礼人本人可刷新自己的 match；单号未变也强制重新外呼（失败结果不缓存，可重试）
+    - 成功更新 tracking_summary；失败保留失败文案，前端按钮继续可点
+    - 不改变 shipment_status / 不重复通知（不同于 PUT shipment）
+    """
+    data = body()
+    match_id = data.get("matchId")
+    if not match_id:
+        return fail("matchId is required")
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
+            if not me:
+                return fail("你不是该活动的参与者", 403)
+            row = db.get(
+                "SELECT * FROM matches WHERE id = ? AND event_id = ? AND giver_id = ?",
+                (match_id, event["id"], me["id"]),
+            )
+            if not row:
+                return fail("未找到对应的送礼任务")
+            if not row.get("tracking_number"):
+                return fail("还没有物流单号")
+            success, summary, detail = query_kdniao_tracking(db, row.get("carrier") or "", row["tracking_number"])
+            tracking_summary = summary if success else tracking_degradation_copy(detail)
+            db.execute(
+                "UPDATE matches SET tracking_summary = ?, tracking_updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (tracking_summary, match_id),
+            )
+            row["tracking_summary"] = tracking_summary
+            return ok(api_shipment(row), "物流信息已刷新" if success else "物流查询暂不可用")
     except ValueError as exc:
         return fail(str(exc), 404)

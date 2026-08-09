@@ -364,13 +364,16 @@ def add_participant(db, event_id, user_id, data=None):
 
 
 def api_shipment(row):
+    summary = row.get("tracking_summary") or ""
     return {
         "status": row.get("shipment_status") or "pending",
         "carrier": row.get("carrier") or "",
         "trackingNumber": row.get("tracking_number") or "",
         "shippedAt": str(row.get("shipped_at") or ""),
         "trackingUpdatedAt": str(row.get("tracking_updated_at") or ""),
-        "trackingSummary": row.get("tracking_summary") or "",
+        "trackingSummary": summary,
+        # 前端据此显示「手动刷新物流」按钮：查询失败（含旧版失败文案的历史数据）时可重试，未配置不可
+        "trackingRefreshable": summary in (TRACKING_QUERY_FAILED_MSG, TRACKING_LEGACY_FAILED_MSG),
     }
 
 
@@ -454,6 +457,11 @@ def parse_datetime(value):
 
 
 # ===== KDNiao 物流查询（3s 超时 + 6h 内存缓存 + 静默降级）=====
+# 降级文案区分「未接入」与「查询失败」：未配置给用户自助指引；失败给可重试动作（前端显示手动刷新按钮）。
+TRACKING_NOT_CONFIGURED_MSG = "暂未接入物流查询，可通过单号自行查询"
+TRACKING_QUERY_FAILED_MSG = "物流信息查询失败，请稍后刷新重试"
+TRACKING_LEGACY_FAILED_MSG = "物流查询暂不可用，稍后自动更新"  # 旧版失败文案（历史数据无迁移，仅用于可刷新判断）
+KDNIAO_NOT_CONFIGURED = "KDNiao not configured"  # query_kdniao_tracking 的 detail 原因（内部契约）
 _KDNIAO_API_URL = "https://api.kdniao.com/Ebusiness/EbusinessOrderHandle.aspx"
 _KDNIAO_TIMEOUT_SECONDS = 3  # 外网同步调用硬超时：宁可降级也不拖垮请求线程
 _KDNIAO_CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 小时缓存：同一 (carrier, tracking_number) 不重复外呼
@@ -559,7 +567,7 @@ def query_kdniao_tracking(db, carrier, tracking_number):
         ebusiness_id = setting_value(db, "kdniao_ebusiness_id").strip()
         app_key = setting_value(db, "kdniao_app_key").strip()
         if not ebusiness_id or not app_key:
-            return False, "", "KDNiao not configured"
+            return False, "", KDNIAO_NOT_CONFIGURED
 
         outcome = _kdniao_result_to_summary(
             _kdniao_http_query(ebusiness_id, app_key, key[0], key[1])
@@ -571,6 +579,17 @@ def query_kdniao_tracking(db, carrier, tracking_number):
     except Exception as exc:
         # 静默降级：超时/网络/解析异常一律不抛到路由层
         return False, "", str(exc)
+
+
+def tracking_degradation_copy(detail):
+    """把 KDNiao 降级原因映射为用户可读文案（存 tracking_summary）。
+
+    - 未配置（detail == KDNIAO_NOT_CONFIGURED）→ 自助查询指引
+    - 其余失败（超时/网络/解析/接口报错）→ 可重试提示（前端据此显示手动刷新按钮）
+    """
+    if detail == KDNIAO_NOT_CONFIGURED:
+        return TRACKING_NOT_CONFIGURED_MSG
+    return TRACKING_QUERY_FAILED_MSG
 
 
 # ===== 图片上传（阶段二G：先传后引用，未来兼容 wx.uploadFile） =====

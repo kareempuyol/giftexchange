@@ -154,7 +154,8 @@ class TestDetailFlowState:
         h2, _ = register_and_login(client, "flow_member4")
         h3, _ = register_and_login(client, "flow_member4b")
         code = create_event(client, h1, "进行中活动")
-        for h in (h1, h2, h3):
+        # 组织者创建后自动加入；其余成员手动加入
+        for h in (h2, h3):
             r = client.post(f"/api/events/{code}/join", json={}, headers=h)
             assert r.status_code == 201, r.get_json()
         r = client.post(f"/api/events/{code}/draw", headers=h1)
@@ -168,7 +169,8 @@ class TestDetailFlowState:
         h2, _ = register_and_login(client, "flow_member5")
         h3, _ = register_and_login(client, "flow_member5b")
         code = create_event(client, h1, "完结活动")
-        for h in (h1, h2, h3):
+        # 组织者创建后自动加入；其余成员手动加入
+        for h in (h2, h3):
             r = client.post(f"/api/events/{code}/join", json={}, headers=h)
             assert r.status_code == 201, r.get_json()
         r = client.post(f"/api/events/{code}/draw", headers=h1)

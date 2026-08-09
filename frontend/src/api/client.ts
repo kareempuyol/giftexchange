@@ -235,6 +235,8 @@ export interface Shipment {
   shippedAt: string
   trackingUpdatedAt: string
   trackingSummary: string
+  /** 物流查询失败（可手动刷新重试）时为 true */
+  trackingRefreshable: boolean
 }
 
 export type GiftPrivacy = 'photo' | 'text' | 'blur'

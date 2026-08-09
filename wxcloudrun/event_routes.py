@@ -71,7 +71,7 @@ def create_event(user):
     with DB() as db:
         code = str(uuid.uuid4())
         short_code = generate_short_code(db)
-        db.execute(
+        cur = db.execute(
             """
             INSERT INTO events (code, name, description, budget_min, creator_id, sign_up_deadline,
                                 match_visibility, is_public, max_participants, cover_image, short_code, excluded_pairs)
@@ -80,6 +80,9 @@ def create_event(user):
             (code, title, note, budget, user["userId"], draw_date, match_visibility,
              1 if is_public else 0, max_participants, cover_image, short_code, excluded_pairs),
         )
+        # 组织者自动加入：创建即参与者（participant_count +1，抽签门槛/人数上限随之计算）。
+        # 收件信息取用户资料默认值，与手动 join 同一路径；加入动作不通知任何人（不打扰创建者）。
+        add_participant(db, cur.lastrowid, user["userId"])
         # 可观测性埋点：event_created（INSERT 成功后打；generate_short_code 已无副作用，
         # reset-short-code 不会误报活动创建）
         log_event("event_created")

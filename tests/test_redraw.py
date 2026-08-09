@@ -80,6 +80,9 @@ def create_event(client, headers, title, excluded=None):
 
 def join_event(client, headers, code):
     r = client.post(f"/api/events/{code}/join", json={}, headers=headers)
+    # 组织者创建活动后自动加入：再次 join 幂等返回「你已加入该活动」（400），视为已加入
+    if r.status_code == 400 and r.get_json().get("message") == "你已加入该活动":
+        return
     assert r.status_code == 201, r.get_json()
 
 

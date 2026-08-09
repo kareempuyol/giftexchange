@@ -345,10 +345,13 @@ export default function EventDetailPage() {
           participantCount={event.participantCount}
         />
 
-        {!joined && event.status === 'open' && (
+        {!isOwner && !joined && event.status === 'open' && (
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowJoinForm(true)}>
             加入这个活动
           </button>
+        )}
+        {isOwner && !joined && (
+          <p style={{ marginTop: 16, color: 'var(--gift-text-secondary)' }}>你是组织者，活动已创建，无需加入</p>
         )}
 
         {isOwner && event.status === 'open' && (
@@ -1151,7 +1154,7 @@ function ShipmentSection({
 }: {
   code: string
   matchId: number
-  shipment: { status: string; carrier: string; trackingNumber: string; trackingSummary: string }
+  shipment: { status: string; carrier: string; trackingNumber: string; trackingSummary: string; trackingRefreshable?: boolean }
   note: string
   onUpdated: () => void
 }) {
@@ -1160,7 +1163,23 @@ function ShipmentSection({
   const [trackingNumber, setTrackingNumber] = useState(shipment.trackingNumber || '')
   const [secretNote, setSecretNote] = useState(note || '')
   const [saving, setSaving] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [showForm, setShowForm] = useState(!shipment.trackingNumber)
+
+  // 物流查询失败后的手动刷新：重新外呼 KDNiao（不改发货状态、不重复通知）
+  const refreshTracking = async () => {
+    setRefreshing(true)
+    try {
+      // 返回的 trackingRefreshable 表示仍处于失败态：据此给真实反馈，避免「已刷新」误导
+      const res = await api.post<{ trackingRefreshable: boolean }>(`/events/${code}/shipment/refresh`, { matchId })
+      toast(res.trackingRefreshable ? '物流查询仍失败，请稍后再试' : '物流信息已刷新', res.trackingRefreshable ? 'error' : undefined)
+      onUpdated()
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '刷新失败，请稍后重试', 'error')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const saveShipment = async () => {
     if (!trackingNumber.trim()) {
@@ -1207,6 +1226,16 @@ function ShipmentSection({
           <p>单号：{shipment.trackingNumber}{shipment.carrier ? `（${shipment.carrier}）` : ''}</p>
           {shipment.trackingSummary && (
             <p style={{ marginTop: 4, color: 'var(--gift-text-primary)' }}>📦 {shipment.trackingSummary}</p>
+          )}
+          {shipment.trackingRefreshable && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ width: 'auto', marginTop: 6 }}
+              onClick={refreshTracking}
+              disabled={refreshing}
+            >
+              {refreshing ? '刷新中…' : '🔄 刷新物流信息'}
+            </button>
           )}
         </div>
       )}

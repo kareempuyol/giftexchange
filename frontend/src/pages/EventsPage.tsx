@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, EventInfo } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
+import SafeImage from '../components/SafeImage'
 import { useToast } from '../components/Toast'
 import { formatDeadline, formatMoney } from '../utils/format'
 
@@ -90,7 +91,7 @@ export default function EventsPage() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">互送礼物</h1>
+        <h1 className="page-title">{tab === 'public' ? '发现活动' : tab === 'joined' ? '我参与的' : tab === 'archived' ? '已归档' : '我的活动'}</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Link to="/events/new" className="btn btn-primary btn-sm">+ 创建活动</Link>
         </div>
