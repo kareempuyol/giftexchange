@@ -17,6 +17,8 @@ interface Profile {
   address: string
   receiverName: string
   giftPreference: string
+  wishlist: string
+  wishlistVisible: boolean
   createdAt: string
 }
 
@@ -54,6 +56,8 @@ export default function ProfilePage() {
   const [address, setAddress] = useState('')
   const [receiverName, setReceiverName] = useState('')
   const [giftPreference, setGiftPreference] = useState('')
+  const [wishlist, setWishlist] = useState('')
+  const [wishlistVisible, setWishlistVisible] = useState(false)
 
   // 改密码表单
   const [oldPassword, setOldPassword] = useState('')
@@ -81,6 +85,8 @@ export default function ProfilePage() {
         setAddress(p.address)
         setReceiverName(p.receiverName)
         setGiftPreference(p.giftPreference)
+        setWishlist(p.wishlist || '')
+        setWishlistVisible(!!p.wishlistVisible)
         setAvatarUrl(p.avatarUrl || '')
       })
       .catch((e) => toast(e instanceof ApiError ? e.message : t('加载失败'), 'error'))
@@ -115,6 +121,8 @@ export default function ProfilePage() {
         address,
         receiverName,
         giftPreference,
+        wishlist,
+        wishlistVisible,
         avatarUrl: avatarUrl,
       })
       setProfile(updated)
@@ -150,6 +158,8 @@ export default function ProfilePage() {
         address,
         receiverName,
         giftPreference,
+        wishlist,
+        wishlistVisible,
         avatarUrl: url,
       })
       setProfile(updated)
@@ -303,6 +313,20 @@ export default function ProfilePage() {
         <div className="form-group">
           <label className="form-label" htmlFor="profile-preference">{t('礼物偏好')}</label>
           <textarea id="profile-preference" className="form-textarea" value={giftPreference} onChange={(e) => setGiftPreference(e.target.value)} maxLength={500} placeholder={t('喜欢什么 / 不喜欢什么 / 尺码颜色等')} style={{ minHeight: 60 }} />
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="profile-wishlist">{t('心愿清单')}</label>
+          <textarea id="profile-wishlist" className="form-textarea" value={wishlist} onChange={(e) => setWishlist(e.target.value)} maxLength={500} placeholder={t('写下你想要什么礼物，展示给送你的人（选填）')} style={{ minHeight: 60 }} />
+          <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8, cursor: 'pointer', fontSize: 14 }}>
+            <input
+              type="checkbox"
+              checked={wishlistVisible}
+              onChange={(e) => setWishlistVisible(e.target.checked)}
+              style={{ marginTop: 3, flexShrink: 0, accentColor: 'var(--gift-brand)' }}
+              aria-label={t('加入活动时展示给送礼人')}
+            />
+            {t('加入活动时展示给送礼人')}
+          </label>
         </div>
         <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
           {saving ? t('保存中…') : t('保存资料')}

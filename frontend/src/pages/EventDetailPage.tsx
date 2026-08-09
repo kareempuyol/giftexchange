@@ -177,6 +177,42 @@ export default function EventDetailPage() {
     }
   }
 
+  // 复制活动：把当前活动配置（title 加「（副本）」、budget/note/公开性/人数上限/互避规则/成员名单）
+  // 写入「再开一局」同款草稿（gift_draft），跳转创建页后可调整再创建（成员不自动加入）
+  const onCopyEvent = async () => {
+    if (!event) return
+    const members = participants.map((p) => ({
+      username: p.username,
+      userId: p.userId,
+      displayName: p.displayName,
+    }))
+    // 互避规则是 userId 对 → 用成员名单反查用户名，转成创建页的「用户名1, 用户名2」行格式
+    const uidByName = new Map(members.map((m) => [m.userId, m.username]))
+    const ruleLines: string[] = []
+    for (const [a, b] of event.excludedPairs ?? []) {
+      const na = uidByName.get(a)
+      const nb = uidByName.get(b)
+      if (na && nb) ruleLines.push(`${na}, ${nb}`)
+    }
+    const draft = {
+      title: t('{title}（副本）', { title: event.title }),
+      note: event.note,
+      budget: event.budget,
+      isPublic: event.isPublic,
+      matchVisibility: event.matchVisibility,
+      maxParticipants: event.maxParticipants ?? null,
+      members,
+      rulesText: ruleLines.join('\n'),
+    }
+    try {
+      localStorage.setItem('gift_draft', JSON.stringify(draft))
+      toast(t('已复制活动配置，可调整后创建'))
+      navigate('/events/new')
+    } catch {
+      toast(t('复制失败，请重试'), 'error')
+    }
+  }
+
   if (loading) return <div className="page-loading"><span className="spinner" aria-hidden="true" />{t('加载中…')}</div>
 
   // 加载失败：404 给「活动不存在」友好页；其他错误给出说明 + 重试
@@ -278,6 +314,13 @@ export default function EventDetailPage() {
         <h1 className="page-title">{event.title}</h1>
         <Link to="/events" className="btn btn-ghost btn-sm">{t('返回')}</Link>
       </div>
+
+      {/* 截止提醒横幅：组织者视角，已过 drawDate 未抽签 → 顶部红色提醒（纯前端计算） */}
+      {isOwner && event.status === 'open' && event.drawDate && new Date(event.drawDate).getTime() <= Date.now() && (
+        <div className="detail-deadline-banner" role="alert">
+          {t('⏰ 已过截止时间，请尽快抽签')}
+        </div>
+      )}
 
       <div className="detail-layout">
       <div className="detail-col-left">
@@ -408,6 +451,13 @@ export default function EventDetailPage() {
             >
               {t('归档活动')}
             </button>
+            <button
+              className="btn btn-secondary"
+              style={{ marginTop: 8, width: '100%' }}
+              onClick={onCopyEvent}
+            >
+              {t('📋 复制活动')}
+            </button>
           </div>
         )}
       </div>
@@ -522,6 +572,8 @@ export default function EventDetailPage() {
               </p>
             )}
             {myMatch.preference.notes && <p>{t('📝 备注：{notes}', { notes: myMatch.preference.notes })}</p>}
+            {/* 个人心愿单：收礼人开启展示时由 my-match 返回（隐私门控，v12） */}
+            {myMatch.receiverWishlist && <p>{t('🎁 TA 的心愿：{wish}', { wish: myMatch.receiverWishlist })}</p>}
             {/* 悄悄话：仅当收礼人已晒图后才揭晓（纯前端门控，receivedAt 非空 = 收礼人已晒图） */}
             {myMatch.note &&
               (myMatch.giftPost.receivedAt ? (

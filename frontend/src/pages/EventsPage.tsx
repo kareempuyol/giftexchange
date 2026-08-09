@@ -480,7 +480,11 @@ export default function EventsPage() {
                   <div className="event-card-meta">
                     {ev.note && <span className="event-card-note">{ev.note}</span>}
                     <span>{formatMoney(ev.budget)}</span>
-                    <span>{t('{count} 人参与', { count: ev.participantCount })}</span>
+                    <span>
+                      {ev.maxParticipants
+                        ? t('{count}/{max} 人', { count: ev.participantCount, max: ev.maxParticipants })
+                        : t('{count} 人参与', { count: ev.participantCount })}
+                    </span>
                     {ev.drawDate && <span>{t('报名 {deadline}', { deadline: formatDeadline(ev.drawDate) })}</span>}
                   </div>
                 </div>

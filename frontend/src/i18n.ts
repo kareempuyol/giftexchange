@@ -524,6 +524,19 @@ export const zhKeys = [
   "🖼️ 邀请海报",
   "🚚 发货进度",
   "🚫 不喜欢：{dislikes}",
+  // ===== hackathon 轮13 功能增量 =====
+  "复制活动",
+  "{title}（副本）",
+  "已复制活动配置，可调整后创建",
+  "📋 复制分享文案",
+  "「{title}」互送礼物活动！{total} 人参与，{posted} 份心意已送出 🎁 邀请码：{shortCode}，快来加入：{url}",
+  "分享文案已复制",
+  "心愿清单",
+  "写下你想要什么礼物，展示给送你的人（选填）",
+  "加入活动时展示给送礼人",
+  "🎁 TA 的心愿：{wish}",
+  "⏰ 已过截止时间，请尽快抽签",
+  "{count}/{max} 人",
 ] as const
 
 // en 字典：key=中文原文，value=自然英文（生成自 .audit/en_dict_gen.py）
@@ -1028,6 +1041,19 @@ const en: Record<string, string> = {
   "🖼️ 邀请海报": "🖼️ Invite poster",
   "🚚 发货进度": "🚚 Shipping progress",
   "🚫 不喜欢：{dislikes}": "🚫 Dislikes: {dislikes}",
+  // ===== hackathon 轮13 功能增量 =====
+  "复制活动": "Copy event",
+  "{title}（副本）": "{title} (copy)",
+  "已复制活动配置，可调整后创建": "Event config copied — tweak it, then create",
+  "📋 复制分享文案": "📋 Copy share text",
+  "「{title}」互送礼物活动！{total} 人参与，{posted} 份心意已送出 🎁 邀请码：{shortCode}，快来加入：{url}": "Gift exchange “{title}” is on! {total} people joined, {posted} gifts already shared 🎁 Invite code: {shortCode} — join now: {url}",
+  "分享文案已复制": "Share text copied",
+  "心愿清单": "Wishlist",
+  "写下你想要什么礼物，展示给送你的人（选填）": "List what gifts you'd like, shown to whoever gifts you (optional)",
+  "加入活动时展示给送礼人": "Show to my giver when I join events",
+  "🎁 TA 的心愿：{wish}": "🎁 Their wishlist: {wish}",
+  "⏰ 已过截止时间，请尽快抽签": "⏰ Deadline passed — draw now!",
+  "{count}/{max} 人": "{count}/{max} people",
 }
 export function detectLocale(): Locale {
   try {

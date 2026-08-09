@@ -158,6 +158,9 @@ export interface User {
   address?: string
   receiverName?: string
   giftPreference?: string
+  /** 个人心愿单：想要什么礼物（v12，展示给送礼人需 wishlistVisible） */
+  wishlist?: string
+  wishlistVisible?: boolean
   createdAt: string
 }
 
@@ -234,6 +237,8 @@ export interface MyMatch {
     color: string
     wishLinks: string[]
   }
+  /** 收礼人个人心愿单（仅当其开启展示时返回，v12） */
+  receiverWishlist?: string
 }
 
 export interface Shipment {
@@ -283,6 +288,8 @@ export interface GiftWall {
   title: string
   note?: string
   budget?: number
+  /** 邀请短码（分享文案按钮依赖，v12+） */
+  shortCode?: string
   progress: GiftWallProgress
   items: GiftWallItem[]
 }

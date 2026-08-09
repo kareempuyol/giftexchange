@@ -203,7 +203,8 @@ def my_match(user, code):
                        p.receiver_name, p.phone, p.address,
                        p.preference_likes, p.preference_dislikes, p.preference_notes,
                        p.preference_size, p.preference_color, p.wish_links,
-                       p.user_id AS receiver_user_id, u.username, u.display_name
+                       p.user_id AS receiver_user_id, u.username, u.display_name,
+                       u.wishlist, u.wishlist_visible
                 FROM matches m
                 JOIN participants p ON p.id = m.receiver_id
                 JOIN users u ON u.id = p.user_id
@@ -225,6 +226,8 @@ def my_match(user, code):
                     "giftPost": api_gift_post(row),
                     "contact": api_contact(row),
                     "preference": api_preference(row),
+                    # 个人心愿单：仅当收礼人开启「展示给送礼人」时返回（隐私门控）
+                    "receiverWishlist": (row.get("wishlist") or "") if row.get("wishlist_visible") else "",
                 }
             )
     except ValueError as exc:

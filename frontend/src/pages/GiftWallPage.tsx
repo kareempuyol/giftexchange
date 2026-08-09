@@ -59,6 +59,23 @@ export default function GiftWallPage() {
     }
   }
 
+  // 复制分享文案：活动名/人数/心意数 + 短码 → 好友看到文字也能加入
+  const copyShareText = async () => {
+    if (!wall) return
+    const shareCode = wall.shortCode || code
+    const url = `${window.location.origin}/events/${shareCode}`
+    const text = t(
+      '「{title}」互送礼物活动！{total} 人参与，{posted} 份心意已送出 🎁 邀请码：{shortCode}，快来加入：{url}',
+      { title: wall.title, total: wall.total, posted: wall.posted, shortCode: shareCode, url }
+    )
+    try {
+      await navigator.clipboard.writeText(text)
+      toast(t('分享文案已复制'))
+    } catch {
+      toast(t('复制失败，请手动选择复制'), 'error')
+    }
+  }
+
   const reveal = (matchId: number) => {
     setRevealed((prev) => (prev[matchId] ? prev : { ...prev, [matchId]: true }))
   }
@@ -175,9 +192,11 @@ export default function GiftWallPage() {
             {t('返回活动晒出第一份礼物')}
           </Link>
         </div>
-      ) : (
-        <>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 20 }}>
+      ) : null}
+
+      {/* 顶部操作行（解锁前后都可用）：复制分享文案/再开一局常驻，高光海报仅解锁态 */}
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
+        {unlocked && (
           <button
             className="btn btn-primary"
             style={{ width: 'auto', padding: '0 28px' }}
@@ -194,14 +213,24 @@ export default function GiftWallPage() {
           >
             {t('🏆 生成高光海报')}
           </button>
-          <button
-            className="btn btn-secondary"
-            style={{ width: 'auto', padding: '0 28px' }}
-            onClick={() => setReplayOpen(true)}
-          >
-            {t('🔁 再开一局')}
-          </button>
-        </div>
+        )}
+        <button
+          className="btn btn-secondary"
+          style={{ width: 'auto', padding: '0 28px' }}
+          onClick={() => setReplayOpen(true)}
+        >
+          {t('🔁 再开一局')}
+        </button>
+        <button
+          className="btn btn-secondary"
+          style={{ width: 'auto', padding: '0 28px' }}
+          onClick={copyShareText}
+        >
+          {t('📋 复制分享文案')}
+        </button>
+      </div>
+
+      {unlocked && (
         <div className="gw-grid">
           {items.map((item) => {
             const isRevealed = !!revealed[item.matchId]
@@ -293,7 +322,6 @@ export default function GiftWallPage() {
             )
           })}
         </div>
-        </>
       )}
 
       <PosterModal data={poster} onClose={() => setPoster(null)} />

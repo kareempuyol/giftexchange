@@ -33,6 +33,11 @@ export default function CreateEventPage() {
         if (d.title) setTitle(d.title)
         if (d.note) setNote(d.note)
         if (d.budget) setBudget(String(d.budget))
+        // 「复制活动」草稿扩展字段：公开性/可见性/人数上限/互避规则文本
+        if (typeof d.isPublic === 'boolean') setIsPublic(d.isPublic)
+        if (typeof d.matchVisibility === 'string') setMatchVisibility(d.matchVisibility)
+        if (d.maxParticipants != null && d.maxParticipants !== '') setMaxParticipants(String(d.maxParticipants))
+        if (typeof d.rulesText === 'string' && d.rulesText) setRulesText(d.rulesText)
         if (Array.isArray(d.members)) {
           // 兼容纯字符串名单与 {username, userId} 对象名单
           const members: { username: string; userId: number; displayName?: string }[] = []

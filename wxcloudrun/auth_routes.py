@@ -249,6 +249,8 @@ def update_profile(user):
         "address": str(data.get("address") or "").strip(),
         "receiver_name": str(data.get("receiverName") or data.get("receiver_name") or "").strip(),
         "gift_preference": str(data.get("giftPreference") or data.get("gift_preference") or "").strip(),
+        "wishlist": str(data.get("wishlist") or "").strip(),
+        "wishlist_visible": 1 if data.get("wishlistVisible") else 0,
     }
     if len(fields["display_name"]) > 120:
         return fail("昵称过长")
@@ -256,13 +258,16 @@ def update_profile(user):
         return fail("手机号过长")
     if len(fields["address"]) > 500:
         return fail("地址过长")
+    if len(fields["wishlist"]) > 500:
+        return fail("心愿清单过长")
 
     with DB() as db:
         db.execute(
             """
             UPDATE users
             SET display_name = ?, avatar_url = ?, phone = ?, address = ?,
-                receiver_name = ?, gift_preference = ?, updated_at = CURRENT_TIMESTAMP
+                receiver_name = ?, gift_preference = ?, wishlist = ?, wishlist_visible = ?,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """,
             (
@@ -272,6 +277,8 @@ def update_profile(user):
                 fields["address"],
                 fields["receiver_name"],
                 fields["gift_preference"],
+                fields["wishlist"],
+                fields["wishlist_visible"],
                 user["userId"],
             ),
         )

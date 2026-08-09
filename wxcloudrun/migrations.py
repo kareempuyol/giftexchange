@@ -197,6 +197,14 @@ MIGRATIONS = [
             _create_index("idx_gift_likes_user", "gift_likes", ["user_id"]),
         ],
     },
+    {
+        "version": 12,
+        "name": "users.wishlist/wishlist_visible 个人心愿单（hackathon 轮13）",
+        "up": [
+            _add_column("users", "wishlist", mysql="TEXT", sqlite="TEXT"),
+            _add_column("users", "wishlist_visible", mysql="TINYINT DEFAULT 0", sqlite="INTEGER DEFAULT 0"),
+        ],
+    },
 ]
 
 

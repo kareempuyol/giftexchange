@@ -68,6 +68,8 @@ def public_user(row):
         "address": row.get("address") or "",
         "receiverName": row.get("receiver_name") or "",
         "giftPreference": row.get("gift_preference") or "",
+        "wishlist": row.get("wishlist") or "",
+        "wishlistVisible": bool(row.get("wishlist_visible")),
         "createdAt": str(row.get("created_at") or ""),
     }
 

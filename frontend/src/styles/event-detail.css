@@ -274,3 +274,15 @@
 .ship-progress-line.done {
   background: var(--gift-success);
 }
+
+/* 截止提醒横幅（hackathon 轮13）：已过 drawDate 未抽签，组织者视角顶部红条 */
+.detail-deadline-banner {
+  margin-bottom: var(--gift-space-lg);
+  padding: var(--gift-space-md);
+  border-radius: var(--gift-radius-md);
+  background: var(--gift-error-bg);
+  border: 1px solid var(--gift-error);
+  color: var(--gift-error-text);
+  font-weight: var(--gift-font-bold);
+  text-align: center;
+}

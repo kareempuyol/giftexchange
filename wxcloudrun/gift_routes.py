@@ -290,6 +290,7 @@ def gift_wall(user, code):
                     "title": event["name"],
                     "note": event.get("description") or "",
                     "budget": event.get("budget_min") or 0,
+                    "shortCode": event.get("short_code") or "",
                     "progress": {
                         "posted": posted,
                         "total": total,
