@@ -2,11 +2,11 @@
 
 这套后端按微信云托管 Flask 模板 `WeixinCloud/wxcloudrun-flask` 的形态整理：
 
-- 入口文件：`run.py`
+- 入口文件：`run.py`（开发）；生产：`wxcloudrun:create_app()` 应用工厂 + gunicorn
 - Flask 应用：`wxcloudrun/__init__.py`
 - 路由接口：`wxcloudrun/views.py`
 - 数据访问：`wxcloudrun/database.py`
-- 容器启动：`python run.py 0.0.0.0 80`
+- 容器启动：`gunicorn -w 1 -b 0.0.0.0:8080 "wxcloudrun:create_app()"`
 
 ## 本地运行
 
@@ -16,6 +16,16 @@ python run.py 0.0.0.0 8080
 ```
 
 没有配置 MySQL 时会自动使用本地 SQLite：`./data/gift_exchange.db`。
+
+## Docker 部署（生产）
+
+```bash
+export JWT_SECRET="$(openssl rand -hex 32)"   # 必填，无默认值（fail-closed）
+docker compose up -d --build                  # 多阶段构建：node 前端 → python gunicorn
+curl http://127.0.0.1:8080/api/health         # 健康检查
+```
+
+完整步骤、环境变量清单、MySQL 切换与已知事项见 **[DEPLOY.md](DEPLOY.md)**。
 
 前端（React + Vite + Design Tokens）源码在 `frontend/`，构建产物输出到 `wxcloudrun/static/` 并同步 `templates/index.html`：
 

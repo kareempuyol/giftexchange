@@ -1,0 +1,27 @@
+# 依赖/缓存（构建产物，不进镜像）
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# 审计/截图产物
+.audit/
+ui-shots/
+
+# 前端构建产物：多阶段构建在镜像内重建，排除以免拷贝陈旧文件
+wxcloudrun/static/
+wxcloudrun/templates/
+
+# 运行时数据：SQLite 库 + 上传图片走 volume（docker-compose 挂 ./data:/app/data）
+data/
+
+# 本地/敏感配置
+.env
+.env.*
+
+# 源码管理/测试（运行不需要）
+.git/
+.github/
+tests/

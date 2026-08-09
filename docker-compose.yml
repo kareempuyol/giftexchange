@@ -1,0 +1,33 @@
+# giftexchange 生产形态（单服务）
+# 启动：export JWT_SECRET="$(openssl rand -hex 32)" && docker compose up -d --build
+# 或写入 .env（参考 .env.example，compose 自动读取）
+#
+# 注意：SQLite 的 WAL 模式在 NFS/SMB 网络卷上可能不可用（journal_mode 报错），
+# 此时请切 MySQL：取消下方 MYSQL_* 注释并填真实值，引擎自动切换。
+services:
+  web:
+    build: .
+    image: giftexchange:latest
+    container_name: giftexchange-web
+    ports:
+      - "8080:8080"
+    environment:
+      # 必填，无默认值：缺失/为空时 compose 直接报错退出（fail-closed）
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET 必填，生成：openssl rand -hex 32}"
+      # 前端正式域名（如 https://gift.example.com）；留空=同源无跨域（安全默认，勿用 *）
+      CORS_ORIGIN: "${CORS_ORIGIN:-}"
+      # 截止提醒后台扫描间隔（秒），默认 3600
+      DEADLINE_SCAN_INTERVAL: "${DEADLINE_SCAN_INTERVAL:-3600}"
+      # 演示模式：把找回密码验证码放进响应体（默认关闭，生产勿开）
+      RESET_CODE_IN_RESPONSE: "${RESET_CODE_IN_RESPONSE:-0}"
+      # 反代来源 IP 白名单（逗号分隔）；仅白名单内来源才信任 X-Forwarded-For
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-}"
+      # ---- 可选：MySQL 切换（设置 MYSQL_ADDRESS 即自动走 MySQL，否则 SQLite） ----
+      # MYSQL_ADDRESS: "${MYSQL_ADDRESS:-}"        # 例 host:3306（或用 MYSQL_HOST）
+      # MYSQL_USERNAME: "${MYSQL_USERNAME:-root}"
+      # MYSQL_PASSWORD: "${MYSQL_PASSWORD:-}"
+      # MYSQL_DATABASE: "${MYSQL_DATABASE:-gift_exchange}"
+    volumes:
+      # SQLite 库（data/gift_exchange.db）+ 上传图片（data/uploads）持久化
+      - ./data:/app/data
+    restart: unless-stopped
