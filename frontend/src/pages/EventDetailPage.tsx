@@ -258,14 +258,6 @@ export default function EventDetailPage() {
           {isOwner && <Badge tone="gold">我是组织者</Badge>}
         </div>
 
-        {/* 活动级流程步骤条（区别于下方"我的送礼任务"状态机） */}
-        <FlowSteps
-          state={flowState}
-          isOwner={isOwner}
-          joined={joined}
-          participantCount={event.participantCount}
-        />
-
         {/* 邀请区：短码 + 复制链接 + 复制短码 */}
         {event.shortCode && (
           <div className="invite-box" style={{ flexWrap: 'wrap' }}>
@@ -323,6 +315,14 @@ export default function EventDetailPage() {
             <div><span className="meta-label">人数上限</span><span className="meta-value">{event.maxParticipants}</span></div>
           )}
         </div>
+
+        {/* 活动级流程步骤条（信息区之后，操作按钮之前） */}
+        <FlowSteps
+          state={flowState}
+          isOwner={isOwner}
+          joined={joined}
+          participantCount={event.participantCount}
+        />
 
         {!joined && event.status === 'open' && (
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowJoinForm(true)}>
@@ -1062,7 +1062,7 @@ function flowHint(state: string, opts: { isOwner: boolean; joined: boolean; part
   switch (state) {
     case 'recruiting':
       if (opts.isOwner) return `招募中：分享邀请码让朋友加入（当前 ${opts.participantCount} 人）`
-      return opts.joined ? '你已加入，等待组织者抽签' : '招募中：点击「加入这个活动」参与'
+      return opts.joined ? '你已加入，等待组织者抽签' : '报名截止前加入，即可参与抽签'
     case 'drawing':
       return opts.isOwner ? '报名已截止，点击「开始抽签」' : '报名已截止，等待组织者抽签'
     case 'active':
