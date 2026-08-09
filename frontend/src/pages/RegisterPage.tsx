@@ -4,11 +4,13 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import { t, useLocale } from '../i18n'
+import { usePageTitle } from '../utils/usePageTitle'
 
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
   useLocale() // 订阅语言切换：setLocale 后重渲染（i18n 示范迁移）
+  usePageTitle('注册')
   const [params] = useSearchParams()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')

@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useToast } from '../components/Toast'
 import SafeImage from '../components/SafeImage'
 import { t, useLocale } from '../i18n'
-import { clearListState } from '../pages/EventsPage'
+import { clearListState } from '../utils/listState'
 
 /** 全局顶栏：品牌 + 导航 + 通知铃铛 + 用户菜单 */
 export default function Header() {

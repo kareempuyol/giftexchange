@@ -10,6 +10,7 @@ import PosterModal, { PosterData } from '../components/PosterModal'
 import Modal from '../components/Modal'
 import SafeImage from '../components/SafeImage'
 import { formatDeadline, formatMoney } from '../utils/format'
+import { usePageTitle } from '../utils/usePageTitle'
 import { t, useLocale } from '../i18n'
 
 // 成员完成度状态徽标（joined < ready < shipped < posted）
@@ -28,6 +29,8 @@ export default function EventDetailPage() {
   useLocale()
 
   const [event, setEvent] = useState<EventInfo | null>(null)
+  // 标签页标题：加载后显示活动名，未加载/加载失败回退「活动详情」
+  usePageTitle(undefined, event?.title || t('活动详情'))
   const [preview, setPreview] = useState<EventPreview | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [myMatch, setMyMatch] = useState<MyMatch | null>(null)

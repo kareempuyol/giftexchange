@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import { useToast } from '../components/Toast'
 import { t, useLocale } from '../i18n'
+import { usePageTitle } from '../utils/usePageTitle'
 
 interface ForgotResult {
   code: string
@@ -13,6 +14,7 @@ interface ForgotResult {
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
   useLocale() // 订阅语言切换：setLocale 后重渲染（i18n 示范迁移）
+  usePageTitle('找回密码')
   const { toast } = useToast()
   const [account, setAccount] = useState('')
   const [code, setCode] = useState('')

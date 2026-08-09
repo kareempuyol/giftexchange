@@ -9,13 +9,15 @@ import Header from './components/Header'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import EventsPage from './pages/EventsPage'
-// 非首屏页面按路由分包（React.lazy）：详情页含海报/qrcode 依赖，首屏不加载
+// 非首屏页面按路由分包（React.lazy）：登录后主入口 /events 在认证成功时预取
+//（AuthContext：user 就绪即 import 预热），详情页含海报/qrcode 依赖同样懒加载
+const EventsPage = lazy(() => import('./pages/EventsPage'))
 const EventDetailPage = lazy(() => import('./pages/EventDetailPage'))
 const CreateEventPage = lazy(() => import('./pages/CreateEventPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const GiftWallPage = lazy(() => import('./pages/GiftWallPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -59,7 +61,8 @@ export default function App() {
             <Route path="/events/:code/gift-wall" element={<RequireAuth><Layout><GiftWallPage /></Layout></RequireAuth>} />
             <Route path="/profile" element={<RequireAuth><Layout><ProfilePage /></Layout></RequireAuth>} />
             <Route path="/" element={<Navigate to="/events" replace />} />
-            <Route path="*" element={<Navigate to="/events" replace />} />
+            {/* 统一 404：未知路径显示「页面不存在」+ 回首页，不再静默跳 /events */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </Suspense>
         </ErrorBoundary>

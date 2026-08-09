@@ -10,6 +10,7 @@ from wxcloudrun.helpers import (
     add_participant,
     api,
     api_event,
+    api_event_summary,
     body,
     current_user_row,
     draw_deadline_passed,
@@ -102,7 +103,7 @@ def my_events(user):
             """,
             (user["userId"],),
         )
-        return ok([api_event(row) for row in rows])
+        return ok([api_event_summary(row) for row in rows])
 
 
 @api.route("/events/archived")
@@ -119,7 +120,7 @@ def archived_events(user):
             """,
             (user["userId"],),
         )
-        return ok([api_event(row) for row in rows])
+        return ok([api_event_summary(row) for row in rows])
 
 
 @api.route("/events/joined")
@@ -137,7 +138,7 @@ def joined_events(user):
             """,
             (user["userId"],),
         )
-        return ok([api_event(row) for row in rows])
+        return ok([api_event_summary(row) for row in rows])
 
 
 @api.route("/events/public")
@@ -196,7 +197,7 @@ def public_events(_user):
         total = total_row["count"] if total_row else 0
 
         return ok({
-            "events": [api_event(row) for row in events],
+            "events": [api_event_summary(row) for row in events],
             "total": total,
             "page": page,
             "perPage": per_page,

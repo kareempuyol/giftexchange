@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast'
 import { useAuth } from '../auth/AuthContext'
 import SafeImage from '../components/SafeImage'
 import Modal from '../components/Modal'
+import { usePageTitle } from '../utils/usePageTitle'
 
 interface Profile {
   id: number
@@ -39,6 +40,7 @@ const PREF_ITEMS: { key: keyof NotificationPrefs; label: string; desc: string }[
 
 export default function ProfilePage() {
   const locale = useLocale()
+  usePageTitle('个人资料')
   const { toast } = useToast()
   const { logout, updateUser, user } = useAuth()
   const navigate = useNavigate()

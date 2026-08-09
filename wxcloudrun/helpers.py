@@ -92,8 +92,30 @@ def api_event(row):
         "maxParticipants": row.get("max_participants"),
         "excludedPairs": excluded_pairs_list(row.get("excluded_pairs")),
         "archived": bool(row.get("archived")),
-        "createdAt": str(row.get("created_at") or ""),
-        "updatedAt": str(row.get("updated_at") or ""),
+    }
+
+
+def api_event_summary(row):
+    """列表端点轻量载荷（mine/joined/public/archived）：只带卡片消费字段。
+
+    相比 api_event：去掉 excludedPairs/ownerId/ownerName/archived/matchVisibility/
+    isPublic/createdAt/updatedAt（列表零消费）；note 截断为预览（≤80 字符，
+    前端卡片单行 ellipsis，视觉一致）。详情页仍用 api_event（note 全文）。
+    """
+    note = row.get("description") or ""
+    if len(note) > 80:
+        note = note[:80] + "…"
+    return {
+        "code": row["code"],
+        "shortCode": row.get("short_code") or "",
+        "title": row["name"],
+        "budget": row.get("budget_min") or 0,
+        "note": note,
+        "drawDate": row.get("sign_up_deadline") or "",
+        "status": row["status"],
+        "participantCount": row.get("participant_count") or 0,
+        "coverImage": row.get("cover_image") or "",
+        "maxParticipants": row.get("max_participants"),
     }
 
 

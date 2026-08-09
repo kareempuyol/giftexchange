@@ -13,6 +13,17 @@ export default defineConfig({
     outDir: '../wxcloudrun/static',
     emptyOutDir: true,
     assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        // vendor 拆分：react 运行时与 router 各自独立 chunk（内容稳定 → 哈希长期不变，
+        // 应用代码更新时浏览器只重下 app chunk，vendor 命中缓存；qrcode 留在懒加载 chunk）
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) return 'vendor-react'
+          if (id.includes('react-router') || id.includes('/history/') || id.includes('@remix-run')) return 'vendor-router'
+        },
+      },
+    },
   },
   server: {
     port: 5173,

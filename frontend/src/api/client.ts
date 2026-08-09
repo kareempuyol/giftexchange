@@ -181,8 +181,24 @@ export interface EventInfo {
   maxParticipants?: number | null
   excludedPairs: number[][]
   archived: boolean
-  createdAt: string
-  updatedAt: string
+}
+
+/**
+ * 列表端点（/events mine|joined|public|archived）轻量载荷：
+ * 不含 excludedPairs/ownerId/ownerName/archived/matchVisibility/isPublic 等
+ * 列表零消费字段；note 服务端截断为预览（≤80 字符，卡片单行 ellipsis 视觉一致）。
+ */
+export interface EventSummary {
+  code: string
+  shortCode: string
+  title: string
+  budget: number
+  note: string
+  drawDate: string
+  status: 'open' | 'drawn'
+  participantCount: number
+  coverImage?: string
+  maxParticipants?: number | null
 }
 
 export interface EventPreview {

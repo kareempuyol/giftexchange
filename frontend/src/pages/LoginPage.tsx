@@ -3,11 +3,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { api, ApiError } from '../api/client'
 import { t, useLocale } from '../i18n'
+import { usePageTitle } from '../utils/usePageTitle'
 
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   useLocale() // 订阅语言切换：setLocale 后重渲染（i18n 示范迁移）
+  usePageTitle('登录')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')

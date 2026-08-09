@@ -43,6 +43,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('gift:unauthorized', onUnauthorized)
   }, [])
 
+  // 登录/会话恢复后预取下一跳路由 chunk：/events 是主入口（登录/注册/刷新直落），
+  // 详情页是列表点击第一去向——趁用户浏览列表时提前下载，点开即渲染
+  useEffect(() => {
+    if (!user) return
+    Promise.all([
+      import('../pages/EventsPage'),
+      import('../pages/EventDetailPage'),
+    ]).catch(() => {
+      /* 预取失败静默：懒加载路径兜底 */
+    })
+  }, [user])
+
   const login = async (username: string, password: string) => {
     const data = await api.post<{ token: string; user: User }>('/auth/login', { username, password })
     setToken(data.token)

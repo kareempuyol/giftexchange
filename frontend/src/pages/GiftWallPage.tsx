@@ -6,11 +6,13 @@ import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
 import Modal from '../components/Modal'
 import { t, useLocale } from '../i18n'
+import { usePageTitle } from '../utils/usePageTitle'
 
 export default function GiftWallPage() {
   const { code = '' } = useParams()
   const { toast } = useToast()
   useLocale() // 订阅语言切换：setLocale 后重渲染（i18n 迁移）
+  usePageTitle('礼物墙')
 
   const [wall, setWall] = useState<GiftWall | null>(null)
   const [loading, setLoading] = useState(true)

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { t, useLocale } from '../i18n'
 import { api, ApiError, UploadResult } from '../api/client'
+import { compressImage } from '../utils/imageCompress'
 import SafeImage from './SafeImage'
 
 interface ImageUploadProps {
@@ -37,7 +38,10 @@ export default function ImageUpload({ value, onChange, label = t('上传图片')
     setUploading(true)
     setError('')
     try {
-      const result = await api.upload<UploadResult>('/upload', file)
+      // 上传前压缩（长边 >1600 降采样、JPEG/WebP 0.8）：传输 + 存储双收益。
+      // GIF 与 ≤256KB 小图原样直传；JPEG 内容会把文件名改成 .jpg（后端三重校验）。
+      const toUpload = await compressImage(file)
+      const result = await api.upload<UploadResult>('/upload', toUpload)
       onChange(result.url)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('上传失败，请稍后重试'))

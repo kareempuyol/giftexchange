@@ -4,10 +4,12 @@ import { api, ApiError, EventInfo } from '../api/client'
 import { useToast } from '../components/Toast'
 import ImageUpload from '../components/ImageUpload'
 import { t, useLocale } from '../i18n'
+import { usePageTitle } from '../utils/usePageTitle'
 
 export default function CreateEventPage() {
   const navigate = useNavigate()
   useLocale() // 订阅语言切换：setLocale 后重渲染
+  usePageTitle('创建活动')
   const { toast } = useToast()
   const [title, setTitle] = useState('')
   const [note, setNote] = useState('')

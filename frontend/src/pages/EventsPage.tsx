@@ -1,13 +1,16 @@
 // 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api, EventInfo } from '../api/client'
+import { api, EventSummary } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import SafeImage from '../components/SafeImage'
 import { useToast } from '../components/Toast'
 import Modal from '../components/Modal'
 import { formatDeadline, formatMoney } from '../utils/format'
+import { LIST_STATE_KEY, readListState } from '../utils/listState'
+import type { ListTab } from '../utils/listState'
+import { usePageTitle } from '../utils/usePageTitle'
 import { t, useLocale } from '../i18n'
 
 function statusBadge(status: string) {
@@ -34,40 +37,18 @@ type PullState = 'idle' | 'pulling' | 'ready' | 'refreshing'
 // ===== 列表状态保留（详情页返回不丢 tab/搜索/滚动位置）=====
 // React Router（BrowserRouter）默认不保留列表状态：离开列表页时把
 // tab/search/滚动位置写入 sessionStorage，返回时恢复。
+// 状态读写/清理在 utils/listState.ts（Header 显式导航也要用，且它在首屏 bundle）。
 // Header 的「我的活动/品牌」是显式导航，会先 clearListState()（见 Header.tsx）直达默认视图。
-const LIST_STATE_KEY = 'gift-list-state'
-const LIST_TABS = ['mine', 'joined', 'public', 'archived'] as const
-
-function readListState(): { tab: (typeof LIST_TABS)[number]; search: string; scrollY: number } | null {
-  try {
-    const raw = sessionStorage.getItem(LIST_STATE_KEY)
-    if (!raw) return null
-    const s = JSON.parse(raw)
-    if (s && LIST_TABS.includes(s.tab) && typeof s.scrollY === 'number') {
-      return { tab: s.tab, search: typeof s.search === 'string' ? s.search : '', scrollY: s.scrollY }
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-export function clearListState() {
-  try {
-    sessionStorage.removeItem(LIST_STATE_KEY)
-  } catch {
-    /* ignore */
-  }
-}
 
 export default function EventsPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   useLocale()
+  usePageTitle('我的活动')
   const navigate = useNavigate()
   const savedState = useRef(readListState())
-  const [tab, setTab] = useState<'mine' | 'joined' | 'public' | 'archived'>(savedState.current?.tab ?? 'mine')
-  const [events, setEvents] = useState<EventInfo[]>([])
+  const [tab, setTab] = useState<ListTab>(savedState.current?.tab ?? 'mine')
+  const [events, setEvents] = useState<EventSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   // 恢复操作在途的活动码（防连点）
@@ -233,16 +214,16 @@ export default function EventsPage() {
     setLoadError('')
     try {
       if (tab === 'mine') {
-        const data = await api.get<EventInfo[]>('/events/mine')
+        const data = await api.get<EventSummary[]>('/events/mine')
         setEvents(data)
       } else if (tab === 'joined') {
-        const data = await api.get<EventInfo[]>('/events/joined')
+        const data = await api.get<EventSummary[]>('/events/joined')
         setEvents(data)
       } else if (tab === 'archived') {
-        const data = await api.get<EventInfo[]>('/events/archived')
+        const data = await api.get<EventSummary[]>('/events/archived')
         setEvents(data)
       } else {
-        const data = await api.get<{ events: EventInfo[] }>(
+        const data = await api.get<{ events: EventSummary[] }>(
           `/events/public?search=${encodeURIComponent(search)}`
         )
         setEvents(data.events)

@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, EventInfo } from '../api/client'
 import Badge from '../components/Badge'
 import { t, useLocale } from '../i18n'
+import { usePageTitle } from '../utils/usePageTitle'
 
 interface DashboardParticipant {
   participantId: number
@@ -46,6 +47,7 @@ const REMINDER_LABEL: Record<DashboardReminder['type'], string> = {
 export default function DashboardPage() {
   const { code = '' } = useParams()
   useLocale() // 订阅语言切换：setLocale 后重渲染
+  usePageTitle('活动管理台')
   const [event, setEvent] = useState<EventInfo | null>(null)
   const [rows, setRows] = useState<DashboardParticipant[]>([])
   const [pendingShipments, setPendingShipments] = useState(0)
