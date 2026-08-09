@@ -1,12 +1,14 @@
-// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
+// i18n：用户可见文案已迁移至 t()（详见 i18n.ts）
 import { useState } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
+import { t, useLocale } from '../i18n'
 
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  useLocale() // 订阅语言切换：setLocale 后重渲染（i18n 示范迁移）
   const [params] = useSearchParams()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -20,11 +22,15 @@ export default function RegisterPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!username || !email || !password) {
-      setError('请填写所有字段')
+      setError(t('请填写所有字段'))
       return
     }
     if (password !== confirm) {
-      setError('两次输入的密码不一致')
+      setError(t('两次输入的密码不一致'))
+      return
+    }
+    if (password.toLowerCase() === username.toLowerCase()) {
+      setError(t('密码不能与用户名相同'))
       return
     }
     setSubmitting(true)
@@ -34,7 +40,7 @@ export default function RegisterPage() {
       const from = params.get('from')
       navigate(from ? `/${from}` : '/events', { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '注册失败，请稍后重试')
+      setError(err instanceof ApiError ? err.message : t('注册失败，请稍后重试'))
     } finally {
       setSubmitting(false)
     }
@@ -45,88 +51,88 @@ export default function RegisterPage() {
       <div className="auth-card">
         <div className="auth-brand">
           <div className="auth-logo">🎁</div>
-          <h1 className="auth-title">互送礼物</h1>
-          <p className="auth-slogan">和朋友们交换惊喜</p>
+          <h1 className="auth-title">{t('互送礼物')}</h1>
+          <p className="auth-slogan">{t('和朋友们交换惊喜')}</p>
         </div>
 
-        <h2 className="auth-subtitle">注册</h2>
-        <p className="form-hint" style={{ marginBottom: 16 }}>加入礼物互赠的乐趣</p>
+        <h2 className="auth-subtitle">{t('注册')}</h2>
+        <p className="form-hint" style={{ marginBottom: 16 }}>{t('加入礼物互赠的乐趣')}</p>
 
         <form onSubmit={onSubmit}>
           <div className="form-group">
-            <label className="sr-only" htmlFor="register-username">用户名</label>
+            <label className="sr-only" htmlFor="register-username">{t('用户名')}</label>
             <input
               id="register-username"
               className="form-input"
-              placeholder="用户名"
+              placeholder={t('用户名')}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               aria-describedby={error ? 'register-error' : undefined}
             />
-            <div className="form-hint">至少 2 个字符</div>
+            <div className="form-hint">{t('至少 2 个字符')}</div>
           </div>
           <div className="form-group">
-            <label className="sr-only" htmlFor="register-email">邮箱</label>
+            <label className="sr-only" htmlFor="register-email">{t('邮箱')}</label>
             <input
               id="register-email"
               className="form-input"
               type="email"
-              placeholder="邮箱"
+              placeholder={t('邮箱')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               aria-describedby={error ? 'register-error' : undefined}
             />
-            <div className="form-hint">用于登录和找回密码</div>
+            <div className="form-hint">{t('用于登录和找回密码')}</div>
           </div>
           <div className="form-group">
             <div className="pwd-wrap">
-              <label className="sr-only" htmlFor="register-password">密码</label>
+              <label className="sr-only" htmlFor="register-password">{t('密码')}</label>
               <input
                 id="register-password"
                 className="form-input"
                 type={showPwd ? 'text' : 'password'}
-                placeholder="密码"
+                placeholder={t('密码')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-describedby={error ? 'register-error' : undefined}
               />
-              <button type="button" className="pwd-toggle" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? '隐藏密码' : '显示密码'}>
+              <button type="button" className="pwd-toggle" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? t('隐藏密码') : t('显示密码')}>
                 {showPwd ? '🙈' : '👁️'}
               </button>
             </div>
-            <div className="form-hint">至少 6 位，需包含字母和数字</div>
+            <div className="form-hint">{t('至少 6 位，需包含字母和数字')}</div>
           </div>
           <div className="form-group">
             <div className="pwd-wrap">
-              <label className="sr-only" htmlFor="register-confirm">确认密码</label>
+              <label className="sr-only" htmlFor="register-confirm">{t('确认密码')}</label>
               <input
                 id="register-confirm"
                 className="form-input"
                 type={showConfirm ? 'text' : 'password'}
-                placeholder="确认密码"
+                placeholder={t('确认密码')}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 aria-describedby={confirm && password !== confirm ? 'register-mismatch' : error ? 'register-error' : undefined}
               />
-              <button type="button" className="pwd-toggle" onClick={() => setShowConfirm(v => !v)} aria-label={showConfirm ? '隐藏密码' : '显示密码'}>
+              <button type="button" className="pwd-toggle" onClick={() => setShowConfirm(v => !v)} aria-label={showConfirm ? t('隐藏密码') : t('显示密码')}>
                 {showConfirm ? '🙈' : '👁️'}
               </button>
             </div>
             {confirm && password !== confirm && (
-              <div id="register-mismatch" className="form-error" role="alert">两次输入的密码不一致</div>
+              <div id="register-mismatch" className="form-error" role="alert">{t('两次输入的密码不一致')}</div>
             )}
           </div>
 
           {error && <div id="register-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
           <button className="btn btn-primary" type="submit" disabled={submitting}>
-            {submitting ? '注册中…' : '注册'}
+            {submitting ? t('注册中…') : t('注册')}
           </button>
         </form>
 
         <div className="auth-footer">
-          <span>已有账号？</span>
-          <Link to="/login">立即登录</Link>
+          <span>{t('已有账号？')}</span>
+          <Link to="/login">{t('立即登录')}</Link>
         </div>
       </div>
     </div>

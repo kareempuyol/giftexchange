@@ -21,13 +21,14 @@
 
 ### 注册
 - **POST** `/api/auth/register` · 公开
-- 参数（JSON）：`username`（必填）、`email`（必填）、`password`（必填，≥8 位且含字母+数字）
+- 参数（JSON）：`username`（必填）、`email`（必填）、`password`（必填，≥6 位且含字母+数字，且不能与用户名相同（大小写不敏感））
 - 响应：`{token, user}`；密码强度不合规返回 400 中文提示
 
 ### 登录
 - **POST** `/api/auth/login` · 公开
 - 参数：`username`、`password`
 - 响应：`{token, user}`；失败 401；登录限速（超限 429）
+- 审计：成功/失败（含密码错误、账号不存在、**已注销账号尝试登录**）均输出结构化日志 `login_success` / `login_failed`，含用户名、客户端 IP、时间戳（`request_id` 关联）；注销账号尝试同样计入限速
 
 ### 忘记密码（获取重置码）
 - **POST** `/api/auth/forgot-password` · 公开

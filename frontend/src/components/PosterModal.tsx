@@ -1,5 +1,5 @@
-// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { useRef, useState } from 'react'
+import { t, useLocale } from '../i18n'
 import SharePoster, { PosterData, downloadPoster } from './SharePoster'
 import Modal from './Modal'
 
@@ -7,12 +7,15 @@ import Modal from './Modal'
 export default function PosterModal({ data, onClose }: { data: PosterData | null; onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [downloaded, setDownloaded] = useState(false)
+  useLocale()
 
   if (!data) return null
 
+  const title = data.kind === 'invite' ? t('📣 邀请海报') : t('🏆 高光海报')
+
   return (
     <Modal
-      title={data.kind === 'invite' ? '📣 邀请海报' : '🏆 高光海报'}
+      title={title}
       onClose={onClose}
       maxWidth={460}
     >
@@ -27,16 +30,16 @@ export default function PosterModal({ data, onClose }: { data: PosterData | null
             onClick={() => {
               const c = canvasRef.current
               if (c) {
-                downloadPoster(c, `${data.kind === 'invite' ? '邀请海报' : '高光海报'}-${data.title}.png`)
+                downloadPoster(c, t('{label}-{title}.png', { label: data.kind === 'invite' ? t('邀请海报') : t('高光海报'), title: data.title }))
                 setDownloaded(true)
                 setTimeout(() => setDownloaded(false), 2000)
               }
             }}
           >
-            {downloaded ? '✅ 已下载' : '⬇️ 下载海报'}
+            {downloaded ? t('✅ 已下载') : t('⬇️ 下载海报')}
           </button>
           <button className="btn btn-primary" style={{ width: 'auto', flex: 1 }} onClick={onClose}>
-            关闭
+            {t('关闭')}
           </button>
         </div>
       </div>

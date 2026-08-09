@@ -2,6 +2,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
+import { t, useLocale } from './i18n'
 import { ToastProvider } from './components/Toast'
 import ErrorBoundary from './components/ErrorBoundary'
 import Header from './components/Header'
@@ -18,8 +19,9 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  useLocale()
   const location = useLocation()
-  if (loading) return <div className="page-loading">加载中…</div>
+  if (loading) return <div className="page-loading">{t('加载中…')}</div>
   if (!user) {
     // 保留目标路径，登录/注册后跳回（支持邀请链接直达）
     const target = location.pathname + location.search
@@ -38,12 +40,13 @@ function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useLocale()
   return (
     <AuthProvider>
       <ToastProvider>
         {/* App 级错误边界：任何页面渲染崩溃都不白屏 */}
         <ErrorBoundary>
-          <Suspense fallback={<div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>}>
+          <Suspense fallback={<div className="page-loading"><span className="spinner" aria-hidden="true" />{t('加载中…')}</div>}>
             <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />

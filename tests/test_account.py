@@ -173,6 +173,38 @@ class TestDeactivate:
         assert r.status_code == 201, r.get_json()
 
 
+class TestPasswordPolicy:
+    """P2：密码不能与用户名相同（注册/修改密码，大小写不敏感）。"""
+
+    def test_register_password_same_as_username_400(self, client):
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "pw_eq_name1", "email": "pw_eq_name1@test.com", "password": "pw_eq_name1"},
+        )
+        assert r.status_code == 400, r.get_json()
+        assert "密码不能与用户名相同" in r.get_json()["message"]
+
+    def test_register_password_case_insensitive_username_400(self, client):
+        r = client.post(
+            "/api/auth/register",
+            json={"username": "pw_case1", "email": "pw_case1@test.com", "password": "PW_CASE1"},
+        )
+        assert r.status_code == 400, r.get_json()
+
+    def test_change_password_same_as_username_400(self, client):
+        h1, _ = register_and_login(client, "pw_change1")
+        r = client.put(
+            "/api/profile/password",
+            json={"oldPassword": PASSWORD, "newPassword": "pw_change1"},
+            headers=h1,
+        )
+        assert r.status_code == 400, r.get_json()
+        assert "用户名" in r.get_json()["message"]
+        # 账号不受影响：旧密码仍可登录
+        r = client.post("/api/auth/login", json={"username": "pw_change1", "password": PASSWORD})
+        assert r.status_code == 200, r.get_json()
+
+
 class TestExportData:
     def test_export_contains_profile_events_and_gift_post(self, client):
         h1, uid1 = register_and_login(client, "acc_export_owner")

@@ -1,8 +1,9 @@
-// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
+// i18n：用户可见文案已迁移至 t()（详见 i18n.ts）
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import { useToast } from '../components/Toast'
+import { t, useLocale } from '../i18n'
 
 interface ForgotResult {
   code: string
@@ -11,6 +12,7 @@ interface ForgotResult {
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
+  useLocale() // 订阅语言切换：setLocale 后重渲染（i18n 示范迁移）
   const { toast } = useToast()
   const [account, setAccount] = useState('')
   const [code, setCode] = useState('')
@@ -26,7 +28,7 @@ export default function ForgotPasswordPage() {
   const requestCode = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!account.trim()) {
-      setError('请输入用户名或邮箱')
+      setError(t('请输入用户名或邮箱'))
       return
     }
     setSubmitting(true)
@@ -35,7 +37,7 @@ export default function ForgotPasswordPage() {
       const data = await api.post<ForgotResult>('/auth/forgot-password', { username: account.trim() })
       setGeneratedCode(data.code)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '获取重置码失败，请稍后重试')
+      setError(err instanceof ApiError ? err.message : t('获取重置码失败，请稍后重试'))
     } finally {
       setSubmitting(false)
     }
@@ -45,15 +47,20 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!code || !newPassword || !confirm) {
-      setError('请填写所有字段')
+      setError(t('请填写所有字段'))
       return
     }
     if (newPassword !== confirm) {
-      setError('两次输入的密码不一致')
+      setError(t('两次输入的密码不一致'))
       return
     }
     if (newPassword.length < 6 || !/[a-zA-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      setError('新密码需至少 6 位，包含字母和数字')
+      setError(t('新密码需至少 6 位，包含字母和数字'))
+      return
+    }
+    // 密码 ≠ 用户名（仅当账号字段是用户名时可比；邮箱无对应用户名，交给后端）
+    if (!account.includes('@') && newPassword.toLowerCase() === account.trim().toLowerCase()) {
+      setError(t('新密码不能与用户名相同'))
       return
     }
     setSubmitting(true)
@@ -64,10 +71,10 @@ export default function ForgotPasswordPage() {
         code: code.trim(),
         newPassword,
       })
-      toast('密码重置成功，请用新密码登录')
+      toast(t('密码重置成功，请用新密码登录'))
       navigate('/login')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '重置失败，请稍后重试')
+      setError(err instanceof ApiError ? err.message : t('重置失败，请稍后重试'))
     } finally {
       setSubmitting(false)
     }
@@ -78,32 +85,32 @@ export default function ForgotPasswordPage() {
       <div className="auth-card">
         <div className="auth-brand">
           <div className="auth-logo">🎁</div>
-          <h1 className="auth-title">互送礼物</h1>
-          <p className="auth-slogan">和朋友们交换惊喜</p>
+          <h1 className="auth-title">{t('互送礼物')}</h1>
+          <p className="auth-slogan">{t('和朋友们交换惊喜')}</p>
         </div>
 
-        <h2 className="auth-subtitle">找回密码</h2>
+        <h2 className="auth-subtitle">{t('找回密码')}</h2>
 
         {!generatedCode ? (
           <form onSubmit={requestCode}>
             <div className="form-group">
-              <label className="sr-only" htmlFor="forgot-account">用户名或邮箱</label>
+              <label className="sr-only" htmlFor="forgot-account">{t('用户名或邮箱')}</label>
               <input
                 id="forgot-account"
                 className="form-input"
-                placeholder="用户名或邮箱"
+                placeholder={t('用户名或邮箱')}
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
                 autoComplete="username"
                 aria-describedby={error ? 'forgot-error' : undefined}
               />
-              <div className="form-hint">输入注册时使用的用户名或邮箱</div>
+              <div className="form-hint">{t('输入注册时使用的用户名或邮箱')}</div>
             </div>
 
             {error && <div id="forgot-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
             <button className="btn btn-primary" type="submit" disabled={submitting}>
-              {submitting ? '生成中…' : '获取重置码'}
+              {submitting ? t('生成中…') : t('获取重置码')}
             </button>
           </form>
         ) : (
@@ -118,17 +125,17 @@ export default function ForgotPasswordPage() {
                 borderRadius: 'var(--gift-radius-md)',
               }}
             >
-              重置码已生成：<strong>{generatedCode}</strong>
+              {t('重置码已生成：')}<strong>{generatedCode}</strong>
               <br />
-              演示模式直接显示，生产环境将通过邮件发送；请在 15 分钟内完成重置。
+              {t('演示模式直接显示，生产环境将通过邮件发送；请在 15 分钟内完成重置。')}
             </div>
 
             <div className="form-group">
-              <label className="sr-only" htmlFor="forgot-code">6 位重置码</label>
+              <label className="sr-only" htmlFor="forgot-code">{t('6 位重置码')}</label>
               <input
                 id="forgot-code"
                 className="form-input"
-                placeholder="6 位重置码"
+                placeholder={t('6 位重置码')}
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 maxLength={6}
@@ -139,12 +146,12 @@ export default function ForgotPasswordPage() {
             </div>
             <div className="form-group">
               <div className="pwd-wrap">
-                <label className="sr-only" htmlFor="forgot-new">新密码</label>
+                <label className="sr-only" htmlFor="forgot-new">{t('新密码')}</label>
                 <input
                   id="forgot-new"
                   className="form-input"
                   type={showPwd ? 'text' : 'password'}
-                  placeholder="新密码"
+                  placeholder={t('新密码')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   autoComplete="new-password"
@@ -154,21 +161,21 @@ export default function ForgotPasswordPage() {
                   type="button"
                   className="pwd-toggle"
                   onClick={() => setShowPwd(v => !v)}
-                  aria-label={showPwd ? '隐藏密码' : '显示密码'}
+                  aria-label={showPwd ? t('隐藏密码') : t('显示密码')}
                 >
                   {showPwd ? '🙈' : '👁️'}
                 </button>
               </div>
-              <div className="form-hint">至少 6 位，需包含字母和数字</div>
+              <div className="form-hint">{t('至少 6 位，需包含字母和数字')}</div>
             </div>
             <div className="form-group">
               <div className="pwd-wrap">
-                <label className="sr-only" htmlFor="forgot-confirm">确认新密码</label>
+                <label className="sr-only" htmlFor="forgot-confirm">{t('确认新密码')}</label>
                 <input
                   id="forgot-confirm"
                   className="form-input"
                   type={showConfirm ? 'text' : 'password'}
-                  placeholder="确认新密码"
+                  placeholder={t('确认新密码')}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   autoComplete="new-password"
@@ -178,27 +185,27 @@ export default function ForgotPasswordPage() {
                   type="button"
                   className="pwd-toggle"
                   onClick={() => setShowConfirm(v => !v)}
-                  aria-label={showConfirm ? '隐藏密码' : '显示密码'}
+                  aria-label={showConfirm ? t('隐藏密码') : t('显示密码')}
                 >
                   {showConfirm ? '🙈' : '👁️'}
                 </button>
               </div>
               {confirm && newPassword !== confirm && (
-                <div id="forgot-mismatch" className="form-error" role="alert">两次输入的密码不一致</div>
+                <div id="forgot-mismatch" className="form-error" role="alert">{t('两次输入的密码不一致')}</div>
               )}
             </div>
 
             {error && <div id="forgot-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
             <button className="btn btn-primary" type="submit" disabled={submitting}>
-              {submitting ? '重置中…' : '重置密码'}
+              {submitting ? t('重置中…') : t('重置密码')}
             </button>
           </form>
         )}
 
         <div className="auth-footer">
-          <span>想起来了？</span>
-          <Link to="/login">返回登录</Link>
+          <span>{t('想起来了？')}</span>
+          <Link to="/login">{t('返回登录')}</Link>
         </div>
       </div>
     </div>

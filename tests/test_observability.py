@@ -164,6 +164,8 @@ def test_login_funnel_events(client, capture):
         json={"username": name, "email": f"{name}@test.local", "password": PASSWORD},
     )
     assert r.status_code == 201, r.get_json()
+    token = r.get_json()["data"]["token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
     r = client.post("/api/auth/login", json={"username": name, "password": PASSWORD})
     assert r.status_code == 200, r.get_json()
@@ -183,3 +185,30 @@ def test_login_funnel_events(client, capture):
     # 登录请求本身未带 token：不应串上其他请求的 user_id
     assert "user_id" not in success
     assert "user_id" not in failed
+
+
+def test_login_deactivated_attempt_audited(client, capture):
+    """I18N2-B：注销账号的登录尝试也必须计入失败审计（含 IP/用户名/时间），不留盲区。"""
+    name = f"obs_da_{os.getpid()}"
+    r = client.post(
+        "/api/auth/register",
+        json={"username": name, "email": f"{name}@test.local", "password": PASSWORD},
+    )
+    assert r.status_code == 201, r.get_json()
+    uid = r.get_json()["data"]["user"]["id"]
+    token = r.get_json()["data"]["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    r = client.post("/api/auth/deactivate", json={"password": PASSWORD}, headers=headers)
+    assert r.status_code == 200, r.get_json()
+
+    # 注销后（deleted_<id> 用户名）登录 → 401，且产生 login_failed 审计事件
+    r = client.post("/api/auth/login", json={"username": f"deleted_{uid}", "password": "whatever1"})
+    assert r.status_code == 401, r.get_json()
+    assert "已注销" in r.get_json()["message"]
+
+    failed = [e for e in _events(capture) if e["event"] == "login_failed"]
+    assert failed, "注销账号的登录尝试应产生 login_failed 审计事件"
+    last = failed[-1]
+    assert last["username"] == f"deleted_{uid}"
+    assert last["ts"]  # 时间戳
+    assert "user_id" not in last  # 失败尝试无登录态

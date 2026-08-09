@@ -202,6 +202,16 @@ class TestResetPassword:
         r = reset(client, "reset_weak", code, password="123456")  # 无字母
         assert r.status_code == 400, r.get_json()
 
+    def test_password_same_as_username_400(self, client):
+        # P2：新密码不能与用户名相同（含大小写不敏感）
+        register(client, "reset_same1")
+        code = forgot(client, "reset_same1").get_json()["data"]["code"]
+        r = reset(client, "reset_same1", code, password="reset_same1")
+        assert r.status_code == 400, r.get_json()
+        assert "用户名" in r.get_json()["message"]
+        r = reset(client, "reset_same1", code, password="RESET_SAME1")  # 大写变体同样拒绝
+        assert r.status_code == 400, r.get_json()
+
     def test_reset_unknown_user_400(self, client):
         r = reset(client, "reset_ghost_user", "123456", password="NewPass456")
         assert r.status_code == 400, r.get_json()

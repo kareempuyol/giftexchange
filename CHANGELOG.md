@@ -3,6 +3,14 @@
 > 项目无发布版本号，按开发波次记录。提交哈希取 `git log` 短哈希。
 > 格式：日期 · 波次标题（commit）—— 内容。最新在前。
 
+## 2026-08-10 · Hackathon 轮10 — i18n 全量迁移 + 登录安全深化（本轮，未 commit）
+- i18n 全站迁移：9 页 + 6 组件 + App/format/client 全部文案接入 t()，en 字典 499 key 100% 覆盖（生成自 .audit/en_dict_gen.py），未翻译 key 回退原文 = 0
+- en-US 全站走查通过（登录/列表/详情/礼物墙/个人中心/创建页/海报弹窗截图 7+1 张，.audit/i18n2-shots/）；zh 默认逐字不变；document.title 随语言
+- 顺带修复：EventDetailPage 缺失 SafeImage import（渲染崩溃隐患）
+- login_required 开销实测（.audit/login_required_bench.py）：~0.40ms 中位/0.90ms p99，保持每请求单列 SELECT（安全>微优化），结论见 .audit/I18N2_REPORT.md
+- 登录审计补全：注销账号登录尝试计入 login_failed（含 IP/用户名/时间）+ 限速
+- 密码策略 P2：密码不能与用户名相同（注册/改密/重置，前后端 + 大小写不敏感），docs/API.md 同步
+
 ## 2026-08-10 · Hackathon 轮9 — 产品文档全面化（本轮，未 commit）
 - 重写 README（定位/8 功能/快速开始/技术栈/架构图/质量/文档导航）
 - 新增 docs/ARCHITECTURE.md、docs/API.md（49 接口 100% 覆盖）、CHANGELOG.md

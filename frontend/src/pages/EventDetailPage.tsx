@@ -8,7 +8,9 @@ import ImageUpload from '../components/ImageUpload'
 import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
 import Modal from '../components/Modal'
+import SafeImage from '../components/SafeImage'
 import { formatDeadline, formatMoney } from '../utils/format'
+import { t, useLocale } from '../i18n'
 
 // 成员完成度状态徽标（joined < ready < shipped < posted）
 const MEMBER_STATUS_META: Record<MemberStatus, { label: string; tone: 'success' | 'warning' | 'error' | 'info' | 'gold' }> = {
@@ -23,6 +25,7 @@ export default function EventDetailPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
+  useLocale()
 
   const [event, setEvent] = useState<EventInfo | null>(null)
   const [preview, setPreview] = useState<EventPreview | null>(null)
@@ -67,7 +70,7 @@ export default function EventDetailPage() {
       setMyMatch(match)
       setJoined(!!match || parts?.participants.some((p) => p.userId === user?.id))
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : '加载活动失败，请稍后重试')
+      setLoadError(err instanceof ApiError ? err.message : t('加载活动失败，请稍后重试'))
       setLoadErrStatus(err instanceof ApiError ? err.status : 0)
     } finally {
       setLoading(false)
@@ -83,11 +86,11 @@ export default function EventDetailPage() {
     setDrawing(true)
     try {
       await api.post(`/events/${code}/draw`)
-      toast('抽签完成！')
+      toast(t('抽签完成！'))
       setConfirmDraw(false)
       load()
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '抽签失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('抽签失败'), 'error')
     } finally {
       setDrawing(false)
     }
@@ -97,11 +100,11 @@ export default function EventDetailPage() {
     setRedrawing(true)
     try {
       await api.post(`/events/${code}/redraw`)
-      toast('已重新抽签！请查看新的任务')
+      toast(t('已重新抽签！请查看新的任务'))
       setConfirmRedraw(false)
       load()
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '重新抽签失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('重新抽签失败'), 'error')
     } finally {
       setRedrawing(false)
     }
@@ -112,9 +115,9 @@ export default function EventDetailPage() {
     setReminding(true)
     try {
       const res = await api.post<{ reminded: number }>(`/events/${code}/remind`)
-      toast(`已提醒 ${res.reminded} 人`)
+      toast(t('已提醒 {reminded} 人', { reminded: res.reminded }))
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '催办失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('催办失败'), 'error')
     } finally {
       setReminding(false)
     }
@@ -126,10 +129,10 @@ export default function EventDetailPage() {
     const inviteUrl = `${window.location.origin}/events/${shareCode}`
     try {
       await navigator.clipboard.writeText(inviteUrl)
-      toast('邀请链接已复制！')
+      toast(t('邀请链接已复制！'))
     } catch {
       // 剪贴板不可用（如非 HTTPS）时退化为选中提示
-      toast(`邀请链接：${inviteUrl}`, 'info')
+      toast(t('邀请链接：{inviteUrl}', { inviteUrl }), 'info')
     }
   }
 
@@ -138,9 +141,9 @@ export default function EventDetailPage() {
     const sc = event?.shortCode || ''
     try {
       await navigator.clipboard.writeText(sc)
-      toast(`邀请码 ${sc} 已复制！`)
+      toast(t('邀请码 {sc} 已复制！', { sc }))
     } catch {
-      toast(`邀请码：${sc}`, 'info')
+      toast(t('邀请码：{sc}', { sc }), 'info')
     }
   }
 
@@ -149,11 +152,11 @@ export default function EventDetailPage() {
     setArchiving(true)
     try {
       await api.post(`/events/${code}/archive`)
-      toast('活动已归档')
+      toast(t('活动已归档'))
       setConfirmArchive(false)
       navigate('/events')
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '归档失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('归档失败'), 'error')
     } finally {
       setArchiving(false)
     }
@@ -164,17 +167,17 @@ export default function EventDetailPage() {
     setResetting(true)
     try {
       await api.post(`/events/${code}/reset-short-code`)
-      toast('邀请码已重置，旧邀请码已失效')
+      toast(t('邀请码已重置，旧邀请码已失效'))
       setConfirmResetCode(false)
       load()
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '重置失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('重置失败'), 'error')
     } finally {
       setResetting(false)
     }
   }
 
-  if (loading) return <div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>
+  if (loading) return <div className="page-loading"><span className="spinner" aria-hidden="true" />{t('加载中…')}</div>
 
   // 加载失败：404 给「活动不存在」友好页；其他错误给出说明 + 重试
   if (loadError) {
@@ -182,21 +185,21 @@ export default function EventDetailPage() {
     return (
       <div className="page-container" style={{ maxWidth: 760 }}>
         <div className="page-header">
-          <h1 className="page-title">活动详情</h1>
-          <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
+          <h1 className="page-title">{t('活动详情')}</h1>
+          <Link to="/events" className="btn btn-ghost btn-sm">{t('返回')}</Link>
         </div>
         <div className="empty-state gift-card">
-          <div className="empty-title">{notFound ? '活动不存在' : '加载失败'}</div>
+          <div className="empty-title">{notFound ? t('活动不存在') : t('加载失败')}</div>
           <p className="empty-sub">
-            {notFound ? '活动不存在或已失效，链接可能有误' : loadError}
+            {notFound ? t('活动不存在或已失效，链接可能有误') : loadError}
           </p>
           {notFound ? (
             <Link to="/events" className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 12 }}>
-              回我的活动
+              {t('回我的活动')}
             </Link>
           ) : (
             <button className="btn btn-secondary btn-sm" style={{ width: 'auto', marginTop: 12 }} onClick={load}>
-              重试
+              {t('重试')}
             </button>
           )}
         </div>
@@ -206,52 +209,52 @@ export default function EventDetailPage() {
 
   // 游客模式：邀请落地预览（不泄露收件人/发货等敏感信息）
   if (!user) {
-    if (!preview) return <div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>
+    if (!preview) return <div className="page-loading"><span className="spinner" aria-hidden="true" />{t('加载中…')}</div>
     return (
       <div className="page-container" style={{ maxWidth: 760 }}>
         <div className="page-header">
           <h1 className="page-title">{preview.title}</h1>
-          <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
+          <Link to="/events" className="btn btn-ghost btn-sm">{t('返回')}</Link>
         </div>
 
         <div className="gift-card" style={{ marginBottom: 16 }}>
           {preview.coverImage && (
             <img
               src={preview.coverImage}
-              alt="活动封面"
+              alt={t('活动封面')}
               style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: 'var(--gift-radius-md)', marginBottom: 12 }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
           )}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <Badge tone={preview.status === 'open' ? 'success' : 'gold'}>
-              {preview.status === 'open' ? '报名中' : '已抽签'}
+              {preview.status === 'open' ? t('报名中') : t('已抽签')}
             </Badge>
-            {preview.isPublic ? <Badge tone="info">公开活动</Badge> : <Badge tone="warning">私密活动</Badge>}
+            {preview.isPublic ? <Badge tone="info">{t('公开活动')}</Badge> : <Badge tone="warning">{t('私密活动')}</Badge>}
           </div>
 
           {preview.note && <p style={{ color: 'var(--gift-text-secondary)', marginBottom: 12 }}>{preview.note}</p>}
 
           <div className="event-meta-grid">
-            {preview.budget ? <div><span className="meta-label">预算</span><span className="meta-value">{formatMoney(preview.budget)}</span></div> : null}
-            <div><span className="meta-label">参与人数</span><span className="meta-value">{preview.participantCount} 人</span></div>
+            {preview.budget ? <div><span className="meta-label">{t('预算')}</span><span className="meta-value">{formatMoney(preview.budget)}</span></div> : null}
+            <div><span className="meta-label">{t('参与人数')}</span><span className="meta-value">{t('{count} 人', { count: preview.participantCount })}</span></div>
             {preview.signUpDeadline ? (
-              <div><span className="meta-label">报名截止</span><span className="meta-value">{formatDeadline(preview.signUpDeadline)}</span></div>
+              <div><span className="meta-label">{t('报名截止')}</span><span className="meta-value">{formatDeadline(preview.signUpDeadline)}</span></div>
             ) : null}
           </div>
 
           <p style={{ color: 'var(--gift-text-secondary)', margin: '16px 0' }}>
             {preview.status === 'open'
-              ? `朋友邀请你参加「${preview.title}」🎁 登录后即可查看详情并加入`
-              : '这个活动已经开始啦，登录后看看大家交换了什么礼物吧'}
+              ? t('朋友邀请你参加「{title}」🎁 登录后即可查看详情并加入', { title: preview.title })
+              : t('这个活动已经开始啦，登录后看看大家交换了什么礼物吧')}
           </p>
 
           <Link to={`/login?from=${encodeURIComponent(`events/${code}`)}`} className="btn btn-primary">
-            登录后加入
+            {t('登录后加入')}
           </Link>
           <div style={{ textAlign: 'center', marginTop: 12, fontSize: 'var(--gift-font-sm)' }}>
             <Link to={`/register?from=${encodeURIComponent(`events/${code}`)}`} style={{ color: 'var(--gift-brand)' }}>
-              没有账号？立即注册
+              {t('没有账号？立即注册')}
             </Link>
           </div>
         </div>
@@ -259,18 +262,21 @@ export default function EventDetailPage() {
     )
   }
 
-  if (!event) return <div className="page-container">活动不存在</div>
+  if (!event) return <div className="page-container">{t('活动不存在')}</div>
 
   // 活动级流程状态（Task A）：由后端 detail 接口推导；旧后端缺失时按 status 兜底
   const flowState =
     (event as EventInfo & { flowState?: string }).flowState ||
     (event.status === 'open' ? 'recruiting' : 'active')
+  // 提前算好供 t() 插值：未填完整收件信息的人数 / 预算参考文案
+  const incompleteCount = participants.filter((p) => !p.contactComplete).length
+  const budgetRef = formatMoney(event.budget)
 
   return (
     <div className="page-container page-container--wide">
       <div className="page-header">
         <h1 className="page-title">{event.title}</h1>
-        <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
+        <Link to="/events" className="btn btn-ghost btn-sm">{t('返回')}</Link>
       </div>
 
       <div className="detail-layout">
@@ -281,25 +287,25 @@ export default function EventDetailPage() {
           <div style={{ margin: '-16px -16px 12px' }}>
             <SafeImage
               src={event.coverImage}
-              alt="活动封面"
+              alt={t('活动封面')}
               style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
             />
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <Badge tone={event.status === 'open' ? 'success' : 'gold'}>
-            {event.status === 'open' ? '报名中' : '已抽签'}
+            {event.status === 'open' ? t('报名中') : t('已抽签')}
           </Badge>
-          {event.isPublic ? <Badge tone="info">公开活动</Badge> : <Badge tone="warning">私密活动</Badge>}
-          {isOwner && <Badge tone="gold">我是组织者</Badge>}
+          {event.isPublic ? <Badge tone="info">{t('公开活动')}</Badge> : <Badge tone="warning">{t('私密活动')}</Badge>}
+          {isOwner && <Badge tone="gold">{t('我是组织者')}</Badge>}
         </div>
 
         {/* 邀请区：短码 + 复制链接 + 复制短码 */}
         {event.shortCode && (
           <div className="invite-box" style={{ flexWrap: 'wrap' }}>
             <div className="invite-info">
-              <span className="invite-label">邀请码</span>
-              <button className="invite-code-btn" onClick={copyShortCode} title="点击复制邀请码">
+              <span className="invite-label">{t('邀请码')}</span>
+              <button className="invite-code-btn" onClick={copyShortCode} title={t('点击复制邀请码')}>
                 {event.shortCode} 📋
               </button>
             </div>
@@ -308,7 +314,7 @@ export default function EventDetailPage() {
               style={{ width: 'auto', flexShrink: 0 }}
               onClick={copyInviteLink}
             >
-              📋 复制邀请链接
+              {t('📋 复制邀请链接')}
             </button>
             <button
               className="btn btn-secondary btn-sm"
@@ -325,7 +331,7 @@ export default function EventDetailPage() {
                 })
               }
             >
-              🖼️ 邀请海报
+              {t('🖼️ 邀请海报')}
             </button>
             {isOwner && (
               <button
@@ -333,7 +339,7 @@ export default function EventDetailPage() {
                 style={{ width: 'auto', flexShrink: 0 }}
                 onClick={() => setConfirmResetCode(true)}
               >
-                🔄 重置邀请码
+                {t('🔄 重置邀请码')}
               </button>
             )}
           </div>
@@ -342,13 +348,13 @@ export default function EventDetailPage() {
         {event.note && <p style={{ color: 'var(--gift-text-secondary)', marginBottom: 12 }}>{event.note}</p>}
 
         <div className="event-meta-grid">
-          <div><span className="meta-label">预算</span><span className="meta-value">{formatMoney(event.budget)}</span></div>
-          <div><span className="meta-label">参与人数</span><span className="meta-value">{event.participantCount}</span></div>
+          <div><span className="meta-label">{t('预算')}</span><span className="meta-value">{formatMoney(event.budget)}</span></div>
+          <div><span className="meta-label">{t('参与人数')}</span><span className="meta-value">{event.participantCount}</span></div>
           {event.drawDate && (
-            <div><span className="meta-label">报名截止</span><span className="meta-value">{formatDeadline(event.drawDate)}</span></div>
+            <div><span className="meta-label">{t('报名截止')}</span><span className="meta-value">{formatDeadline(event.drawDate)}</span></div>
           )}
           {event.maxParticipants && (
-            <div><span className="meta-label">人数上限</span><span className="meta-value">{event.maxParticipants}</span></div>
+            <div><span className="meta-label">{t('人数上限')}</span><span className="meta-value">{event.maxParticipants}</span></div>
           )}
         </div>
 
@@ -362,23 +368,23 @@ export default function EventDetailPage() {
 
         {!isOwner && !joined && event.status === 'open' && (
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setShowJoinForm(true)}>
-            加入这个活动
+            {t('加入这个活动')}
           </button>
         )}
         {isOwner && !joined && (
-          <p style={{ marginTop: 16, color: 'var(--gift-text-secondary)' }}>你是组织者，活动已创建，无需加入</p>
+          <p style={{ marginTop: 16, color: 'var(--gift-text-secondary)' }}>{t('你是组织者，活动已创建，无需加入')}</p>
         )}
 
         {isOwner && event.status === 'open' && (
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-            <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>活动管理台</Link>
+            <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>{t('活动管理台')}</Link>
             <button
               className="btn btn-primary"
               style={{ flex: 1 }}
               onClick={() => setConfirmDraw(true)}
               disabled={event.participantCount < 2}
             >
-              {event.participantCount < 2 ? '至少 2 人才能抽签' : '开始抽签'}
+              {event.participantCount < 2 ? t('至少 2 人才能抽签') : t('开始抽签')}
             </button>
           </div>
         )}
@@ -386,13 +392,13 @@ export default function EventDetailPage() {
         {isOwner && event.status === 'drawn' && (
           <div style={{ marginTop: 16 }}>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>活动管理台</Link>
+              <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>{t('活动管理台')}</Link>
               <button
                 className="btn btn-secondary"
                 style={{ flex: 1, color: 'var(--gift-warning-text)', borderColor: 'var(--gift-warning-text)' }}
                 onClick={() => setConfirmRedraw(true)}
               >
-                重新抽签
+                {t('重新抽签')}
               </button>
             </div>
             <button
@@ -400,7 +406,7 @@ export default function EventDetailPage() {
               style={{ marginTop: 8, width: '100%', color: 'var(--gift-error-text)', borderColor: 'var(--gift-error-text)' }}
               onClick={() => setConfirmArchive(true)}
             >
-              归档活动
+              {t('归档活动')}
             </button>
           </div>
         )}
@@ -409,41 +415,40 @@ export default function EventDetailPage() {
 
       <div className="detail-col-right">
       {confirmDraw && (
-        <Modal title="确认抽签？" onClose={() => setConfirmDraw(false)}>
+        <Modal title={t('确认抽签？')} onClose={() => setConfirmDraw(false)}>
           <p style={{ marginTop: 8 }}>
-            当前 <b>{event.participantCount}</b> 人参与。抽签后不可撤销，每个人将获得一个送礼对象。
+            <b>{t('当前 {count} 人参与。抽签后不可撤销，每个人将获得一个送礼对象。', { count: event.participantCount })}</b>
           </p>
           {event.excludedPairs.length > 0 && (
             <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning-text)' }}>
-              ⚠️ 已配置 {event.excludedPairs.length} 组互避规则，抽签时会避开这些配对
+              {t('⚠️ 已配置 {count} 组互避规则，抽签时会避开这些配对', { count: event.excludedPairs.length })}
             </p>
           )}
           <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
-            {participants.filter((p) => !p.contactComplete).length > 0 &&
-              `提示：${participants.filter((p) => !p.contactComplete).length} 人未填完整收件信息，抽签后对方可能收不到礼物。`}
+            {incompleteCount > 0 && t('提示：{count} 人未填完整收件信息，抽签后对方可能收不到礼物。', { count: incompleteCount })}
           </p>
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="btn btn-secondary" onClick={() => setConfirmDraw(false)}>取消</button>
+            <button className="btn btn-secondary" onClick={() => setConfirmDraw(false)}>{t('取消')}</button>
             <button className="btn btn-primary" onClick={onDraw} disabled={drawing}>
-              {drawing ? '抽签中…' : '确认抽签'}
+              {drawing ? t('抽签中…') : t('确认抽签')}
             </button>
           </div>
         </Modal>
       )}
 
       {confirmRedraw && (
-        <Modal title="重新抽签？" onClose={() => setConfirmRedraw(false)}>
+        <Modal title={t('重新抽签？')} onClose={() => setConfirmRedraw(false)}>
           <p style={{ marginTop: 8 }}>
-            所有成员的任务将重置，已发货/已晒图的数据会清空，此操作不可撤销。
+            {t('所有成员的任务将重置，已发货/已晒图的数据会清空，此操作不可撤销。')}
           </p>
           {event.excludedPairs.length > 0 && (
             <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning-text)' }}>
-              ⚠️ 已配置 {event.excludedPairs.length} 组互避规则，重新抽签会继续避开这些配对
+              {t('⚠️ 已配置 {count} 组互避规则，重新抽签会继续避开这些配对', { count: event.excludedPairs.length })}
             </p>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmRedraw(false)} disabled={redrawing}>
-              取消
+              {t('取消')}
             </button>
             <button
               className="btn btn-primary"
@@ -451,20 +456,20 @@ export default function EventDetailPage() {
               onClick={onRedraw}
               disabled={redrawing}
             >
-              {redrawing ? '重抽中…' : '确认重新抽签'}
+              {redrawing ? t('重抽中…') : t('确认重新抽签')}
             </button>
           </div>
         </Modal>
       )}
 
       {confirmArchive && (
-        <Modal title="归档活动？" onClose={() => setConfirmArchive(false)}>
+        <Modal title={t('归档活动？')} onClose={() => setConfirmArchive(false)}>
           <p style={{ marginTop: 8 }}>
-            归档后活动将从「我创建的」列表隐藏，进入「已归档」。详情页、礼物墙、管理台数据不受影响，可随时恢复。
+            {t('归档后活动将从「我创建的」列表隐藏，进入「已归档」。详情页、礼物墙、管理台数据不受影响，可随时恢复。')}
           </p>
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmArchive(false)} disabled={archiving}>
-              取消
+              {t('取消')}
             </button>
             <button
               className="btn btn-primary"
@@ -472,23 +477,23 @@ export default function EventDetailPage() {
               onClick={onArchive}
               disabled={archiving}
             >
-              {archiving ? '归档中…' : '确认归档'}
+              {archiving ? t('归档中…') : t('确认归档')}
             </button>
           </div>
         </Modal>
       )}
 
       {confirmResetCode && (
-        <Modal title="重置邀请码？" onClose={() => setConfirmResetCode(false)}>
+        <Modal title={t('重置邀请码？')} onClose={() => setConfirmResetCode(false)}>
           <p style={{ marginTop: 8 }}>
-            旧邀请码将立即失效，已转发的旧邀请链接将无法再进入活动，此操作不可撤销。
+            {t('旧邀请码将立即失效，已转发的旧邀请链接将无法再进入活动，此操作不可撤销。')}
           </p>
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmResetCode(false)} disabled={resetting}>
-              取消
+              {t('取消')}
             </button>
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={onResetShortCode} disabled={resetting}>
-              {resetting ? '重置中…' : '确认重置'}
+              {resetting ? t('重置中…') : t('确认重置')}
             </button>
           </div>
         </Modal>
@@ -496,39 +501,39 @@ export default function EventDetailPage() {
 
       {joined && myMatch && event.status === 'drawn' && (
         <div className="gift-card" style={{ marginBottom: 16 }}>
-          <h2 className="section-title">🎯 我的送礼任务</h2>
+          <h2 className="section-title">{t('🎯 我的送礼任务')}</h2>
           <p style={{ marginTop: 8, fontSize: 18 }}>
-            我要送给 <b style={{ color: 'var(--gift-brand)' }}>{myMatch.receiverDisplayName}</b>
+            <b style={{ color: 'var(--gift-brand)' }}>{t('我要送给 {name}', { name: myMatch.receiverDisplayName })}</b>
           </p>
           <div style={{ marginTop: 12, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
-            <p>💰 预算参考：{formatMoney(event.budget)}</p>
-            {myMatch.preference.likes && <p>❤️ 喜欢：{myMatch.preference.likes}</p>}
-            {myMatch.preference.dislikes && <p>🚫 不喜欢：{myMatch.preference.dislikes}</p>}
-            {myMatch.preference.size && <p>📏 尺码：{myMatch.preference.size}</p>}
-            {myMatch.preference.color && <p>🎨 颜色：{myMatch.preference.color}</p>}
+            <p>{t('💰 预算参考：{budget}', { budget: budgetRef })}</p>
+            {myMatch.preference.likes && <p>{t('❤️ 喜欢：{likes}', { likes: myMatch.preference.likes })}</p>}
+            {myMatch.preference.dislikes && <p>{t('🚫 不喜欢：{dislikes}', { dislikes: myMatch.preference.dislikes })}</p>}
+            {myMatch.preference.size && <p>{t('📏 尺码：{size}', { size: myMatch.preference.size })}</p>}
+            {myMatch.preference.color && <p>{t('🎨 颜色：{color}', { color: myMatch.preference.color })}</p>}
             {myMatch.preference.wishLinks.length > 0 && (
               <p>
-                🎁 心愿链接：
+                {t('🎁 心愿链接：')}
                 {myMatch.preference.wishLinks.map((link, i) => (
                   <a key={i} href={link} target="_blank" rel="noreferrer" style={{ marginLeft: 8 }}>
-                    心愿{i + 1} ↗
+                    {t('心愿{i} ↗', { i: i + 1 })}
                   </a>
                 ))}
               </p>
             )}
-            {myMatch.preference.notes && <p>📝 备注：{myMatch.preference.notes}</p>}
+            {myMatch.preference.notes && <p>{t('📝 备注：{notes}', { notes: myMatch.preference.notes })}</p>}
             {/* 悄悄话：仅当收礼人已晒图后才揭晓（纯前端门控，receivedAt 非空 = 收礼人已晒图） */}
             {myMatch.note &&
               (myMatch.giftPost.receivedAt ? (
-                <p>💬 悄悄话：{myMatch.note}</p>
+                <p>{t('💬 悄悄话：{note}', { note: myMatch.note })}</p>
               ) : (
-                <p className="note-pending">💬 悄悄话：收礼人晒图后揭晓 ✨</p>
+                <p className="note-pending">{t('💬 悄悄话：收礼人晒图后揭晓 ✨')}</p>
               ))}
           </div>
           <div style={{ marginTop: 12, padding: 12, background: 'var(--gift-bg-muted)', borderRadius: 12 }}>
-            <p><b>收件人：</b>{myMatch.contact.receiverName}</p>
-            <p><b>电话：</b>{myMatch.contact.phone}</p>
-            <p><b>地址：</b>{myMatch.contact.address}</p>
+            <p><b>{t('收件人：')}</b>{myMatch.contact.receiverName}</p>
+            <p><b>{t('电话：')}</b>{myMatch.contact.phone}</p>
+            <p><b>{t('地址：')}</b>{myMatch.contact.address}</p>
           </div>
 
           {/* 送礼状态机进度条：待购买 → 已发货 → 已签收 → 已晒图（未抽签/无 my-match 不显示） */}
@@ -553,13 +558,13 @@ export default function EventDetailPage() {
         <div className="gift-card" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <div>
-              <h2 className="section-title">🎁 礼物墙</h2>
+              <h2 className="section-title">{t('🎁 礼物墙')}</h2>
               <p style={{ marginTop: 4, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
-                看看大家都收到了什么礼物，给喜欢的点赞！
+                {t('看看大家都收到了什么礼物，给喜欢的点赞！')}
               </p>
             </div>
             <Link to={`/events/${code}/gift-wall`} className="btn btn-primary" style={{ flexShrink: 0, width: 'auto' }}>
-              去看看
+              {t('去看看')}
             </Link>
           </div>
         </div>
@@ -569,7 +574,7 @@ export default function EventDetailPage() {
 
       <div className="gift-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h2 className="section-title" style={{ margin: 0 }}>参与者（{participants.length}）</h2>
+          <h2 className="section-title" style={{ margin: 0 }}>{t('参与者（{count}）', { count: participants.length })}</h2>
           {isOwner && (
             <button
               className="btn btn-primary btn-sm"
@@ -577,22 +582,22 @@ export default function EventDetailPage() {
               onClick={onRemind}
               disabled={reminding}
             >
-              {reminding ? '催办中…' : '催办未完成成员'}
+              {reminding ? t('催办中…') : t('催办未完成成员')}
             </button>
           )}
         </div>
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {participants.length === 0 ? (
             <div className="empty-state" style={{ padding: 'var(--gift-space-xl) var(--gift-space-lg)' }}>
-              <div className="empty-title" style={{ fontSize: 'var(--gift-font-md)' }}>还没有人加入</div>
+              <div className="empty-title" style={{ fontSize: 'var(--gift-font-md)' }}>{t('还没有人加入')}</div>
               <p className="empty-sub">
                 {isOwner
-                  ? '分享邀请码或复制邀请链接，把朋友拉进来一起玩'
-                  : '等组织者邀请更多朋友后，就可以开始抽签啦'}
+                  ? t('分享邀请码或复制邀请链接，把朋友拉进来一起玩')
+                  : t('等组织者邀请更多朋友后，就可以开始抽签啦')}
               </p>
               {isOwner && (
                 <button className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 12 }} onClick={copyInviteLink}>
-                  📋 复制邀请链接
+                  {t('📋 复制邀请链接')}
                 </button>
               )}
             </div>
@@ -604,7 +609,7 @@ export default function EventDetailPage() {
                 <div key={p.id} className="participant-row">
                   <span style={{ fontWeight: 500 }}>{p.displayName || p.username}</span>
                   <span style={{ display: 'flex', gap: 6 }}>
-                    <Badge tone={meta.tone}>{meta.label}</Badge>
+                    <Badge tone={meta.tone}>{t(meta.label)}</Badge>
                   </span>
                 </div>
               )
@@ -620,7 +625,7 @@ export default function EventDetailPage() {
           onJoined={() => {
             setShowJoinForm(false)
             load()
-            toast('加入成功！')
+            toast(t('加入成功！'))
           }}
         />
       )}
@@ -632,6 +637,7 @@ export default function EventDetailPage() {
 
 function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => void; onJoined: () => void }) {
   const { toast } = useToast()
+  useLocale()
   const [step, setStep] = useState<1 | 2>(1)
   // 第一步：收件信息
   const [receiverName, setReceiverName] = useState('')
@@ -672,7 +678,7 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
   // 第一步校验通过才进第二步
   const goNext = () => {
     if (!receiverName || !phone || !address) {
-      setError('请填写收件人姓名、电话和地址（必填）')
+      setError(t('请填写收件人姓名、电话和地址（必填）'))
       return
     }
     setError('')
@@ -697,14 +703,14 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
       })
       onJoined()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '加入失败')
+      setError(err instanceof ApiError ? err.message : t('加入失败'))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Modal title="加入活动" onClose={onClose} maxWidth={520}>
+    <Modal title={t('加入活动')} onClose={onClose} maxWidth={520}>
       {/* 步骤指示器 */}
       <div className="step-indicator">
         <div className={`step-dot${step === 1 ? ' active' : ''}${step === 2 ? ' done' : ''}`}>
@@ -713,8 +719,8 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
         <div className={`step-line${step === 2 ? ' done' : ''}`} />
         <div className={`step-dot${step === 2 ? ' active' : ''}`}><span>2</span></div>
         <div className="step-labels">
-          <span className={step === 1 ? 'current' : ''} aria-current={step === 1 ? 'step' : undefined}>收件信息</span>
-          <span className={step === 2 ? 'current' : ''} aria-current={step === 2 ? 'step' : undefined}>心愿单</span>
+          <span className={step === 1 ? 'current' : ''} aria-current={step === 1 ? 'step' : undefined}>{t('收件信息')}</span>
+          <span className={step === 2 ? 'current' : ''} aria-current={step === 2 ? 'step' : undefined}>{t('心愿单')}</span>
         </div>
       </div>
 
@@ -723,66 +729,66 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
             <>
               {prefilled && (
                 <p className="form-hint" style={{ marginBottom: 8, color: 'var(--gift-brand)' }}>
-                  📋 已从个人资料自动填入，可修改
+                  {t('📋 已从个人资料自动填入，可修改')}
                 </p>
               )}
               <p className="form-hint" style={{ marginBottom: 16 }}>
-                抽签后，送你礼物的人会看到这些信息来寄礼物
+                {t('抽签后，送你礼物的人会看到这些信息来寄礼物')}
               </p>
               <div className="form-group">
-                <label className="form-label" htmlFor="join-receiver">收件人姓名 *</label>
-                <input id="join-receiver" className="form-input" placeholder="真实姓名" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} maxLength={120} aria-describedby={error ? 'join-error' : undefined} />
+                <label className="form-label" htmlFor="join-receiver">{t('收件人姓名 *')}</label>
+                <input id="join-receiver" className="form-input" placeholder={t('真实姓名')} value={receiverName} onChange={(e) => setReceiverName(e.target.value)} maxLength={120} aria-describedby={error ? 'join-error' : undefined} />
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="join-phone">联系电话 *</label>
-                <input id="join-phone" className="form-input" type="tel" placeholder="手机号" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} aria-describedby={error ? 'join-error' : undefined} />
+                <label className="form-label" htmlFor="join-phone">{t('联系电话 *')}</label>
+                <input id="join-phone" className="form-input" type="tel" placeholder={t('手机号')} value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} aria-describedby={error ? 'join-error' : undefined} />
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="join-address">收件地址 *</label>
-                <textarea id="join-address" className="form-textarea" placeholder="省市区 + 详细地址" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} aria-describedby={error ? 'join-error' : undefined} />
+                <label className="form-label" htmlFor="join-address">{t('收件地址 *')}</label>
+                <textarea id="join-address" className="form-textarea" placeholder={t('省市区 + 详细地址')} value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} aria-describedby={error ? 'join-error' : undefined} />
               </div>
               {error && <div id="join-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>取消</button>
-                <button type="button" className="btn btn-primary" onClick={goNext} style={{ flex: 1 }}>下一步</button>
+                <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>{t('取消')}</button>
+                <button type="button" className="btn btn-primary" onClick={goNext} style={{ flex: 1 }}>{t('下一步')}</button>
               </div>
             </>
           ) : (
             <>
               <p className="form-hint" style={{ marginBottom: 16 }}>
-                让送礼的人更懂你（全部选填，但填得越多礼物越合心意 🎁）
+                {t('让送礼的人更懂你（全部选填，但填得越多礼物越合心意 🎁）')}
               </p>
               <div className="form-group">
-                <label className="form-label" htmlFor="join-likes">我喜欢的礼物</label>
-                <input id="join-likes" className="form-input" placeholder="例如：咖啡、书、手作" value={likes} onChange={(e) => setLikes(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-likes">{t('我喜欢的礼物')}</label>
+                <input id="join-likes" className="form-input" placeholder={t('例如：咖啡、书、手作')} value={likes} onChange={(e) => setLikes(e.target.value)} maxLength={500} />
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="join-dislikes">我不想要的</label>
-                <input id="join-dislikes" className="form-input" placeholder="例如：香水、毛绒玩具" value={dislikes} onChange={(e) => setDislikes(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-dislikes">{t('我不想要的')}</label>
+                <input id="join-dislikes" className="form-input" placeholder={t('例如：香水、毛绒玩具')} value={dislikes} onChange={(e) => setDislikes(e.target.value)} maxLength={500} />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label className="form-label" htmlFor="join-size">尺码（选填）</label>
-                  <input id="join-size" className="form-input" placeholder="如 M / 42 码" value={size} onChange={(e) => setSize(e.target.value)} maxLength={50} />
+                  <label className="form-label" htmlFor="join-size">{t('尺码（选填）')}</label>
+                  <input id="join-size" className="form-input" placeholder={t('如 M / 42 码')} value={size} onChange={(e) => setSize(e.target.value)} maxLength={50} />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label className="form-label" htmlFor="join-color">喜欢的颜色（选填）</label>
-                  <input id="join-color" className="form-input" placeholder="如 莫兰迪色系" value={color} onChange={(e) => setColor(e.target.value)} maxLength={80} />
+                  <label className="form-label" htmlFor="join-color">{t('喜欢的颜色（选填）')}</label>
+                  <input id="join-color" className="form-input" placeholder={t('如 莫兰迪色系')} value={color} onChange={(e) => setColor(e.target.value)} maxLength={80} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="join-wishlinks">心愿链接（选填，最多 3 个）</label>
-                <input id="join-wishlinks" className="form-input" placeholder="淘宝/京东等商品链接，逗号分隔" value={wishLinks} onChange={(e) => setWishLinks(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-wishlinks">{t('心愿链接（选填，最多 3 个）')}</label>
+                <input id="join-wishlinks" className="form-input" placeholder={t('淘宝/京东等商品链接，逗号分隔')} value={wishLinks} onChange={(e) => setWishLinks(e.target.value)} maxLength={500} />
               </div>
               <div className="form-group">
-                <label className="form-label" htmlFor="join-notes">备注（选填）</label>
-                <textarea id="join-notes" className="form-textarea" placeholder="其他想说的话" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-notes">{t('备注（选填）')}</label>
+                <textarea id="join-notes" className="form-textarea" placeholder={t('其他想说的话')} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
               </div>
               {error && <div id="join-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => { setStep(1); setError('') }} style={{ flex: 1 }}>上一步</button>
+                <button type="button" className="btn btn-secondary" onClick={() => { setStep(1); setError('') }} style={{ flex: 1 }}>{t('上一步')}</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting} style={{ flex: 1 }}>
-                  {submitting ? '提交中…' : '确认加入'}
+                  {submitting ? t('提交中…') : t('确认加入')}
                 </button>
               </div>
             </>
@@ -809,6 +815,7 @@ const PRIVACY_LABEL: Record<GiftPrivacy, string> = {
 
 function ReceivedGiftSection({ code }: { code: string }) {
   const { toast } = useToast()
+  useLocale()
   const [received, setReceived] = useState<ReceivedGift | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -861,12 +868,12 @@ function ReceivedGiftSection({ code }: { code: string }) {
     setDeleting(true)
     try {
       await api.delete(`/events/${code}/received-gift?matchId=${received.matchId}`)
-      toast('晒图已删除')
+      toast(t('晒图已删除'))
       setConfirmDelete(false)
       setEditing(false)
       load()
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '删除失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('删除失败'), 'error')
     } finally {
       setDeleting(false)
     }
@@ -875,15 +882,15 @@ function ReceivedGiftSection({ code }: { code: string }) {
   const submit = async () => {
     if (!received) return
     if (rating < 1 || rating > 5) {
-      toast('请先给礼物评分 ⭐', 'error')
+      toast(t('请先给礼物评分 ⭐'), 'error')
       return
     }
     if (!review.trim()) {
-      toast('请填写评价内容', 'error')
+      toast(t('请填写评价内容'), 'error')
       return
     }
     if (privacy !== 'text' && !photoUrl.trim()) {
-      toast('请上传一张照片（或选择「仅文字」模式）', 'error')
+      toast(t('请上传一张照片（或选择「仅文字」模式）'), 'error')
       return
     }
     setSaving(true)
@@ -895,11 +902,11 @@ function ReceivedGiftSection({ code }: { code: string }) {
         photoUrl: photoUrl.trim(),
         privacy,
       })
-      toast('晒图成功 🎉')
+      toast(t('晒图成功 🎉'))
       setEditing(false)
       load()
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '保存失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('保存失败'), 'error')
     } finally {
       setSaving(false)
     }
@@ -912,24 +919,24 @@ function ReceivedGiftSection({ code }: { code: string }) {
 
   return (
     <div className="gift-card" style={{ marginBottom: 16 }}>
-      <h2 className="section-title">🎁 我收到的礼物</h2>
+      <h2 className="section-title">{t('🎁 我收到的礼物')}</h2>
       <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
         {posted
-          ? `来自 ${giverName} 的礼物，你已晒出（${PRIVACY_LABEL[curPrivacy]}）`
-          : `来自 ${giverName} 的礼物 —— 晒出后，礼物墙就离解锁更近一步 🎀`}
+          ? t('来自 {giverName} 的礼物，你已晒出（{privacy}）', { giverName, privacy: t(PRIVACY_LABEL[curPrivacy]) })
+          : t('来自 {giverName} 的礼物 —— 晒出后，礼物墙就离解锁更近一步 🎀', { giverName })}
       </p>
 
       {posted && !editing ? (
         <div style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span className="gw-stars" aria-label={`评分 ${rating}/5`}>
+            <span className="gw-stars" aria-label={t('评分 {rating}/5', { rating })}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <span key={n} className={n <= (received.giftPost.rating || 0) ? 'gw-star on' : 'gw-star'}>★</span>
               ))}
             </span>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" className="btn btn-ghost btn-sm" style={{ width: 'auto' }} onClick={startEdit}>
-                修改晒图
+                {t('修改晒图')}
               </button>
               <button
                 type="button"
@@ -937,7 +944,7 @@ function ReceivedGiftSection({ code }: { code: string }) {
                 style={{ width: 'auto', color: 'var(--gift-error-text)' }}
                 onClick={() => setConfirmDelete(true)}
               >
-                删除晒图
+                {t('删除晒图')}
               </button>
             </div>
           </div>
@@ -949,12 +956,12 @@ function ReceivedGiftSection({ code }: { code: string }) {
               <SafeImage
                 className={`gw-photo${curPrivacy === 'blur' ? ' gw-photo-blur' : ''}${curPrivacy === 'blur' && blurView ? ' viewing' : ''}`}
                 src={received.giftPost.photoUrl}
-                alt={curPrivacy === 'blur' ? '模糊照片，点击查看原图' : '礼物照片'}
+                alt={curPrivacy === 'blur' ? t('模糊照片，点击查看原图') : t('礼物照片')}
                 loading="lazy"
                 onClick={curPrivacy === 'blur' ? () => setBlurView((v) => !v) : undefined}
               />
               {curPrivacy === 'blur' && (
-                <span className="gw-blur-hint">{blurView ? '👁 点击隐藏原图' : '🌫️ 模糊照片 · 点击查看原图'}</span>
+                <span className="gw-blur-hint">{blurView ? t('👁 点击隐藏原图') : t('🌫️ 模糊照片 · 点击查看原图')}</span>
               )}
             </div>
           )}
@@ -963,7 +970,7 @@ function ReceivedGiftSection({ code }: { code: string }) {
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* 评分 */}
           <div>
-            <div className="form-label">评分 *</div>
+            <div className="form-label">{t('评分 *')}</div>
             <div className="gw-stars" style={{ fontSize: 28, cursor: 'pointer' }}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -972,7 +979,7 @@ function ReceivedGiftSection({ code }: { code: string }) {
                   className={`gw-star${n <= rating ? ' on' : ''}`}
                   style={{ background: 'none', border: 'none', fontSize: 28, padding: '0 4px', cursor: 'pointer', minWidth: 40, minHeight: 40 }}
                   onClick={() => setRating(n)}
-                  aria-label={`${n} 星`}
+                  aria-label={t('{n} 星', { n })}
                 >
                   ★
                 </button>
@@ -982,11 +989,11 @@ function ReceivedGiftSection({ code }: { code: string }) {
 
           {/* 评价 */}
           <div>
-            <label className="form-label" htmlFor="received-review">评价（选填）</label>
+            <label className="form-label" htmlFor="received-review">{t('评价（选填）')}</label>
             <textarea
               id="received-review"
               className="form-textarea"
-              placeholder="收到礼物想说点什么？"
+              placeholder={t('收到礼物想说点什么？')}
               value={review}
               onChange={(e) => setReview(e.target.value)}
               maxLength={500}
@@ -996,7 +1003,7 @@ function ReceivedGiftSection({ code }: { code: string }) {
 
           {/* 隐私形式 */}
           <div>
-            <div className="form-label">晒图形式</div>
+            <div className="form-label">{t('晒图形式')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {PRIVACY_OPTIONS.map((opt) => (
                 <label
@@ -1021,8 +1028,8 @@ function ReceivedGiftSection({ code }: { code: string }) {
                     onChange={() => setPrivacy(opt.value)}
                     style={{ accentColor: 'var(--gift-brand)' }}
                   />
-                  <span style={{ fontWeight: privacy === opt.value ? 600 : 400 }}>{opt.label}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--gift-text-secondary)' }}>{opt.hint}</span>
+                  <span style={{ fontWeight: privacy === opt.value ? 600 : 400 }}>{t(opt.label)}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--gift-text-secondary)' }}>{t(opt.hint)}</span>
                 </label>
               ))}
             </div>
@@ -1034,33 +1041,33 @@ function ReceivedGiftSection({ code }: { code: string }) {
               <ImageUpload
                 value={photoUrl}
                 onChange={setPhotoUrl}
-                label={privacy === 'blur' ? '上传照片（将模糊展示）' : '上传照片'}
-                hint={privacy === 'blur' ? '照片会以模糊效果展示在礼物墙，其他人点击可查看原图' : undefined}
+                label={privacy === 'blur' ? t('上传照片（将模糊展示）') : t('上传照片')}
+                hint={privacy === 'blur' ? t('照片会以模糊效果展示在礼物墙，其他人点击可查看原图') : undefined}
               />
             </div>
           ) : (
-            <p className="form-hint" style={{ margin: 0 }}>📝 仅文字模式：无需上传照片，写好评价即可晒出</p>
+            <p className="form-hint" style={{ margin: 0 }}>{t('📝 仅文字模式：无需上传照片，写好评价即可晒出')}</p>
           )}
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setEditing(false); load() }} disabled={saving}>
-              取消
+              {t('取消')}
             </button>
             <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={submit} disabled={saving}>
-              {saving ? '提交中…' : posted ? '保存修改' : '晒出礼物 🎉'}
+              {saving ? t('提交中…') : posted ? t('保存修改') : t('晒出礼物 🎉')}
             </button>
           </div>
         </div>
       )}
 
       {confirmDelete && (
-        <Modal title="删除晒图？" onClose={() => setConfirmDelete(false)}>
+        <Modal title={t('删除晒图？')} onClose={() => setConfirmDelete(false)}>
           <p style={{ marginTop: 8 }}>
-            删除后你的评分、评价和照片会从礼物墙移除，礼物卡片将恢复未揭晓状态。此操作不可撤销。
+            {t('删除后你的评分、评价和照片会从礼物墙移除，礼物卡片将恢复未揭晓状态。此操作不可撤销。')}
           </p>
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmDelete(false)} disabled={deleting}>
-              取消
+              {t('取消')}
             </button>
             <button
               className="btn btn-primary"
@@ -1068,7 +1075,7 @@ function ReceivedGiftSection({ code }: { code: string }) {
               onClick={onDelete}
               disabled={deleting}
             >
-              {deleting ? '删除中…' : '确认删除'}
+              {deleting ? t('删除中…') : t('确认删除')}
             </button>
           </div>
         </Modal>
@@ -1095,9 +1102,10 @@ function deriveShipmentState(myMatch: MyMatch): string {
 }
 
 function ShipmentProgress({ state }: { state: string }) {
+  useLocale()
   const currentIndex = SHIPMENT_STEPS.findIndex((s) => s.key === state)
   return (
-    <div className="ship-progress" role="list" aria-label="送礼进度">
+    <div className="ship-progress" role="list" aria-label={t('送礼进度')}>
       {SHIPMENT_STEPS.map((s, i) => (
         <div className="ship-progress-step-wrap" key={s.key}>
           <div
@@ -1107,7 +1115,7 @@ function ShipmentProgress({ state }: { state: string }) {
             <div className="ship-progress-dot" aria-hidden="true">
               {i < currentIndex ? '✓' : s.icon}
             </div>
-            <div className="ship-progress-label">{s.label}</div>
+            <div className="ship-progress-label">{t(s.label)}</div>
           </div>
           {i < SHIPMENT_STEPS.length - 1 && (
             <div className={`ship-progress-line${i < currentIndex ? ' done' : ''}`} />
@@ -1130,14 +1138,14 @@ const FLOW_STEPS = [
 function flowHint(state: string, opts: { isOwner: boolean; joined: boolean; participantCount: number }): string {
   switch (state) {
     case 'recruiting':
-      if (opts.isOwner) return `招募中：分享邀请码让朋友加入（当前 ${opts.participantCount} 人）`
-      return opts.joined ? '你已加入，等待组织者抽签' : '报名截止前加入，即可参与抽签'
+      if (opts.isOwner) return t('招募中：分享邀请码让朋友加入（当前 {count} 人）', { count: opts.participantCount })
+      return opts.joined ? t('你已加入，等待组织者抽签') : t('报名截止前加入，即可参与抽签')
     case 'drawing':
-      return opts.isOwner ? '报名已截止，点击「开始抽签」' : '报名已截止，等待组织者抽签'
+      return opts.isOwner ? t('报名已截止，点击「开始抽签」') : t('报名已截止，等待组织者抽签')
     case 'active':
-      return opts.joined ? '去完成你的送礼任务，收到礼物记得晒图' : '送礼进行中，看看大家的礼物墙'
+      return opts.joined ? t('去完成你的送礼任务，收到礼物记得晒图') : t('送礼进行中，看看大家的礼物墙')
     case 'completed':
-      return '活动已完结，去礼物墙看看大家的分享'
+      return t('活动已完结，去礼物墙看看大家的分享')
     default:
       return ''
   }
@@ -1154,11 +1162,12 @@ function FlowSteps({
   joined: boolean
   participantCount: number
 }) {
+  useLocale()
   // 未知状态兜底：定位到「送礼进行中」，避免步骤条空态
   const currentIndex = FLOW_STEPS.findIndex((s) => s.key === state)
   const idx = currentIndex === -1 ? 2 : currentIndex
   return (
-    <div className="flow-steps" role="list" aria-label="活动流程">
+    <div className="flow-steps" role="list" aria-label={t('活动流程')}>
       {FLOW_STEPS.map((s, i) => (
         <div className="flow-step-wrap" key={s.key}>
           <div
@@ -1168,7 +1177,7 @@ function FlowSteps({
             <div className="flow-step-dot" aria-hidden="true">
               {i < idx ? '✓' : s.icon}
             </div>
-            <div className="flow-step-label">{s.label}</div>
+            <div className="flow-step-label">{t(s.label)}</div>
           </div>
           {i < FLOW_STEPS.length - 1 && (
             <div className={`flow-step-line${i < idx ? ' done' : ''}`} />
@@ -1195,6 +1204,7 @@ function ShipmentSection({
   onUpdated: () => void
 }) {
   const { toast } = useToast()
+  useLocale()
   const [carrier, setCarrier] = useState(shipment.carrier || '')
   const [trackingNumber, setTrackingNumber] = useState(shipment.trackingNumber || '')
   const [secretNote, setSecretNote] = useState(note || '')
@@ -1208,10 +1218,10 @@ function ShipmentSection({
     try {
       // 返回的 trackingRefreshable 表示仍处于失败态：据此给真实反馈，避免「已刷新」误导
       const res = await api.post<{ trackingRefreshable: boolean }>(`/events/${code}/shipment/refresh`, { matchId })
-      toast(res.trackingRefreshable ? '物流查询仍失败，请稍后再试' : '物流信息已刷新', res.trackingRefreshable ? 'error' : undefined)
+      toast(res.trackingRefreshable ? t('物流查询仍失败，请稍后再试') : t('物流信息已刷新'), res.trackingRefreshable ? 'error' : undefined)
       onUpdated()
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '刷新失败，请稍后重试', 'error')
+      toast(err instanceof ApiError ? err.message : t('刷新失败，请稍后重试'), 'error')
     } finally {
       setRefreshing(false)
     }
@@ -1219,7 +1229,7 @@ function ShipmentSection({
 
   const saveShipment = async () => {
     if (!trackingNumber.trim()) {
-      toast('请填写快递单号', 'error')
+      toast(t('请填写快递单号'), 'error')
       return
     }
     setSaving(true)
@@ -1232,11 +1242,11 @@ function ShipmentSection({
       })
       // 悄悄话单独保存（允许空）
       await api.put(`/events/${code}/note`, { matchId, note: secretNote.trim() })
-      toast('发货信息已保存 🚚')
+      toast(t('发货信息已保存 🚚'))
       setShowForm(false)
       onUpdated()
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '保存失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('保存失败'), 'error')
     } finally {
       setSaving(false)
     }
@@ -1251,15 +1261,15 @@ function ShipmentSection({
   return (
     <div style={{ marginTop: 16, borderTop: '1px solid var(--gift-border)', paddingTop: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600 }}>🚚 发货进度</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 600 }}>{t('🚚 发货进度')}</h3>
         <Badge tone={shipment.status === 'delivered' ? 'success' : shipment.status === 'shipped' ? 'info' : 'warning'}>
-          {shipmentStatusLabel()}
+          {t(shipmentStatusLabel())}
         </Badge>
       </div>
 
       {shipment.trackingNumber && (
         <div style={{ fontSize: 14, color: 'var(--gift-text-secondary)', marginBottom: 8 }}>
-          <p>单号：{shipment.trackingNumber}{shipment.carrier ? `（${shipment.carrier}）` : ''}</p>
+          <p>{t('单号：')}{shipment.trackingNumber}{shipment.carrier ? t('（{carrier}）', { carrier: shipment.carrier }) : ''}</p>
           {shipment.trackingSummary && (
             <p style={{ marginTop: 4, color: 'var(--gift-text-primary)' }}>📦 {shipment.trackingSummary}</p>
           )}
@@ -1270,7 +1280,7 @@ function ShipmentSection({
               onClick={refreshTracking}
               disabled={refreshing}
             >
-              {refreshing ? '刷新中…' : '🔄 刷新物流信息'}
+              {refreshing ? t('刷新中…') : t('🔄 刷新物流信息')}
             </button>
           )}
         </div>
@@ -1278,7 +1288,7 @@ function ShipmentSection({
 
       {!showForm ? (
         <button className="btn btn-secondary btn-sm" style={{ width: 'auto' }} onClick={() => setShowForm(true)}>
-          {shipment.trackingNumber ? '修改物流信息' : '填写快递单号'}
+          {shipment.trackingNumber ? t('修改物流信息') : t('填写快递单号')}
         </button>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1286,8 +1296,8 @@ function ShipmentSection({
             <input
               className="form-input"
               style={{ flex: '1 1 160px' }}
-              placeholder="快递公司（选填）"
-              aria-label="快递公司（选填）"
+              placeholder={t('快递公司（选填）')}
+              aria-label={t('快递公司（选填）')}
               value={carrier}
               onChange={(e) => setCarrier(e.target.value)}
               maxLength={80}
@@ -1295,8 +1305,8 @@ function ShipmentSection({
             <input
               className="form-input"
               style={{ flex: '2 1 160px' }}
-              placeholder="快递单号 *"
-              aria-label="快递单号（必填）"
+              placeholder={t('快递单号 *')}
+              aria-label={t('快递单号（必填）')}
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value)}
               maxLength={120}
@@ -1304,18 +1314,18 @@ function ShipmentSection({
           </div>
           <input
             className="form-input"
-            placeholder="附一句悄悄话（选填）💌"
-            aria-label="附一句悄悄话（选填）"
+            placeholder={t('附一句悄悄话（选填）💌')}
+            aria-label={t('附一句悄悄话（选填）')}
             value={secretNote}
             onChange={(e) => setSecretNote(e.target.value)}
             maxLength={500}
           />
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setShowForm(false)}>
-              取消
+              {t('取消')}
             </button>
             <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={saveShipment} disabled={saving}>
-              {saving ? '保存中…' : '确认发货'}
+              {saving ? t('保存中…') : t('确认发货')}
             </button>
           </div>
         </div>

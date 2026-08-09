@@ -1,5 +1,5 @@
-// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { useEffect, useRef } from 'react'
+import { t, useLocale } from '../i18n'
 import QRCode from 'qrcode'
 import { primitive } from '../tokens'
 
@@ -28,8 +28,11 @@ const H = 1000
 /** 生成分享海报（Canvas 2D 绘制，3:4 社交比例，可下载 PNG） */
 export default function SharePoster({ data }: { data: PosterData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const locale = useLocale()
 
   useEffect(() => {
+    const tagline = data.kind === 'invite' ? t('朋友间的心意交换') : t('一次温暖的心意交换')
+    const cta = data.kind === 'invite' ? t('等你加入，一起交换心意') : t('期待下一次心意交换')
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -52,10 +55,10 @@ export default function SharePoster({ data }: { data: PosterData }) {
     ctx.fillStyle = WHITE
     ctx.font = 'bold 34px "PingFang SC", sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('🎁 互送礼物', W / 2, 90)
+    ctx.fillText(t('🎁 互送礼物'), W / 2, 90)
     ctx.font = '20px "PingFang SC", sans-serif'
     ctx.fillStyle = `${WHITE}D9`
-    ctx.fillText(data.kind === 'invite' ? '朋友间的心意交换' : '一次温暖的心意交换', W / 2, 130)
+    ctx.fillText(tagline, W / 2, 130)
 
     // 白色卡片
     ctx.fillStyle = WHITE
@@ -117,9 +120,9 @@ export default function SharePoster({ data }: { data: PosterData }) {
       ctx.fillStyle = WARM_700
       ctx.font = 'bold 32px "PingFang SC", sans-serif'
       const infoParts = []
-      if (data.budget) infoParts.push(`预算 ¥${data.budget}`)
-      if (data.participantCount !== undefined) infoParts.push(`${data.participantCount} 人参与`)
-      if (data.kind === 'highlight' && data.totalPosted !== undefined) infoParts.push(`${data.totalPosted} 份心意`)
+      if (data.budget) infoParts.push(t('预算 ¥{budget}', { budget: data.budget }))
+      if (data.participantCount !== undefined) infoParts.push(t('{participantCount} 人参与', { participantCount: data.participantCount }))
+      if (data.kind === 'highlight' && data.totalPosted !== undefined) infoParts.push(t('{totalPosted} 份心意', { totalPosted: data.totalPosted }))
       if (data.kind === 'highlight' && data.totalStars !== undefined) infoParts.push(`⭐ ${data.totalStars}`)
       ctx.fillText(infoParts.join('  ·  '), W / 2, 440)
 
@@ -127,7 +130,7 @@ export default function SharePoster({ data }: { data: PosterData }) {
         // 邀请码
         ctx.fillStyle = BRAND
         ctx.font = 'bold 40px "PingFang SC", sans-serif'
-        ctx.fillText(`邀请码 ${data.shortCode || ''}`, W / 2, 540)
+        ctx.fillText(t('邀请码 {shortCode}', { shortCode: data.shortCode || '' }), W / 2, 540)
 
         // 真实二维码：指向邀请落地页（游客可访问 /events/<shortCode>）
         const qx = W / 2 - 70, qy = 590, qs = 140
@@ -154,27 +157,27 @@ export default function SharePoster({ data }: { data: PosterData }) {
           ctx.fillRect(qx, qy, qs, qs)
           ctx.fillStyle = WARM_500
           ctx.font = '20px "PingFang SC", sans-serif'
-          ctx.fillText('二维码生成失败', W / 2, qy + qs / 2 + 7)
+          ctx.fillText(t('二维码生成失败'), W / 2, qy + qs / 2 + 7)
         }
 
         ctx.fillStyle = WARM_500
         ctx.font = '22px "PingFang SC", sans-serif'
-        ctx.fillText('扫码或输入邀请码加入', W / 2, 800)
+        ctx.fillText(t('扫码或输入邀请码加入'), W / 2, 800)
       } else {
         ctx.fillStyle = BRAND
         ctx.font = 'bold 40px "PingFang SC", sans-serif'
-        ctx.fillText('我们完成了一次礼物交换 🎉', W / 2, 560)
+        ctx.fillText(t('我们完成了一次礼物交换 🎉'), W / 2, 560)
         ctx.fillStyle = WARM_500
         ctx.font = '24px "PingFang SC", sans-serif'
-        ctx.fillText('感谢每一位参与者', W / 2, 640)
+        ctx.fillText(t('感谢每一位参与者'), W / 2, 640)
       }
 
       // 底部 CTA
       ctx.fillStyle = BRAND
       ctx.font = 'bold 28px "PingFang SC", sans-serif'
-      ctx.fillText(data.kind === 'invite' ? '等你加入，一起交换心意' : '期待下一次心意交换', W / 2, H - 130)
+      ctx.fillText(cta, W / 2, H - 130)
     }
-  }, [data])
+  }, [data, locale])
 
   return <canvas ref={canvasRef} width={W} height={H} style={{ width: '100%', maxWidth: 420, borderRadius: 16 }} />
 }

@@ -1,14 +1,16 @@
-// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
+// 本页文案已接入 i18n（t()/useLocale）
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { api, ApiError, GiftWall, GiftWallItem, Participant } from '../api/client'
 import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
 import Modal from '../components/Modal'
+import { t, useLocale } from '../i18n'
 
 export default function GiftWallPage() {
   const { code = '' } = useParams()
   const { toast } = useToast()
+  useLocale() // 订阅语言切换：setLocale 后重渲染（i18n 迁移）
 
   const [wall, setWall] = useState<GiftWall | null>(null)
   const [loading, setLoading] = useState(true)
@@ -41,11 +43,11 @@ export default function GiftWallPage() {
             displayName: p.displayName,
           }))
           localStorage.setItem('gift_draft', JSON.stringify({ ...base, members }))
-          toast(`已复制 ${members.length} 位成员名单`)
+          toast(t('已复制 {count} 位成员名单', { count: members.length }))
         } catch {
           // 未登录/接口失败：降级为仅复制活动配置
           localStorage.setItem('gift_draft', JSON.stringify(base))
-          toast('成员名单获取失败，已仅复制活动配置', 'error')
+          toast(t('成员名单获取失败，已仅复制活动配置'), 'error')
         }
       } else {
         localStorage.setItem('gift_draft', JSON.stringify(base))
@@ -68,7 +70,7 @@ export default function GiftWallPage() {
       const data = await api.get<GiftWall>(`/events/${code}/gift-wall`)
       setWall(data)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '加载礼物墙失败')
+      setError(err instanceof ApiError ? err.message : t('加载礼物墙失败'))
     } finally {
       setLoading(false)
     }
@@ -112,7 +114,7 @@ export default function GiftWallPage() {
           : prev
       )
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : '操作失败', 'error')
+      toast(err instanceof ApiError ? err.message : t('操作失败'), 'error')
       load()
     } finally {
       setLikingIds((prev) => {
@@ -123,18 +125,18 @@ export default function GiftWallPage() {
     }
   }
 
-  if (loading) return <div className="page-loading">加载中…</div>
+  if (loading) return <div className="page-loading">{t('加载中…')}</div>
   if (error)
     return (
       <div className="page-container" style={{ maxWidth: 760 }}>
         <div className="page-header">
-          <h1 className="page-title">礼物墙</h1>
-          <Link to={`/events/${code}`} className="btn btn-ghost btn-sm">返回</Link>
+          <h1 className="page-title">{t('礼物墙')}</h1>
+          <Link to={`/events/${code}`} className="btn btn-ghost btn-sm">{t('返回')}</Link>
         </div>
         <div className="gw-empty">{error}</div>
       </div>
     )
-  if (!wall) return <div className="page-container">暂无数据</div>
+  if (!wall) return <div className="page-container">{t('暂无数据')}</div>
 
   const { unlocked, posted, total, items } = wall
   const { remaining } = wall.progress
@@ -143,34 +145,34 @@ export default function GiftWallPage() {
   return (
     <div className="page-container page-container--wide">
       <div className="page-header">
-        <h1 className="page-title">🎁 礼物墙</h1>
-        <Link to={`/events/${code}`} className="btn btn-ghost btn-sm">返回</Link>
+        <h1 className="page-title">{t('🎁 礼物墙')}</h1>
+        <Link to={`/events/${code}`} className="btn btn-ghost btn-sm">{t('返回')}</Link>
       </div>
 
       {!unlocked ? (
         <div className="gw-progress-card">
           <div className="gw-progress-text">
             {total === 0
-              ? '还没有人加入活动，礼物墙稍后揭晓 🎁'
-              : `${posted}/${total} 已送出并晒图，还差 ${remaining} 人解锁 🔒`}
+              ? t('还没有人加入活动，礼物墙稍后揭晓 🎁')
+              : t('{posted}/{total} 已送出并晒图，还差 {remaining} 人解锁 🔒', { posted, total, remaining })}
           </div>
           <div className="gw-progress-bar">
             <div className="gw-progress-fill" style={{ width: `${pct}%` }} />
           </div>
           {posted === 0 ? (
-            <p className="gw-lock-note">还没有人晒出礼物，收到礼物并晒图后，礼物墙就会揭晓 🎀</p>
+            <p className="gw-lock-note">{t('还没有人晒出礼物，收到礼物并晒图后，礼物墙就会揭晓 🎀')}</p>
           ) : (
-            <p className="gw-lock-note">所有参与者送出礼物并晒图后，礼物墙自动解锁，敬请期待 ✨</p>
+            <p className="gw-lock-note">{t('所有参与者送出礼物并晒图后，礼物墙自动解锁，敬请期待 ✨')}</p>
           )}
           <Link to={`/events/${code}`} className="btn btn-primary" style={{ width: 'auto', marginTop: 16, padding: '0 28px' }}>
-            去晒出你的礼物
+            {t('去晒出你的礼物')}
           </Link>
         </div>
       ) : items.length === 0 ? (
         <div className="gw-empty">
-          <p>礼物墙已解锁，但还没有晒出的礼物 🎁</p>
+          <p>{t('礼物墙已解锁，但还没有晒出的礼物 🎁')}</p>
           <Link to={`/events/${code}`} className="btn btn-primary" style={{ width: 'auto', marginTop: 16, padding: '0 28px' }}>
-            返回活动晒出第一份礼物
+            {t('返回活动晒出第一份礼物')}
           </Link>
         </div>
       ) : (
@@ -190,14 +192,14 @@ export default function GiftWallPage() {
               })
             }}
           >
-            🏆 生成高光海报
+            {t('🏆 生成高光海报')}
           </button>
           <button
             className="btn btn-secondary"
             style={{ width: 'auto', padding: '0 28px' }}
             onClick={() => setReplayOpen(true)}
           >
-            🔁 再开一局
+            {t('🔁 再开一局')}
           </button>
         </div>
         <div className="gw-grid">
@@ -232,31 +234,31 @@ export default function GiftWallPage() {
                   {item.giftPost.review && <p className="gw-review">“{item.giftPost.review}”</p>}
 
                   {isTextView ? (
-                    <div className="gw-text-badge" role="img" aria-label="仅文字晒图">
-                      📝 文字心意
+                    <div className="gw-text-badge" role="img" aria-label={t('仅文字晒图')}>
+                      {t('📝 文字心意')}
                     </div>
                   ) : item.giftPost.photoUrl ? (
                     <div className="gw-photo-wrap">
                       <img
                         className={`gw-photo${isBlur ? ' gw-photo-blur' : ''}${isBlur && viewPhoto[item.matchId] ? ' viewing' : ''}`}
                         src={item.giftPost.photoUrl}
-                        alt={isBlur ? '模糊照片，点击查看原图' : '礼物照片'}
+                        alt={isBlur ? t('模糊照片，点击查看原图') : t('礼物照片')}
                         loading="lazy"
                         onClick={isBlur ? () => setViewPhoto((prev) => ({ ...prev, [item.matchId]: !prev[item.matchId] })) : undefined}
                         onError={(e) => {
                           // 图片加载失败降级：显示占位（不再显示裂图）
-                          const t = e.target as HTMLImageElement
-                          t.style.display = 'none'
-                          const wrap = t.parentElement
+                          const img = e.target as HTMLImageElement
+                          img.style.display = 'none'
+                          const wrap = img.parentElement
                           if (wrap) {
                             wrap.classList.add('gw-photo-fallback')
-                            wrap.textContent = '🎁 礼物照片'
+                            wrap.textContent = t('🎁 礼物照片')
                           }
                         }}
                       />
                       {isBlur && (
                         <span className="gw-blur-hint">
-                          {viewPhoto[item.matchId] ? '👁 点击隐藏原图' : '🌫️ 模糊照片 · 点击查看'}
+                          {viewPhoto[item.matchId] ? t('👁 点击隐藏原图') : t('🌫️ 模糊照片 · 点击查看')}
                         </span>
                       )}
                     </div>
@@ -280,12 +282,12 @@ export default function GiftWallPage() {
                   type="button"
                   className={`gw-mask${isRevealed ? ' gw-mask-hidden' : ''}`}
                   onClick={() => reveal(item.matchId)}
-                  aria-label="点击揭晓这份礼物"
+                  aria-label={t('点击揭晓这份礼物')}
                   aria-hidden={isRevealed}
                   tabIndex={isRevealed ? -1 : 0}
                 >
                   <span className="gw-mask-gift">🎁</span>
-                  <span className="gw-mask-hint">点击揭晓</span>
+                  <span className="gw-mask-hint">{t('点击揭晓')}</span>
                 </button>
               </div>
             )
@@ -297,9 +299,9 @@ export default function GiftWallPage() {
       <PosterModal data={poster} onClose={() => setPoster(null)} />
 
       {replayOpen && (
-        <Modal title="🔁 再开一局" onClose={() => !replayBusy && setReplayOpen(false)}>
+        <Modal title={t('🔁 再开一局')} onClose={() => !replayBusy && setReplayOpen(false)}>
           <p style={{ marginTop: 8, color: 'var(--gift-text-secondary)' }}>
-            用当前活动的标题、预算和说明创建新活动
+            {t('用当前活动的标题、预算和说明创建新活动')}
           </p>
           <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 16, cursor: 'pointer' }}>
             <input
@@ -309,14 +311,14 @@ export default function GiftWallPage() {
               style={{ marginTop: 4, flexShrink: 0 }}
             />
             <span>
-              复制成员名单
+              {t('复制成员名单')}
               <span className="form-hint" style={{ display: 'block' }}>
-                带入上期成员用户名，方便复制邀请（不会自动加入）
+                {t('带入上期成员用户名，方便复制邀请（不会自动加入）')}
               </span>
             </span>
           </label>
           <p className="form-hint" style={{ marginTop: 10 }}>
-            互避规则暂不复制，新活动需重新配置
+            {t('互避规则暂不复制，新活动需重新配置')}
           </p>
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button
@@ -325,10 +327,10 @@ export default function GiftWallPage() {
               onClick={() => setReplayOpen(false)}
               disabled={replayBusy}
             >
-              取消
+              {t('取消')}
             </button>
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={startReplay} disabled={replayBusy}>
-              {replayBusy ? '准备中…' : '确认再开一局'}
+              {replayBusy ? t('准备中…') : t('确认再开一局')}
             </button>
           </div>
         </Modal>
@@ -338,9 +340,10 @@ export default function GiftWallPage() {
 }
 
 function Stars({ rating }: { rating: number | null }) {
+  useLocale()
   if (!rating) return null
   return (
-    <span className="gw-stars" aria-label={`评分 ${rating}/5`}>
+    <span className="gw-stars" aria-label={t('评分 {rating}/5', { rating })}>
       {[1, 2, 3, 4, 5].map((n) => (
         <span key={n} className={n <= rating ? 'gw-star on' : 'gw-star'}>★</span>
       ))}

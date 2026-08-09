@@ -48,6 +48,8 @@ def register():
         return fail("密码长度需为 6-128 个字符")
     if not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
         return fail("密码必须同时包含字母和数字")
+    if password.lower() == username.lower():
+        return fail("密码不能与用户名相同")
 
     with DB() as db:
         user_count = db.get("SELECT COUNT(*) AS count FROM users")["count"]
@@ -105,6 +107,9 @@ def login():
             record_failed_login(ip, username)
             return fail("用户名或密码错误", 401)
         if row.get("deactivated"):
+            # 审计补齐（I18N2-B）：注销账号的登录尝试同样计入失败（限速 + 结构化日志含 IP/用户名/时间），
+            # 避免该分支成为审计盲区；响应语义保持「账号已注销」不变
+            record_failed_login(ip, username)
             return fail("账号已注销", 401)
         if not check_password(password, row["password"]):
             record_failed_login(ip, username)
@@ -190,6 +195,8 @@ def reset_password():
         return fail("新密码长度需为 6-128 位")
     if not any(c.isalpha() for c in new_password) or not any(c.isdigit() for c in new_password):
         return fail("新密码需包含字母和数字")
+    if new_password.lower() == username.lower():
+        return fail("新密码不能与用户名相同")
 
     # 防暴力猜码：与 forgot 共用 IP+账号 限速窗口（6 位码 100 万组合，无限速可几分钟内爆破）
     ip = client_ip()
@@ -289,6 +296,8 @@ def change_password(user):
         row = db.get("SELECT * FROM users WHERE id = ?", (user["userId"],))
         if not row:
             return fail("用户不存在", 404)
+        if new_password.lower() == str(row.get("username") or "").lower():
+            return fail("新密码不能与用户名相同")
         if not check_password(old_password, row["password"]):
             return fail("旧密码不正确", 400)
         db.execute("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",

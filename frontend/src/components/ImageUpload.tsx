@@ -1,5 +1,5 @@
-// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { useRef, useState } from 'react'
+import { t, useLocale } from '../i18n'
 import { api, ApiError, UploadResult } from '../api/client'
 import SafeImage from './SafeImage'
 
@@ -17,20 +17,21 @@ interface ImageUploadProps {
  * 选择文件 → FormData POST /api/upload → 预览 → 回调返回相对 URL
  * 未来小程序迁移：本组件替换为 wx.chooseImage + wx.uploadFile 即可，业务字段不变
  */
-export default function ImageUpload({ value, onChange, label = '上传图片', hint }: ImageUploadProps) {
+export default function ImageUpload({ value, onChange, label = t('上传图片'), hint }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  useLocale()
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (!/^image\/(png|jpe?g|gif|webp)$/i.test(file.type)) {
-      setError('仅支持 png / jpg / jpeg / gif / webp 图片')
+      setError(t('仅支持 png / jpg / jpeg / gif / webp 图片'))
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError('图片不能超过 5MB')
+      setError(t('图片不能超过 5MB'))
       return
     }
     setUploading(true)
@@ -39,7 +40,7 @@ export default function ImageUpload({ value, onChange, label = '上传图片', h
       const result = await api.upload<UploadResult>('/upload', file)
       onChange(result.url)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '上传失败，请稍后重试')
+      setError(err instanceof ApiError ? err.message : t('上传失败，请稍后重试'))
     } finally {
       setUploading(false)
       // 允许再次选择同一文件
@@ -56,14 +57,14 @@ export default function ImageUpload({ value, onChange, label = '上传图片', h
         onChange={handleFile}
         className="iu-input"
       />
-      {value && <SafeImage className="iu-preview" src={value} alt="图片预览" />}
+      {value && <SafeImage className="iu-preview" src={value} alt={t('图片预览')} />}
       <button
         type="button"
         className="btn btn-secondary btn-sm"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
       >
-        {uploading ? '上传中…' : value ? '更换图片' : label}
+        {uploading ? t('上传中…') : value ? t('更换图片') : label}
       </button>
       {error && <div className="form-error iu-error">{error}</div>}
       {hint && <div className="form-hint">{hint}</div>}

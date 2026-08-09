@@ -1,5 +1,5 @@
-// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { Component, ReactNode } from 'react'
+import { t, useLocale } from '../i18n'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -15,7 +15,7 @@ interface ErrorBoundaryState {
  * 渲染错误边界：子组件渲染崩溃时不白屏，显示「页面出错了」+ 刷新按钮。
  * 用法：App 级包裹整个路由树 + 活动详情页单独包裹。
  */
-export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundaryImpl extends Component<ErrorBoundaryProps & { localeKey: string }> {
   state: ErrorBoundaryState = { hasError: false }
 
   static getDerivedStateFromError(): ErrorBoundaryState {
@@ -33,8 +33,8 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
         this.props.fallback ?? (
           <div className="error-boundary" role="alert">
             <div className="error-boundary-icon">😵</div>
-            <div className="error-boundary-title">页面出错了</div>
-            <p className="error-boundary-desc">渲染时遇到了一点问题，刷新重试即可</p>
+            <div className="error-boundary-title">{t('页面出错了')}</div>
+            <p className="error-boundary-desc">{t('渲染时遇到了一点问题，刷新重试即可')}</p>
             <button
               type="button"
               className="btn btn-primary"
@@ -44,7 +44,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
                 window.location.reload()
               }}
             >
-              刷新重试
+              {t('刷新重试')}
             </button>
           </div>
         )
@@ -52,4 +52,9 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     }
     return this.props.children
   }
+}
+
+export default function ErrorBoundary(props: ErrorBoundaryProps) {
+  const locale = useLocale()
+  return <ErrorBoundaryImpl {...props} localeKey={locale} />
 }

@@ -1,12 +1,13 @@
-// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api, ApiError, EventInfo } from '../api/client'
 import { useToast } from '../components/Toast'
 import ImageUpload from '../components/ImageUpload'
+import { t, useLocale } from '../i18n'
 
 export default function CreateEventPage() {
   const navigate = useNavigate()
+  useLocale() // 订阅语言切换：setLocale 后重渲染
   const { toast } = useToast()
   const [title, setTitle] = useState('')
   const [note, setNote] = useState('')
@@ -67,7 +68,7 @@ export default function CreateEventPage() {
         .map((s) => s.trim())
         .filter(Boolean)
       if (names.length !== 2) {
-        return { pairs: [], error: `第 ${i + 1} 行格式应为「用户名1, 用户名2」` }
+        return { pairs: [], error: t('第 {n} 行格式应为「用户名1, 用户名2」', { n: i + 1 }) }
       }
       pairs.push(names)
     }
@@ -76,30 +77,30 @@ export default function CreateEventPage() {
 
   // 季节模板
   const templates = [
-    { icon: '🎄', name: '圣诞交换', title: '圣诞礼物交换', note: '今年圣诞，我们把心意藏在礼物里 🎁', budget: '200', days: '12月20日' },
-    { icon: '🎂', name: '生日惊喜', title: '生日惊喜派对', note: '给寿星的礼物盲盒，大家一起宠 TA 🎂', budget: '150', days: '生日前一周' },
-    { icon: '🎉', name: '新年聚会', title: '新年礼物互赠', note: '新年新气象，互相送份小确幸 🧧', budget: '100', days: '元旦前三天' },
+    { icon: '🎄', name: t('圣诞交换'), title: t('圣诞礼物交换'), note: t('今年圣诞，我们把心意藏在礼物里 🎁'), budget: '200', days: t('12月20日') },
+    { icon: '🎂', name: t('生日惊喜'), title: t('生日惊喜派对'), note: t('给寿星的礼物盲盒，大家一起宠 TA 🎂'), budget: '150', days: t('生日前一周') },
+    { icon: '🎉', name: t('新年聚会'), title: t('新年礼物互赠'), note: t('新年新气象，互相送份小确幸 🧧'), budget: '100', days: t('元旦前三天') },
   ]
 
-  const applyTemplate = (t: (typeof templates)[number]) => {
-    setTitle(t.title)
-    setNote(t.note)
-    setBudget(t.budget)
+  const applyTemplate = (tpl: (typeof templates)[number]) => {
+    setTitle(tpl.title)
+    setNote(tpl.note)
+    setBudget(tpl.budget)
     setDrawDate('')
-    toast(`已应用「${t.name}」模板，可再调整`)
+    toast(t('已应用「{name}」模板，可再调整', { name: tpl.name }))
   }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) {
-      setError('请填写活动名称')
+      setError(t('请填写活动名称'))
       return
     }
 
     // 预算：负数或非数字直接拦截（type=number 的 min 不阻止手输）
     const budgetNum = budget === '' ? 0 : Number(budget)
     if (budget !== '' && (!Number.isFinite(budgetNum) || budgetNum < 0)) {
-      setError('预算不能为负数或无效数字')
+      setError(t('预算不能为负数或无效数字'))
       return
     }
 
@@ -107,11 +108,11 @@ export default function CreateEventPage() {
     if (drawDate) {
       const d = new Date(drawDate)
       if (Number.isNaN(d.getTime())) {
-        setError('报名截止日期格式无效')
+        setError(t('报名截止日期格式无效'))
         return
       }
       if (d.getTime() <= Date.now()) {
-        setError('报名截止日期不能早于现在')
+        setError(t('报名截止日期不能早于现在'))
         return
       }
     }
@@ -120,11 +121,11 @@ export default function CreateEventPage() {
     if (maxParticipants !== '') {
       const maxNum = Number(maxParticipants)
       if (!Number.isFinite(maxNum) || maxNum < 2) {
-        setError('人数上限至少为 2 人')
+        setError(t('人数上限至少为 2 人'))
         return
       }
       if (maxNum > 999) {
-        setError('人数上限不能超过 999')
+        setError(t('人数上限不能超过 999'))
         return
       }
     }
@@ -142,11 +143,11 @@ export default function CreateEventPage() {
       const expected =
         draftMembers.length > 0 ? draftMembers.length : maxParticipants ? Number(maxParticipants) : 0
       if (expected > 0 && rulePairs.length >= Math.ceil(expected / 2)) {
-        setError(`互避规则过多可能导致无法抽签（计划 ${expected} 人、已配置 ${rulePairs.length} 组），请减少规则数量`)
+        setError(t('互避规则过多可能导致无法抽签（计划 {expected} 人、已配置 {count} 组），请减少规则数量', { expected, count: rulePairs.length }))
         return
       }
       if (draftMembers.length === 0) {
-        setError('互避规则需与成员用户名对应。请使用「再开一局」带入成员名单后配置，或创建活动邀请成员后再配置')
+        setError(t('互避规则需与成员用户名对应。请使用「再开一局」带入成员名单后配置，或创建活动邀请成员后再配置'))
         return
       }
       // 用户名 → userId（username 优先，displayName 兜底）
@@ -167,7 +168,8 @@ export default function CreateEventPage() {
         if (ua !== ub) excludedPairs.push([ua, ub])
       }
       if (unknown.size > 0) {
-        setError(`无法识别的成员用户名：${[...unknown].join('、')}，请与名单保持一致`)
+        const unknownNames = [...unknown].join(t('、'))
+        setError(t('无法识别的成员用户名：{names}，请与名单保持一致', { names: unknownNames }))
         return
       }
     }
@@ -186,10 +188,10 @@ export default function CreateEventPage() {
         ...(coverImage ? { coverImage } : {}),
         ...(excludedPairs.length > 0 ? { excludedPairs } : {}),
       })
-      toast('活动创建成功！')
+      toast(t('活动创建成功！'))
       navigate(`/events/${ev.code}`)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '创建失败，请稍后重试')
+      setError(err instanceof ApiError ? err.message : t('创建失败，请稍后重试'))
     } finally {
       setSubmitting(false)
     }
@@ -198,35 +200,35 @@ export default function CreateEventPage() {
   return (
     <div className="page-container" style={{ maxWidth: 560 }}>
       <div className="page-header">
-        <h1 className="page-title">创建活动</h1>
-        <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
+        <h1 className="page-title">{t('创建活动')}</h1>
+        <Link to="/events" className="btn btn-ghost btn-sm">{t('返回')}</Link>
       </div>
 
       <form className="gift-card" onSubmit={onSubmit}>
         {/* 季节模板快捷栏 */}
         <div style={{ marginBottom: 20 }}>
-          <div className="form-label">从模板创建</div>
+          <div className="form-label">{t('从模板创建')}</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {templates.map((t) => (
+            {templates.map((tpl) => (
               <button
-                key={t.name}
+                key={tpl.name}
                 type="button"
                 className="btn btn-secondary btn-sm"
                 style={{ width: 'auto', flex: '1 1 auto', minWidth: 100 }}
-                onClick={() => applyTemplate(t)}
+                onClick={() => applyTemplate(tpl)}
               >
-                {t.icon} {t.name}
+                {tpl.icon} {t(tpl.name)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-title">活动名称 *</label>
+          <label className="form-label" htmlFor="ev-title">{t('活动名称 *')}</label>
           <input
             id="ev-title"
             className="form-input"
-            placeholder="例如：圣诞礼物互赠"
+            placeholder={t('例如：圣诞礼物互赠')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={100}
@@ -234,11 +236,11 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-note">活动说明</label>
+          <label className="form-label" htmlFor="ev-note">{t('活动说明')}</label>
           <textarea
             id="ev-note"
             className="form-textarea"
-            placeholder="写点规则或想说的话（选填）"
+            placeholder={t('写点规则或想说的话（选填）')}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
@@ -246,7 +248,7 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-budget">预算上限（元）</label>
+          <label className="form-label" htmlFor="ev-budget">{t('预算上限（元）')}</label>
           <input
             id="ev-budget"
             className="form-input"
@@ -256,11 +258,11 @@ export default function CreateEventPage() {
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
           />
-          <div className="form-hint">给参与者一个送礼金额参考</div>
+          <div className="form-hint">{t('给参与者一个送礼金额参考')}</div>
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-draw-date">报名截止日期</label>
+          <label className="form-label" htmlFor="ev-draw-date">{t('报名截止日期')}</label>
           <input
             id="ev-draw-date"
             className="form-input"
@@ -268,18 +270,18 @@ export default function CreateEventPage() {
             value={drawDate}
             onChange={(e) => setDrawDate(e.target.value)}
           />
-          <div className="form-hint">选填，截止后由你手动抽签</div>
+          <div className="form-hint">{t('选填，截止后由你手动抽签')}</div>
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-max">人数上限</label>
+          <label className="form-label" htmlFor="ev-max">{t('人数上限')}</label>
           <input
             id="ev-max"
             className="form-input"
             type="number"
             min={2}
             max={999}
-            placeholder="不限"
+            placeholder={t('不限')}
             value={maxParticipants}
             onChange={(e) => setMaxParticipants(e.target.value)}
           />
@@ -287,7 +289,7 @@ export default function CreateEventPage() {
 
         {draftMembers.length > 0 && (
           <div className="form-group">
-            <label className="form-label" htmlFor="ev-members">成员名单（每行一个用户名）</label>
+            <label className="form-label" htmlFor="ev-members">{t('成员名单（每行一个用户名）')}</label>
             <textarea
               id="ev-members"
               className="form-textarea"
@@ -295,7 +297,7 @@ export default function CreateEventPage() {
               value={draftMembers.map((m) => m.username).join('\n')}
               style={{ background: 'var(--gift-bg-muted)' }}
             />
-            <div className="form-hint">来自上期活动，不会自动加入新活动，方便你复制邀请名单</div>
+            <div className="form-hint">{t('来自上期活动，不会自动加入新活动，方便你复制邀请名单')}</div>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
@@ -303,19 +305,19 @@ export default function CreateEventPage() {
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(draftMembers.map((m) => m.username).join('\n'))
-                  toast('成员名单已复制')
+                  toast(t('成员名单已复制'))
                 } catch {
-                  toast('复制失败，请手动选择复制', 'error')
+                  toast(t('复制失败，请手动选择复制'), 'error')
                 }
               }}
             >
-              📋 复制名单
+              {t('📋 复制名单')}
             </button>
           </div>
         )}
 
         <div className="form-group">
-          <label className="form-label">谁可以看到这个活动</label>
+          <label className="form-label">{t('谁可以看到这个活动')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
@@ -323,7 +325,7 @@ export default function CreateEventPage() {
               style={{ width: 'auto' }}
               onClick={() => setIsPublic(true)}
             >
-              公开（所有人可见）
+              {t('公开（所有人可见）')}
             </button>
             <button
               type="button"
@@ -331,13 +333,13 @@ export default function CreateEventPage() {
               style={{ width: 'auto' }}
               onClick={() => setIsPublic(false)}
             >
-              私密（仅凭链接）
+              {t('私密（仅凭链接）')}
             </button>
           </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">抽签结果可见性</label>
+          <label className="form-label">{t('抽签结果可见性')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
@@ -345,7 +347,7 @@ export default function CreateEventPage() {
               style={{ width: 'auto' }}
               onClick={() => setMatchVisibility('private')}
             >
-              仅个人可见（推荐）
+              {t('仅个人可见（推荐）')}
             </button>
             <button
               type="button"
@@ -353,41 +355,41 @@ export default function CreateEventPage() {
               style={{ width: 'auto' }}
               onClick={() => setMatchVisibility('public')}
             >
-              所有人可见
+              {t('所有人可见')}
             </button>
           </div>
-          <div className="form-hint">仅个人可见时，每个人只能看到自己送谁</div>
+          <div className="form-hint">{t('仅个人可见时，每个人只能看到自己送谁')}</div>
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-rules">互避规则（选填）</label>
+          <label className="form-label" htmlFor="ev-rules">{t('互避规则（选填）')}</label>
           <div style={{ fontSize: 'var(--gift-font-xs)', color: 'var(--gift-text-secondary)', marginBottom: 8 }}>
-            互避 = 这两人不会互送礼物（如情侣/夫妻）
+            {t('互避 = 这两人不会互送礼物（如情侣/夫妻）')}
           </div>
           <textarea
             id="ev-rules"
             className="form-textarea"
-            placeholder={'每行一对，用逗号分隔用户名\n例如：小明, 小红'}
+            placeholder={t('每行一对，用逗号分隔用户名\n例如：小明, 小红')}
             value={rulesText}
             onChange={(e) => setRulesText(e.target.value)}
             maxLength={500}
           />
-          <div className="form-hint">规则按用户名填写；从「再开一局」带入成员名单时提交即生效，抽签时自动避开这些配对</div>
+          <div className="form-hint">{t('规则按用户名填写；从「再开一局」带入成员名单时提交即生效，抽签时自动避开这些配对')}</div>
         </div>
 
         <div className="form-group">
-          <label className="form-label">封面图片</label>
+          <label className="form-label">{t('封面图片')}</label>
           <ImageUpload
             value={coverImage}
             onChange={setCoverImage}
-            hint="选填，支持 png / jpg / jpeg / gif / webp，最大 5MB"
+            hint={t('选填，支持 png / jpg / jpeg / gif / webp，最大 5MB')}
           />
         </div>
 
         {error && <div className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
         <button className="btn btn-primary" type="submit" disabled={submitting}>
-          {submitting ? '创建中…' : '创建活动'}
+          {submitting ? t('创建中…') : t('创建活动')}
         </button>
       </form>
     </div>
