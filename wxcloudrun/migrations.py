@@ -131,6 +131,13 @@ MIGRATIONS = [
             _add_column("users", "notification_prefs", mysql="TEXT", sqlite="TEXT"),
         ],
     },
+    {
+        "version": 9,
+        "name": "users.deactivated 账号注销标记（P0 注销，本任务独占）",
+        "up": [
+            _add_column("users", "deactivated", mysql="TINYINT DEFAULT 0", sqlite="INTEGER DEFAULT 0"),
+        ],
+    },
 ]
 
 

@@ -111,6 +111,13 @@ def login_required(fn):
         user = current_user()
         if not user:
             return fail("Please sign in first", 401, -2)
+        # 已注销用户：JWT 仍有效期内也立即失效（账号注销 P0）
+        with DB() as db:
+            row = db.get("SELECT deactivated FROM users WHERE id = ?", (user["userId"],))
+            if not row:
+                return fail("Please sign in first", 401, -2)
+            if row.get("deactivated"):
+                return fail("账号已注销", 401, -2)
         return fn(user, *args, **kwargs)
 
     return wrapper

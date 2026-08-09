@@ -88,7 +88,12 @@ def login():
 
     with DB() as db:
         row = db.get("SELECT * FROM users WHERE username = ?", (username,))
-        if not row or not check_password(password, row["password"]):
+        if not row:
+            record_failed_login(client_ip, username)
+            return fail("Invalid username or password", 401)
+        if row.get("deactivated"):
+            return fail("账号已注销", 401)
+        if not check_password(password, row["password"]):
             record_failed_login(client_ip, username)
             return fail("Invalid username or password", 401)
         clear_login_attempts(client_ip, username)
@@ -261,6 +266,106 @@ def change_password(user):
         db.execute("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                    (hash_password(new_password), user["userId"]))
         return ok(None, "Password changed")
+
+
+@api.route("/auth/deactivate", methods=["POST"])
+@login_required
+def deactivate_account(user):
+    """注销账号：验证密码 → 匿名化用户（释放原名/邮箱，密码置随机串）→ 标记 deactivated。
+
+    不物理删除（保留活动/礼物墙数据完整性）；login_required 对 deactivated 用户一律 401，
+    已签发 JWT 立即失效，登录接口同样拒绝。
+    """
+    data = body()
+    password = str(data.get("password") or "")
+    if not password:
+        return fail("Password is required", 400)
+
+    with DB() as db:
+        row = current_user_row(db, user["userId"])
+        if row.get("deactivated"):
+            return fail("账号已注销", 400)
+        if not check_password(password, row["password"]):
+            return fail("Password is incorrect", 400)
+        user_id = row["id"]
+        db.execute(
+            """
+            UPDATE users
+            SET username = ?, email = ?, password = ?, display_name = ?,
+                deactivated = 1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                f"deleted_{user_id}",
+                f"deleted_{user_id}@deleted.local",
+                hash_password(secrets.token_urlsafe(24)),
+                "已注销用户",
+                user_id,
+            ),
+        )
+        return ok(None, "账号已注销")
+
+
+@api.route("/auth/export-data")
+@login_required
+def export_data(user):
+    """导出我的数据：个人资料 + 我创建/参与的活动 + 我的晒图记录。
+
+    只读查询；各类数据量过大时截断到最近 100 条。
+    """
+    with DB() as db:
+        row = current_user_row(db, user["userId"])
+        profile = {
+            "username": row["username"],
+            "email": row["email"],
+            "displayName": row.get("display_name") or row["username"],
+            "phone": row.get("phone") or "",
+            "address": row.get("address") or "",
+            "preference": row.get("gift_preference") or "",
+        }
+        created_events = db.all(
+            """
+            SELECT name AS title, status, created_at AS date
+            FROM events
+            WHERE creator_id = ?
+            ORDER BY created_at DESC
+            LIMIT 100
+            """,
+            (user["userId"],),
+        )
+        joined_events = db.all(
+            """
+            SELECT e.name AS title, e.status, p.created_at AS date
+            FROM participants p
+            JOIN events e ON e.id = p.event_id
+            WHERE p.user_id = ?
+            ORDER BY p.created_at DESC
+            LIMIT 100
+            """,
+            (user["userId"],),
+        )
+        gift_posts = db.all(
+            """
+            SELECT e.name AS event_title, m.gift_rating AS rating,
+                   m.gift_review AS review, m.received_at AS date
+            FROM matches m
+            JOIN participants p ON p.id = m.receiver_id
+            JOIN events e ON e.id = m.event_id
+            WHERE p.user_id = ?
+              AND (m.gift_review IS NOT NULL AND m.gift_review != ''
+                   OR m.gift_rating IS NOT NULL
+                   OR m.gift_photo_url IS NOT NULL AND m.gift_photo_url != '')
+            ORDER BY m.received_at DESC
+            LIMIT 100
+            """,
+            (user["userId"],),
+        )
+        return ok({
+            "profile": profile,
+            "createdEvents": created_events,
+            "joinedEvents": joined_events,
+            "giftPosts": gift_posts,
+        })
 
 
 @api.route("/admin/settings")

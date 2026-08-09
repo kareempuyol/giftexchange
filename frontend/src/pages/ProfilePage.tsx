@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/client'
 import { useToast } from '../components/Toast'
+import { useAuth } from '../auth/AuthContext'
 
 interface Profile {
   id: number
@@ -33,6 +34,8 @@ const PREF_ITEMS: { key: keyof NotificationPrefs; label: string; desc: string }[
 
 export default function ProfilePage() {
   const { toast } = useToast()
+  const { logout } = useAuth()
+  const navigate = useNavigate()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -54,6 +57,12 @@ export default function ProfilePage() {
   // 通知偏好
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
   const [savingPrefs, setSavingPrefs] = useState(false)
+
+  // 数据导出 / 注销账号
+  const [exporting, setExporting] = useState(false)
+  const [showDeactivate, setShowDeactivate] = useState(false)
+  const [deactivatePassword, setDeactivatePassword] = useState('')
+  const [deactivating, setDeactivating] = useState(false)
 
   useEffect(() => {
     api
@@ -105,6 +114,42 @@ export default function ProfilePage() {
       toast(e instanceof ApiError ? e.message : '保存失败', 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const exportData = async () => {
+    setExporting(true)
+    try {
+      const data = await api.get<Record<string, unknown>>('/auth/export-data')
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `gift-exchange-data-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast('数据已导出 ✅')
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : '导出失败', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const deactivateAccount = async () => {
+    if (!deactivatePassword) return
+    setDeactivating(true)
+    try {
+      await api.post('/auth/deactivate', { password: deactivatePassword })
+      logout()
+      toast('账号已注销')
+      navigate('/login', { replace: true })
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : '注销失败', 'error')
+    } finally {
+      setDeactivating(false)
     }
   }
 
@@ -250,6 +295,58 @@ export default function ProfilePage() {
           {changingPwd ? '修改中…' : '修改密码'}
         </button>
       </div>
+
+      {/* 数据导出 / 注销账号 */}
+      <div className="gift-card" style={{ marginTop: 16 }}>
+        <h3 style={{ marginBottom: 12 }}>数据与账户</h3>
+        <button className="btn btn-secondary" onClick={exportData} disabled={exporting} style={{ width: '100%' }}>
+          {exporting ? '导出中…' : '数据导出'}
+        </button>
+        <p style={{ fontSize: 13, color: 'var(--gift-text-secondary)', margin: '8px 0 16px' }}>
+          下载 JSON 文件：个人资料、我创建/参与的活动、晒图记录（各截取最近 100 条）
+        </p>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setShowDeactivate(true)}
+          style={{ width: '100%', color: 'var(--gift-error)', borderColor: 'var(--gift-error)' }}
+        >
+          注销账号
+        </button>
+      </div>
+
+      {showDeactivate && (
+        <div className="modal-overlay" onClick={() => setShowDeactivate(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>注销账号？</h3>
+            <p style={{ marginTop: 8, fontSize: 13, color: 'var(--gift-text-secondary)' }}>
+              注销后账号将无法登录，收件地址等个人资料会被清除；活动与礼物墙数据会保留但不再关联你的身份。此操作不可撤销。
+            </p>
+            <div className="form-group" style={{ marginTop: 16 }}>
+              <label className="form-label">输入密码确认</label>
+              <input
+                className="form-input"
+                type="password"
+                value={deactivatePassword}
+                onChange={(e) => setDeactivatePassword(e.target.value)}
+                placeholder="当前登录密码"
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowDeactivate(false)}>
+                取消
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1, background: 'var(--gift-error)' }}
+                onClick={deactivateAccount}
+                disabled={deactivating || !deactivatePassword}
+              >
+                {deactivating ? '注销中…' : '确认注销'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
