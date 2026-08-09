@@ -1,3 +1,4 @@
+// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api, ApiError } from '../api/client'

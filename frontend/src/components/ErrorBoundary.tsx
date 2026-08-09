@@ -1,3 +1,4 @@
+// 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { Component, ReactNode } from 'react'
 
 interface ErrorBoundaryProps {

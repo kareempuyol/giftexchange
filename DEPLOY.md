@@ -163,6 +163,21 @@ docker compose up -d                            # A 形态；B 形态直接重�
 
 备份脚本环境变量：`DB_PATH`（默认 `data/gift_exchange.db`）、`BACKUP_DIR`（默认 `data/backups/`）、`BACKUP_KEEP`（默认 7）。全部脚本可从任意 cwd 调用（路径相对仓库根解析）。
 
+## 演示数据（可选）
+
+体验/演示用种子数据，幂等可重复执行（已存在的用户与活动自动跳过、不覆盖）：
+
+```bash
+python3 scripts/seed_demo.py
+```
+
+- 3 个 demo 账号：`demo_alice` / `demo_bob` / `demo_carol`（密码 `Demo1234`）
+- 1 个示例活动「圣诞礼物交换 🎄」：公开、3 人、已抽签、部分发货/晒图、礼物墙已解锁
+- 10 条已读/未读混合的通知
+
+首次部署后跑一次即可给新用户「有内容可看」的体验起点；生产环境如不需要可跳过。
+脚本走应用同一套双引擎连接（SQLite 默认，设置 `MYSQL_ADDRESS/MYSQL_HOST` 自动切 MySQL）。
+
 ## 资源上限
 
 - **上传图片**：单文件上限 5MB（`helpers.MAX_UPLOAD_BYTES` / `storage._MAX_FILE_BYTES`，`/api/upload` 前置校验 + storage 层兜底），扩展名白名单 `png/jpg/jpeg/gif/webp` + 魔数校验。**无数量/总量配额**——增长由运维控制：孤儿清理（上表 cron）+ 磁盘监控（`du -sh data/uploads`），超标时扩容卷或加配额。

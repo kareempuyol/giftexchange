@@ -4,12 +4,14 @@ import { api, NotificationItem } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { useToast } from '../components/Toast'
 import SafeImage from '../components/SafeImage'
+import { t, useLocale } from '../i18n'
 
 /** 全局顶栏：品牌 + 导航 + 通知铃铛 + 用户菜单 */
 export default function Header() {
   const { user, logout } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
+  useLocale() // 订阅语言切换：setLocale 后重渲染（i18n 示范迁移）
   const [notifs, setNotifs] = useState<NotificationItem[]>([])
   const [showNotif, setShowNotif] = useState(false)
   const [unread, setUnread] = useState(0)
@@ -63,7 +65,7 @@ export default function Header() {
       setNotifs(prev => prev.map(n => ({ ...n, read: true })))
       setUnread(0)
     } catch (err) {
-      toast(err instanceof Error ? err.message : '操作失败，请重试', 'error')
+      toast(err instanceof Error ? err.message : t('操作失败，请重试'), 'error')
     }
   }
 
@@ -74,7 +76,7 @@ export default function Header() {
       setNotifs(data.items || [])
       setUnread(data.unread || 0)
     } catch (err) {
-      toast(err instanceof Error ? err.message : '操作失败，请重试', 'error')
+      toast(err instanceof Error ? err.message : t('操作失败，请重试'), 'error')
     }
   }
 
@@ -88,11 +90,11 @@ export default function Header() {
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <Link to="/events" className="app-brand">🎁 互送礼物</Link>
+        <Link to="/events" className="app-brand">🎁 {t('互送礼物')}</Link>
 
-        <nav className="app-nav" aria-label="主导航">
-          <Link to="/events" className="app-nav-link" aria-current={location.pathname === '/events' ? 'page' : undefined}>我的活动</Link>
-          <Link to="/events/new" className="app-nav-link app-nav-cta" aria-current={location.pathname.startsWith('/events/new') ? 'page' : undefined}>+ 创建</Link>
+        <nav className="app-nav" aria-label={t('主导航')}>
+          <Link to="/events" className="app-nav-link" aria-current={location.pathname === '/events' ? 'page' : undefined}>{t('我的活动')}</Link>
+          <Link to="/events/new" className="app-nav-link app-nav-cta" aria-current={location.pathname.startsWith('/events/new') ? 'page' : undefined}>+ {t('创建')}</Link>
         </nav>
 
         <div className="app-header-right">
@@ -101,31 +103,31 @@ export default function Header() {
             <button
               className="notif-bell"
               onClick={() => setShowNotif(v => !v)}
-              aria-label="通知"
+              aria-label={t('通知')}
               aria-haspopup="true"
               aria-expanded={showNotif}
               aria-controls="notif-panel"
-              title="通知"
+              title={t('通知')}
             >
               🔔
               {unread > 0 && <span className="notif-badge">{unread > 9 ? '9+' : unread}</span>}
             </button>
 
             {showNotif && (
-              <div id="notif-panel" className="notif-panel" role="region" aria-label="通知面板">
+              <div id="notif-panel" className="notif-panel" role="region" aria-label={t('通知面板')}>
                 <div className="notif-panel-header">
-                  <span>通知</span>
+                  <span>{t('通知')}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     {unread > 0 && (
-                      <button className="notif-mark-all" onClick={markAllRead}>全部已读</button>
+                      <button className="notif-mark-all" onClick={markAllRead}>{t('全部已读')}</button>
                     )}
-                    <button className="notif-mark-all" onClick={clearRead}>清空已读</button>
+                    <button className="notif-mark-all" onClick={clearRead}>{t('清空已读')}</button>
                   </div>
                 </div>
                 {!notifLoaded ? (
-                  <div className="notif-empty">加载中…</div>
+                  <div className="notif-empty">{t('加载中…')}</div>
                 ) : notifs.length === 0 ? (
-                  <div className="notif-empty">暂无通知</div>
+                  <div className="notif-empty">{t('暂无通知')}</div>
                 ) : (
                 <div className="notif-list">
                     {notifs.slice(0, 20).map(n => (
@@ -138,7 +140,7 @@ export default function Header() {
                           : {
                               role: 'button',
                               tabIndex: 0,
-                              'aria-label': `标记已读：${n.title}`,
+                              'aria-label': t('标记已读：{title}', { title: n.title }),
                               onKeyDown: (e: React.KeyboardEvent) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                   e.preventDefault()
@@ -152,7 +154,7 @@ export default function Header() {
                         <div className="notif-meta">
                           {n.eventCode && (
                             <Link to={`/events/${n.eventCode}`} onClick={(e) => e.stopPropagation()}>
-                              查看活动 ↗
+                              {t('查看活动 ↗')}
                             </Link>
                           )}
                         </div>
@@ -166,7 +168,7 @@ export default function Header() {
 
           {/* 用户菜单 */}
           <div className="app-user">
-            <Link to="/profile" className="app-username" title="个人资料" style={{ cursor: 'pointer' }}>
+            <Link to="/profile" className="app-username" title={t('个人资料')} style={{ cursor: 'pointer' }}>
               {user.avatarUrl ? (
                 <SafeImage src={user.avatarUrl} alt="" className="app-avatar" />
               ) : (
@@ -176,7 +178,7 @@ export default function Header() {
               )}
               <span className="app-username-text">{user.displayName || user.username}</span>
             </Link>
-            <button className="btn btn-ghost btn-sm" onClick={onLogout}>退出</button>
+            <button className="btn btn-ghost btn-sm" onClick={onLogout}>{t('退出')}</button>
           </div>
         </div>
       </div>

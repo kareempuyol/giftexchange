@@ -2,6 +2,8 @@
  * API 客户端 —— 封装 fetch，统一处理 token 与错误
  * 未来小程序迁移：此模块替换为 wx.request 适配层即可
  */
+import { t } from '../i18n'
+
 const TOKEN_KEY = 'gift_token'
 
 export function getToken(): string | null {
@@ -48,12 +50,12 @@ async function fetchWithTimeout(path: string, options: RequestInit = {}): Promis
   }
 }
 
-/** 网络层错误统一翻译：超时/外部取消/断网 → 可操作中文提示。 */
+/** 网络层错误统一翻译：超时/外部取消/断网 → 可操作提示（i18n 公共文案）。 */
 function networkError(err: unknown, options?: RequestInit): ApiError {
   if (err instanceof DOMException && err.name === 'AbortError') {
-    return new ApiError(options?.signal?.aborted ? '请求已取消' : '请求超时，请稍后重试', -1, 0)
+    return new ApiError(options?.signal?.aborted ? t('请求已取消') : t('请求超时，请稍后重试'), -1, 0)
   }
-  return new ApiError('网络连接失败，请检查网络后重试', -1, 0)
+  return new ApiError(t('网络连接失败，请检查网络后重试'), -1, 0)
 }
 
 async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
@@ -84,7 +86,7 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   try {
     body = await resp.json()
   } catch {
-    throw new ApiError(`服务响应异常 (${resp.status})`, -1, resp.status)
+    throw new ApiError(t('服务响应异常 ({status})', { status: resp.status }), -1, resp.status)
   }
 
   if (body.code !== 0) {
@@ -93,7 +95,7 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
       setToken(null)
       window.dispatchEvent(new CustomEvent('gift:unauthorized'))
     }
-    throw new ApiError(body.message || '请求失败', body.code, resp.status)
+    throw new ApiError(body.message || t('请求失败'), body.code, resp.status)
   }
   return body.data
 }
@@ -126,14 +128,14 @@ export const api = {
     try {
       body = await resp.json()
     } catch {
-      throw new ApiError(`服务响应异常 (${resp.status})`, -1, resp.status)
+      throw new ApiError(t('服务响应异常 ({status})', { status: resp.status }), -1, resp.status)
     }
     if (body.code !== 0) {
       if (resp.status === 401) {
         setToken(null)
         window.dispatchEvent(new CustomEvent('gift:unauthorized'))
       }
-      throw new ApiError(body.message || '上传失败', body.code, resp.status)
+      throw new ApiError(body.message || t('上传失败'), body.code, resp.status)
     }
     return body.data
   },
