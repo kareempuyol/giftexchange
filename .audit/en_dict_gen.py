@@ -58,6 +58,7 @@ EN = {
     '请输入用户名或邮箱': 'Please enter your username or email',
     '登录失败，请稍后重试': 'Login failed, please try again later',
     '注册失败，请稍后重试': 'Sign-up failed, please try again later',
+    '注册暂未开放': 'Registration is temporarily closed',
     '还没有账号？': "Don't have an account?",
     '立即注册': 'Sign up now',
     '已有账号？': 'Already have an account?',

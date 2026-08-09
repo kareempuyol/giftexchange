@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useToast } from '../components/Toast'
 import SafeImage from '../components/SafeImage'
 import { t, useLocale } from '../i18n'
+import { clearListState } from '../pages/EventsPage'
 
 /** 全局顶栏：品牌 + 导航 + 通知铃铛 + 用户菜单 */
 export default function Header() {
@@ -90,10 +91,10 @@ export default function Header() {
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <Link to="/events" className="app-brand">🎁 {t('互送礼物')}</Link>
+        <Link to="/events" className="app-brand" onClick={clearListState}>🎁 {t('互送礼物')}</Link>
 
         <nav className="app-nav" aria-label={t('主导航')}>
-          <Link to="/events" className="app-nav-link" aria-current={location.pathname === '/events' ? 'page' : undefined}>{t('我的活动')}</Link>
+          <Link to="/events" className="app-nav-link" onClick={clearListState} aria-current={location.pathname === '/events' ? 'page' : undefined}>{t('我的活动')}</Link>
           <Link to="/events/new" className="app-nav-link app-nav-cta" aria-current={location.pathname.startsWith('/events/new') ? 'page' : undefined}>+ {t('创建')}</Link>
         </nav>
 

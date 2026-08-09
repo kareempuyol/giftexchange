@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { ApiError } from '../api/client'
+import { api, ApiError } from '../api/client'
 import { t, useLocale } from '../i18n'
 
 export default function LoginPage() {
@@ -13,6 +13,23 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
+  // 邀请制开关：false 时隐藏注册入口；null=未返回（查询失败保守展示注册）
+  const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get<{ registration_enabled: boolean }>('/site/config')
+      .then((cfg) => {
+        if (!cancelled) setRegistrationEnabled(!!cfg.registration_enabled)
+      })
+      .catch(() => {
+        /* 查询失败不隐藏注册入口（保守默认） */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,13 +110,19 @@ export default function LoginPage() {
         </form>
 
         <div className="auth-footer">
-          <span>{t('还没有账号？')}</span>
-          <Link to={(() => {
-            const from = new URLSearchParams(window.location.search).get('from')
-            return from ? `/register?from=${encodeURIComponent(from)}` : '/register'
-          })()}>
-            {t('立即注册')}
-          </Link>
+          {registrationEnabled === false ? (
+            <span>{t('注册暂未开放')}</span>
+          ) : (
+            <>
+              <span>{t('还没有账号？')}</span>
+              <Link to={(() => {
+                const from = new URLSearchParams(window.location.search).get('from')
+                return from ? `/register?from=${encodeURIComponent(from)}` : '/register'
+              })()}>
+                {t('立即注册')}
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

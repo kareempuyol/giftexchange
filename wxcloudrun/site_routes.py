@@ -11,9 +11,11 @@ from wxcloudrun.helpers import (
     login_required,
     now_iso,
     ok,
+    setting_value,
     site,
     uploads_dir,
 )
+from wxcloudrun.database import DB
 from wxcloudrun.storage import storage
 
 # content_type 白名单（与扩展名白名单一一对应；浏览器对 .jpg 一律报 image/jpeg）
@@ -40,6 +42,20 @@ def check_image_magic(data: bytes) -> bool:
 @api.route("/health")
 def health():
     return ok({"status": "ok", "timestamp": now_iso()})
+
+
+@api.route("/site/config")
+def site_config():
+    """公开站点配置（登录前可用）：供登录页/注册页判断是否展示注册入口。
+    仅暴露非敏感字段；与 auth.register 的判定保持一致（首个用户可引导注册）。
+    """
+    with DB() as db:
+        user_count = db.get("SELECT COUNT(*) AS count FROM users")["count"]
+        enabled = setting_value(db, "registration_enabled").lower() == "true"
+        return ok({
+            "site_name": setting_value(db, "site_name"),
+            "registration_enabled": enabled or int(user_count) == 0,
+        })
 
 
 @site.route("/api-health")

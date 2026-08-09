@@ -31,18 +31,48 @@ const PULL_MAX = 96
 const PULL_HOLD = 44
 type PullState = 'idle' | 'pulling' | 'ready' | 'refreshing'
 
+// ===== 列表状态保留（详情页返回不丢 tab/搜索/滚动位置）=====
+// React Router（BrowserRouter）默认不保留列表状态：离开列表页时把
+// tab/search/滚动位置写入 sessionStorage，返回时恢复。
+// Header 的「我的活动/品牌」是显式导航，会先 clearListState()（见 Header.tsx）直达默认视图。
+const LIST_STATE_KEY = 'gift-list-state'
+const LIST_TABS = ['mine', 'joined', 'public', 'archived'] as const
+
+function readListState(): { tab: (typeof LIST_TABS)[number]; search: string; scrollY: number } | null {
+  try {
+    const raw = sessionStorage.getItem(LIST_STATE_KEY)
+    if (!raw) return null
+    const s = JSON.parse(raw)
+    if (s && LIST_TABS.includes(s.tab) && typeof s.scrollY === 'number') {
+      return { tab: s.tab, search: typeof s.search === 'string' ? s.search : '', scrollY: s.scrollY }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function clearListState() {
+  try {
+    sessionStorage.removeItem(LIST_STATE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function EventsPage() {
   const { user } = useAuth()
   const { toast } = useToast()
   useLocale()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'mine' | 'joined' | 'public' | 'archived'>('mine')
+  const savedState = useRef(readListState())
+  const [tab, setTab] = useState<'mine' | 'joined' | 'public' | 'archived'>(savedState.current?.tab ?? 'mine')
   const [events, setEvents] = useState<EventInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   // 恢复操作在途的活动码（防连点）
   const [restoring, setRestoring] = useState<Record<string, boolean>>({})
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(savedState.current?.search ?? '')
   // 「用邀请码加入」弹窗
   const [joinOpen, setJoinOpen] = useState(false)
   const [joinCode, setJoinCode] = useState('')
@@ -232,6 +262,43 @@ export default function EventsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab])
 
+  // 返回列表时恢复滚动位置（首次加载完成后执行一次；数据渲染为异步，须等 loading 结束）
+  const restoreScrollY = useRef(savedState.current?.scrollY ?? null)
+  useEffect(() => {
+    if (loading || restoreScrollY.current == null) return
+    const y = restoreScrollY.current
+    restoreScrollY.current = null
+    // 双 rAF：等首帧 + 布局稳定后再滚动，避免被浏览器导航后的滚动重置覆盖
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)))
+  }, [loading])
+
+  // 点击列表项导航离开前记录滚动位置：浏览器在导航提交时会重置文档滚动
+  // （被移除的聚焦元素滚动回位），卸载清理时读 window.scrollY 已被污染，必须提前捕获
+  const scrollAtNavRef = useRef<number | null>(null)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onCaptureClick = () => {
+      scrollAtNavRef.current = window.scrollY
+    }
+    el.addEventListener('click', onCaptureClick, true)
+    return () => el.removeEventListener('click', onCaptureClick, true)
+  }, [])
+
+  // 离开列表页时保存 tab/搜索/滚动位置，供返回恢复
+  useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.setItem(
+          LIST_STATE_KEY,
+          JSON.stringify({ tab, search, scrollY: scrollAtNavRef.current ?? window.scrollY })
+        )
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [tab, search])
+
   const onSearch = () => load('public')
 
   const onRestore = async (code: string) => {
@@ -302,7 +369,10 @@ export default function EventsPage() {
       </div>
 
       {tab === 'public' && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <form
+          style={{ display: 'flex', gap: 8, marginBottom: 16 }}
+          onSubmit={(e) => { e.preventDefault(); onSearch() }}
+        >
           <label className="sr-only" htmlFor="events-search">{t('搜索活动')}</label>
           <input
             id="events-search"
@@ -311,10 +381,9 @@ export default function EventsPage() {
             placeholder={t('搜索活动名称 / 邀请码')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onSearch()}
           />
-          <button className="btn btn-secondary btn-sm" onClick={onSearch}>{t('搜索')}</button>
-        </div>
+          <button type="submit" className="btn btn-secondary btn-sm">{t('搜索')}</button>
+        </form>
       )}
 
       {loading ? (
@@ -339,21 +408,46 @@ export default function EventsPage() {
           {tab === 'mine' && (
             <>
               <p className="empty-sub">{t('发起一个互送礼物活动，邀请朋友一起玩 🎁')}</p>
-              <Link to="/events/new" className="btn btn-primary btn-sm" style={{ width: 'auto', marginTop: 12 }}>
-                {t('创建第一个活动')}
-              </Link>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', marginTop: 12 }}>
+                <Link to="/events/new" className="btn btn-primary btn-sm" style={{ width: 'auto' }}>
+                  {t('创建第一个活动')}
+                </Link>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ width: 'auto' }}
+                  onClick={openJoin}
+                >
+                  {t('用邀请码加入')}
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ width: 'auto' }}
+                  onClick={() => { setTab('public'); setSearch('') }}
+                >
+                  {t('发现活动')}
+                </button>
+              </div>
             </>
           )}
           {tab === 'joined' && (
             <>
               <p className="empty-sub">{t('朋友分享了邀请码？输入后即可加入')}</p>
-              <button
-                className="btn btn-secondary btn-sm"
-                style={{ width: 'auto', marginTop: 12 }}
-                onClick={openJoin}
-              >
-                {t('用邀请码加入')}
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', marginTop: 12 }}>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ width: 'auto' }}
+                  onClick={openJoin}
+                >
+                  {t('用邀请码加入')}
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ width: 'auto' }}
+                  onClick={() => { setTab('public'); setSearch('') }}
+                >
+                  {t('发现活动')}
+                </button>
+              </div>
             </>
           )}
           {tab === 'public' && (
@@ -412,26 +506,27 @@ export default function EventsPage() {
           <p style={{ marginTop: 8, color: 'var(--gift-text-secondary)' }}>
             {t('输入朋友分享的 6 位邀请码，即可进入活动')}
           </p>
-          <label className="sr-only" htmlFor="join-code-input">{t('邀请码')}</label>
-          <input
-            id="join-code-input"
-            className="form-input"
-            style={{ marginTop: 12 }}
-            placeholder={t('例如：ABC123')}
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onJoinByCode()}
-            maxLength={40}
-            autoFocus
-          />
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setJoinOpen(false)}>
-              {t('取消')}
-            </button>
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={onJoinByCode}>
-              {t('加入')}
-            </button>
-          </div>
+          <form onSubmit={(e) => { e.preventDefault(); onJoinByCode() }}>
+            <label className="sr-only" htmlFor="join-code-input">{t('邀请码')}</label>
+            <input
+              id="join-code-input"
+              className="form-input"
+              style={{ marginTop: 12 }}
+              placeholder={t('例如：ABC123')}
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              maxLength={40}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setJoinOpen(false)}>
+                {t('取消')}
+              </button>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                {t('加入')}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

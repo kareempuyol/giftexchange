@@ -687,6 +687,11 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // 步骤①输入框回车 = 「下一步」（走 goNext 校验），避免跳过心愿单直接提交
+    if (step === 1) {
+      goNext()
+      return
+    }
     setSubmitting(true)
     setError('')
     try {
@@ -750,7 +755,8 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
               {error && <div id="join-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>{t('取消')}</button>
-                <button type="button" className="btn btn-primary" onClick={goNext} style={{ flex: 1 }}>{t('下一步')}</button>
+                {/* type=submit：表单隐式提交（输入框回车）与点击都走 onSubmit → 步骤①分支 goNext */}
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('下一步')}</button>
               </div>
             </>
           ) : (

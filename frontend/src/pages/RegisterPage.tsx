@@ -40,7 +40,14 @@ export default function RegisterPage() {
       const from = params.get('from')
       navigate(from ? `/${from}` : '/events', { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('注册失败，请稍后重试'))
+      // 邀请制关闭（403）：后端返回「注册已关闭」，转成友好文案展示
+      setError(
+        err instanceof ApiError && err.status === 403
+          ? t('注册暂未开放')
+          : err instanceof ApiError
+            ? err.message
+            : t('注册失败，请稍后重试')
+      )
     } finally {
       setSubmitting(false)
     }

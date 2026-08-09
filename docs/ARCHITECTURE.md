@@ -141,3 +141,28 @@ erDiagram
 - 响应头：nosniff / X-Frame-Options DENY / Referrer-Policy / CSP；CORS 仅回显配置的 Origin。
 - 权限矩阵：组织者专属（编辑/删除/归档/重抽/催办/仪表盘/重置短码）、本人专属（晒图/悄悄话/发货）、参与者或组织者（礼物墙）、公开活动对登录用户可见。
 - 可观测性：每请求 `X-Request-ID` 透传 + 结构化 JSON 日志（`observability.py`），错误详情绝不进响应体。
+
+### 4.8 微信生态接入规划（预留，未实现）
+
+> 状态：**仅代码预留 + 接入路径说明，本轮未实现、未引微信依赖、无假接口**。
+
+**已就位的前置（改代码即可接）**
+
+- `users` 表已含 `openid` / `unionid` / `session_key` 三列（migrations.py v5「微信字段预留」），写路径可直接 `UPDATE users SET openid=?` / 注册时 INSERT 携带；后续如需「一个微信账号一个本地账号」，用新迁移（version +1）给 `openid` 加唯一索引即可。
+- 通知层已预留适配点：`notify.py` 统一入口，未来接微信订阅消息只改该模块（见 4.4）。
+- 注册开关已前后端打通：`GET /api/site/config`（公开）返回 `registration_enabled`，登录页据此隐藏「立即注册」入口，注册页 403 → 提示「注册暂未开放」（`site_routes.py` + `LoginPage.tsx` + `RegisterPage.tsx`）。
+
+**接入路径（微信开放平台）**
+
+1. 注册微信开放平台账号，创建小程序/公众号，拿到 `AppID` / `AppSecret`；域名加入小程序 request 合法域名（同源部署，`/api/*` 已在）。
+2. 前端 `wx.login()` 取一次性 `code`，调新后端接口 `POST /api/auth/wechat-login`（如 `{code, nickname?, avatarUrl?}`）。
+3. 后端用 `AppID + AppSecret + code` 请求微信 `code2session`（`https://api.weixin.qq.com/sns/jscode2session`）换 `openid` / `session_key` / `unionid`；code 一次性、5 分钟有效，需防重放。
+4. 落库绑定：按 `openid` 查 `users`；命中 → 静默登录（签发 JWT）；未命中 → 创建本地账号（`username` 用微信昵称+随机后缀、`password` 置不可登录随机串、`is_admin=0`）或引导绑定已有账号。`session_key` 仅服务端持有，加密或内存缓存，不下发前端。
+5. 登录态延续现有 JWT 体系（`sign_token` / `login_required`），前端 `api/client.ts` 未来小程序迁移替换为 `wx.request` 适配层即可。
+
+**约束红线**
+
+- 不硬编码 AppID/Secret：走 `ADMIN_*` 同款 env / `app_settings` 机制（secret 类型）。
+- 微信 API 依赖外网：接入时沿用 KDNiao 的封装模式（超时 + 失败降级文案 + 日志），不阻塞主流程。
+- 不往 DB 存 base64；头像等文件仍走 `/api/upload`。
+
