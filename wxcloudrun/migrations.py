@@ -124,6 +124,13 @@ MIGRATIONS = [
             _add_column("users", "reset_code_expires_at", mysql="DATETIME", sqlite="TEXT"),
         ],
     },
+    {
+        "version": 8,
+        "name": "users.notification_prefs 通知偏好 JSON（通知批量管理）",
+        "up": [
+            _add_column("users", "notification_prefs", mysql="TEXT", sqlite="TEXT"),
+        ],
+    },
 ]
 
 

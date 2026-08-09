@@ -138,6 +138,8 @@ export interface EventPreview {
   isPublic: boolean
 }
 
+export type MemberStatus = 'joined' | 'ready' | 'shipped' | 'posted'
+
 export interface Participant {
   id: number
   userId: number
@@ -148,6 +150,7 @@ export interface Participant {
   contactComplete: boolean
   preferenceComplete: boolean
   joinedAt: string
+  status?: MemberStatus
 }
 
 export type ShipmentState = 'purchase' | 'shipped' | 'received' | 'posted'

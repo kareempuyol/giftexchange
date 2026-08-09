@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, ApiError, EventInfo, EventPreview, GiftPrivacy, Participant, MyMatch, ReceivedGift } from '../api/client'
+import { api, ApiError, EventInfo, EventPreview, GiftPrivacy, MemberStatus, Participant, MyMatch, ReceivedGift } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import ImageUpload from '../components/ImageUpload'
 import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
+
+// 成员完成度状态徽标（joined < ready < shipped < posted）
+const MEMBER_STATUS_META: Record<MemberStatus, { label: string; tone: 'success' | 'warning' | 'error' | 'info' | 'gold' }> = {
+  joined: { label: '📝待填信息', tone: 'warning' },
+  ready: { label: '✅已就绪', tone: 'info' },
+  shipped: { label: '📦已发货', tone: 'gold' },
+  posted: { label: '✨已晒图', tone: 'success' },
+}
 
 export default function EventDetailPage() {
   const { code = '' } = useParams()
@@ -23,6 +31,7 @@ export default function EventDetailPage() {
   const [drawing, setDrawing] = useState(false)
   const [confirmRedraw, setConfirmRedraw] = useState(false)
   const [redrawing, setRedrawing] = useState(false)
+  const [reminding, setReminding] = useState(false)
   const [poster, setPoster] = useState<PosterData | null>(null)
 
   const isOwner = user?.id === event?.ownerId
@@ -83,6 +92,19 @@ export default function EventDetailPage() {
       toast(err instanceof ApiError ? err.message : '重新抽签失败', 'error')
     } finally {
       setRedrawing(false)
+    }
+  }
+
+  // 催办未完成成员：仅组织者视角，给未完成者（未填信息/未发货/未晒图）发站内提醒
+  const onRemind = async () => {
+    setReminding(true)
+    try {
+      const res = await api.post<{ reminded: number }>(`/events/${code}/remind`)
+      toast(`已提醒 ${res.reminded} 人`)
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '催办失败', 'error')
+    } finally {
+      setReminding(false)
     }
   }
 
@@ -410,16 +432,32 @@ export default function EventDetailPage() {
       )}
 
       <div className="gift-card">
-        <h2 className="section-title">参与者（{participants.length}）</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <h2 className="section-title" style={{ margin: 0 }}>参与者（{participants.length}）</h2>
+          {isOwner && (
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ flexShrink: 0 }}
+              onClick={onRemind}
+              disabled={reminding}
+            >
+              {reminding ? '催办中…' : '催办未完成成员'}
+            </button>
+          )}
+        </div>
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {participants.map((p) => (
-            <div key={p.id} className="participant-row">
-              <span style={{ fontWeight: 500 }}>{p.displayName || p.username}</span>
-              <span style={{ display: 'flex', gap: 6 }}>
-                {p.contactComplete ? <Badge tone="success">信息完整</Badge> : <Badge tone="warning">缺信息</Badge>}
-              </span>
-            </div>
-          ))}
+          {participants.map((p) => {
+            const status = p.status ?? (p.contactComplete ? 'ready' : 'joined')
+            const meta = MEMBER_STATUS_META[status]
+            return (
+              <div key={p.id} className="participant-row">
+                <span style={{ fontWeight: 500 }}>{p.displayName || p.username}</span>
+                <span style={{ display: 'flex', gap: 6 }}>
+                  <Badge tone={meta.tone}>{meta.label}</Badge>
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
 

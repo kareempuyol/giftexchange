@@ -380,6 +380,46 @@ def leave_event(user, code):
         return fail(str(exc), 404)
 
 
+def _member_match_rows(db, event_id):
+    """每个参与者对应的送礼/收礼 match 数据。
+
+    抽签后每人至多一条送礼 match、一条收礼 match（重抽会先 DELETE 旧 matches 再重建），
+    因此按 participant 双向 LEFT JOIN 不会产生重复行。
+    """
+    return db.all(
+        """
+        SELECT p.id AS participant_id,
+               gm.id AS giver_match_id,
+               gm.shipment_status AS giver_shipment_status,
+               gm.tracking_number AS giver_tracking_number,
+               rm.id AS receiver_match_id,
+               rm.gift_review AS receiver_gift_review
+        FROM participants p
+        LEFT JOIN matches gm ON gm.giver_id = p.id AND gm.event_id = ?
+        LEFT JOIN matches rm ON rm.receiver_id = p.id AND rm.event_id = ?
+        WHERE p.event_id = ?
+        """,
+        (event_id, event_id, event_id),
+    )
+
+
+def member_status(row, match_row):
+    """成员完成度状态，按完成度取最高档：joined < ready < shipped < posted。
+
+    - joined：已加入但收件信息（收件人/电话/地址）未填全
+    - ready：已加入且收件信息填全
+    - shipped：其送礼 match 已发货（有物流单号或 shipment_status != 'pending'）
+    - posted：其收礼 match 已晒图（gift_review 非空）
+    """
+    if match_row and match_row.get("receiver_gift_review"):
+        return "posted"
+    if match_row and (match_row.get("giver_shipment_status") not in (None, "", "pending") or match_row.get("giver_tracking_number")):
+        return "shipped"
+    if row.get("receiver_name") and row.get("phone") and row.get("address"):
+        return "ready"
+    return "joined"
+
+
 @api.route("/events/<code>/participants")
 @login_required
 def participants(_user, code):
@@ -387,6 +427,7 @@ def participants(_user, code):
         with DB() as db:
             event = fetch_event(db, code)
             rows = participant_rows(db, event["id"])
+            match_by_participant = {m["participant_id"]: m for m in _member_match_rows(db, event["id"])}
             data = [
                 {
                     "id": row["id"],
@@ -398,10 +439,47 @@ def participants(_user, code):
                     "contactComplete": bool(row.get("receiver_name") and row.get("phone") and row.get("address")),
                     "preferenceComplete": bool(row.get("preference_likes") or row.get("preference_dislikes") or row.get("preference_notes")),
                     "joinedAt": str(row.get("created_at") or ""),
+                    "status": member_status(row, match_by_participant.get(row["id"]) or {}),
                 }
                 for row in rows
             ]
             return ok({"participants": data, "count": len(data)})
+    except ValueError as exc:
+        return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/remind", methods=["POST"])
+@login_required
+def remind_members(user, code):
+    """催办未完成成员：仅组织者。
+
+    给所有未完成成员（未填收件信息 / 未发货 / 未晒图，即 status != 'posted'）发站内
+    type='remind' 通知；组织者自己不算（自己的完成度在成员列表可见）。
+    """
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            if event["creator_id"] != user["userId"]:
+                return fail("Only the event creator can remind members", 403)
+            rows = participant_rows(db, event["id"])
+            match_by_participant = {m["participant_id"]: m for m in _member_match_rows(db, event["id"])}
+            name = event["name"]
+            reminded = 0
+            for row in rows:
+                if row["user_id"] == event["creator_id"]:
+                    continue  # 组织者不催自己
+                status = member_status(row, match_by_participant.get(row["id"]) or {})
+                if status == "posted":
+                    continue
+                if status == "joined":
+                    message = f"你已加入「{name}」但还未填写收件信息（收件人/电话/地址），请尽快补充，否则对方无法寄出礼物。"
+                elif status == "ready":
+                    message = f"「{name}」的礼物还未寄出，请尽快发货并填写物流单号。"
+                else:  # shipped
+                    message = f"「{name}」的礼物已寄出，收到后记得晒图分享。"
+                notify(db, row["user_id"], event["id"], None, "remind", f"「{name}」待完成提醒", message)
+                reminded += 1
+            return ok({"reminded": reminded}, f"已提醒 {reminded} 人")
     except ValueError as exc:
         return fail(str(exc), 404)
 

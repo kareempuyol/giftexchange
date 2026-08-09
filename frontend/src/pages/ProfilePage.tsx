@@ -16,6 +16,21 @@ interface Profile {
   createdAt: string
 }
 
+/** 通知偏好（与后端 DEFAULT_PREFS 键一致：deadline/draw/giftReceived/remind） */
+interface NotificationPrefs {
+  deadline: boolean
+  draw: boolean
+  giftReceived: boolean
+  remind: boolean
+}
+
+const PREF_ITEMS: { key: keyof NotificationPrefs; label: string; desc: string }[] = [
+  { key: 'deadline', label: '截止提醒', desc: '报名截止前 48 小时 / 24 小时提醒组织者及时抽签' },
+  { key: 'draw', label: '抽签结果', desc: '抽签完成或重置后，通知所有参与者查看新的送礼任务' },
+  { key: 'giftReceived', label: '晒图提醒', desc: '礼物被晒图评价、礼物墙解锁时通知' },
+  { key: 'remind', label: '催办动态', desc: '有人加入活动、礼物发货时通知' },
+]
+
 export default function ProfilePage() {
   const { toast } = useToast()
 
@@ -36,6 +51,10 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [changingPwd, setChangingPwd] = useState(false)
 
+  // 通知偏好
+  const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
+  const [savingPrefs, setSavingPrefs] = useState(false)
+
   useEffect(() => {
     api
       .get<Profile>('/profile')
@@ -49,8 +68,26 @@ export default function ProfilePage() {
       })
       .catch((e) => toast(e instanceof ApiError ? e.message : '加载失败', 'error'))
       .finally(() => setLoading(false))
+    api
+      .get<NotificationPrefs>('/notifications/preferences')
+      .then(setPrefs)
+      .catch((e) => toast(e instanceof ApiError ? e.message : '偏好加载失败', 'error'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const savePrefs = async () => {
+    if (!prefs) return
+    setSavingPrefs(true)
+    try {
+      const updated = await api.put<NotificationPrefs>('/notifications/preferences', prefs)
+      setPrefs(updated)
+      toast('通知偏好已保存 ✅')
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : '保存失败', 'error')
+    } finally {
+      setSavingPrefs(false)
+    }
+  }
 
   const saveProfile = async () => {
     setSaving(true)
@@ -149,6 +186,49 @@ export default function ProfilePage() {
         <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
           {saving ? '保存中…' : '保存资料'}
         </button>
+      </div>
+
+      {/* 通知偏好 */}
+      <div className="gift-card" style={{ marginBottom: 16 }}>
+        <h3 style={{ marginBottom: 4 }}>通知偏好</h3>
+        <p style={{ fontSize: 13, color: 'var(--gift-text-secondary)', marginBottom: 8 }}>
+          关闭后不再接收对应类型的通知（已收通知保留，铃铛里仍可查看）
+        </p>
+        {prefs ? (
+          <div>
+            {PREF_ITEMS.map(item => (
+              <label
+                key={item.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '12px 0',
+                  borderBottom: '1px solid var(--gift-border)',
+                  cursor: 'pointer',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 14 }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--gift-text-secondary)' }}>{item.desc}</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={prefs[item.key]}
+                  onChange={(e) => setPrefs(prev => prev ? { ...prev, [item.key]: e.target.checked } : prev)}
+                  style={{ width: 40, height: 22, accentColor: 'var(--gift-brand)', cursor: 'pointer', flexShrink: 0 }}
+                  aria-label={item.label}
+                />
+              </label>
+            ))}
+            <button className="btn btn-secondary" onClick={savePrefs} disabled={savingPrefs} style={{ marginTop: 16 }}>
+              {savingPrefs ? '保存中…' : '保存偏好'}
+            </button>
+          </div>
+        ) : (
+          <div className="page-loading">加载中…</div>
+        )}
       </div>
 
       {/* 修改密码 */}

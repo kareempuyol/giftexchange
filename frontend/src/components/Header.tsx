@@ -52,6 +52,15 @@ export default function Header() {
     } catch { /* 静默 */ }
   }
 
+  const clearRead = async () => {
+    try {
+      await api.post('/notifications/clear')
+      const data = await api.get<{ items: NotificationItem[]; unread: number }>('/notifications')
+      setNotifs(data.items || [])
+      setUnread(data.unread || 0)
+    } catch { /* 静默 */ }
+  }
+
   const onLogout = () => {
     logout()
     navigate('/login')
@@ -86,9 +95,12 @@ export default function Header() {
               <div className="notif-panel">
                 <div className="notif-panel-header">
                   <span>通知</span>
-                  {unread > 0 && (
-                    <button className="notif-mark-all" onClick={markAllRead}>全部已读</button>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {unread > 0 && (
+                      <button className="notif-mark-all" onClick={markAllRead}>全部已读</button>
+                    )}
+                    <button className="notif-mark-all" onClick={clearRead}>清空已读</button>
+                  </div>
                 </div>
                 {notifs.length === 0 ? (
                   <div className="notif-empty">暂无通知</div>
