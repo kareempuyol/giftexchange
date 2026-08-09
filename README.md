@@ -33,6 +33,15 @@ curl http://127.0.0.1:8080/api/health         # 健康检查
 cd frontend && npm run build   # 构建后需重启 Flask 生效
 ```
 
+## 运维脚本（备份 / 清理 / 核查）
+
+`scripts/` 提供上线必备的数据运维手段（用法 + cron 建议见 **DEPLOY.md「数据运维」**）：
+
+- `backup_db.sh` — SQLite 在线备份（WAL 安全），时间戳命名 + 保留 7 份
+- `cleanup_orphans.py` — 清理 uploads 无引用、超 7 天的孤儿文件（默认 dry-run，`--delete` 才真删）
+- `cleanup_notifications.py` — 删除已读超 90 天的通知（默认 dry-run，`--delete` 才真删）
+- `healthcheck_data.py` — 孤儿数据/引用完整性核查，只报告不修改
+
 ## 快速公网部署（cloudflared 临时隧道）
 
 适合联调/体验，不需要域名：

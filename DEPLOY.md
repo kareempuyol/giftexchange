@@ -78,7 +78,8 @@ export TRUSTED_PROXIES="10.0.0.5,172.17.0.1"
 
 ### 9. 数据持久化与备份
 - SQLite 形态：`data/gift_exchange.db` + 上传图片 `data/uploads/`。A 形态挂在 `./data:/app/data`（bind mount）；**定期备份 `data/`**（停机时 `sqlite3 gift_exchange.db ".backup backup.db"`，WAL 模式不要直接拷文件）。
-- MySQL 形态：备份走 MySQL 工具，`data/` 仅剩上传图片。
+- 在线备份直接跑 `scripts/backup_db.sh`（sqlite3 `.backup` 一致性快照，CLI 缺失自动回退 python3 backup API；时间戳命名 + 默认保留 7 份，`BACKUP_DIR`/`BACKUP_KEEP` 可调），建议 cron 每天一次：`0 3 * * * /path/to/giftexchange/scripts/backup_db.sh`。详见下方「数据运维」章节。
+- MySQL 形态：备份走 MySQL 工具（`mysqldump`），`data/` 仅剩上传图片。
 
 ### 10. 日志与升级
 ```bash
@@ -148,6 +149,24 @@ docker compose up -d                            # A 形态；B 形态直接重�
 - **SQLite → MySQL 数据迁移不自动**：需自行导出导入（如 `sqlite3 .dump` 适配后导入），或冷启动新库重新注册。
 
 ---
+
+## 数据运维：备份 / 清理 / 核查（cron 建议）
+
+`scripts/` 下 4 个运维脚本，全部直接可执行（Python 脚本双引擎：SQLite 默认 `./data/gift_exchange.db` 或 `DB_PATH`，设了 `MYSQL_ADDRESS/MYSQL_HOST` 自动走 MySQL）。**先 dry-run 观察一轮，确认无误再开 `--delete`。**
+
+| 脚本 | 作用 | 建议 cron | 说明 |
+|---|---|---|---|
+| `scripts/backup_db.sh` | SQLite 在线一致性备份，时间戳命名，保留 `BACKUP_KEEP`（默认 7）份 | 每天 03:00 | `0 3 * * * .../scripts/backup_db.sh`；MySQL 形态跳过（用 mysqldump） |
+| `scripts/cleanup_orphans.py` | 清理 uploads 下无 DB 引用、落盘超 7 天的孤儿文件 | 每天 04:30 | 默认 dry-run；`--delete` 才真删；`--min-age-days` 下限 7 天（拒绝小于 7） |
+| `scripts/cleanup_notifications.py` | 删除已读且超过 `--days`（默认 90）天的通知 | 每周日 04:00 | 默认 dry-run；`--delete` 才真删；未读永不删 |
+| `scripts/healthcheck_data.py` | 孤儿 matches/participants/notifications + gift_likes 引用完整性核查 | 每天 05:00 | 只报告不修改；发现孤儿退出码 1（可接告警）；`--json` 机器可读 |
+
+备份脚本环境变量：`DB_PATH`（默认 `data/gift_exchange.db`）、`BACKUP_DIR`（默认 `data/backups/`）、`BACKUP_KEEP`（默认 7）。全部脚本可从任意 cwd 调用（路径相对仓库根解析）。
+
+## 资源上限
+
+- **上传图片**：单文件上限 5MB（`helpers.MAX_UPLOAD_BYTES` / `storage._MAX_FILE_BYTES`，`/api/upload` 前置校验 + storage 层兜底），扩展名白名单 `png/jpg/jpeg/gif/webp` + 魔数校验。**无数量/总量配额**——增长由运维控制：孤儿清理（上表 cron）+ 磁盘监控（`du -sh data/uploads`），超标时扩容卷或加配额。
+- **参与人数**：`maxParticipants` 已有上限，创建/编辑时校验 2–999，满员时拒绝加入（`event_routes.py`）。
 
 ## 部署形态说明与已知事项
 
