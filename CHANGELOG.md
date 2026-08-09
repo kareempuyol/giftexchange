@@ -3,6 +3,27 @@
 > 项目无发布版本号，按开发波次记录。提交哈希取 `git log` 短哈希。
 > 格式：日期 · 波次标题（commit）—— 内容。最新在前。
 
+## 2026-08-10 · Hackathon 轮17 — 收官功能 5 项（691aae1）
+- 活动热度角标：EventsPage heatBadge（已抽签 🎯 gold / 报名中 ≥5 人 🔥 热度 error），应用于全部列表 tab（公开列表后端只返回 open 活动，🎯 在我创建的/我参与的可见）；i18n 新增 `热度`（en: Hot）
+- 礼物墙统计卡：解锁后顶部 3 格（总心意数/平均评分/最高评分）；**规格勘误**：后端 gift-wall 无 totalPosted/totalStars 字段，统计改为前端从 wall.items 评分直接计算（无评分显示 `—`），375px 无横向溢出
+- 通知角标点击清零：打开面板时乐观清零 + POST /notifications/read 服务端同步（30s 轮询校正兜底）；服务端核验 0 未读/4 已读（非仅前端乐观）
+- AuthBrand 组件抽取：登录/注册/找回密码三页品牌区统一引用（含 useLocale 订阅），消除三处重复
+- 预算均摊展示：详情 meta 网格 + 未登录预览卡追加 `· 平均每人 ¥N`（Math.round(budget/count)，预算≤0 或 0 人不显示）；i18n `平均每人 {perPerson}`
+- 纯前端轮（后端零改动）：pytest 269 全绿 + build 通过 + 浏览器实测 5/5；wxcloudrun/ 恢复无 diff（部署前需重新 build）
+
+## 2026-08-10 · Hackathon 轮16 — 真实负载模拟（8467b51）
+- `.audit/load_sim.py`：50 虚拟用户 × 5 分钟真实节奏（0.5–3s 思考时间，独立 token），隔离实例 `127.0.0.1:8085` + 独立 DB（跑完删除，开发库零接触）
+- 结果：**10,646 请求 0 5xx / 0 错误事件 / 0 锁死**，2xx 97.48%（4xx 全为业务语义：满员/重复加入/已抽签），服务端 p99 **32.9ms** / max 71.8ms，>500ms 请求 0；RSS 52MB 平坦、WAL 峰值 32KB 无膨胀
+- 结论：**可上线（当前规模）**；写路径单写者串行化，若再上 1–2 个数量级建议切 MySQL（双引擎就绪）
+- load_sim.py 自修 3 bug（http.client latin-1 中文 body / 非 ASCII 查询参数编码 / call 返回元组不一致致线程静默死亡）；应用代码零问题
+- 产物：`.audit/LOAD_REPORT.md` + `load_results.json`（59 次资源采样）；pytest 269 全绿
+
+## 2026-08-10 · Hackathon 轮15 — 收官回归 + 报告更新（1ad1d89）
+- FINAL2 全量回归核对（`.audit/FINAL2_CHECK.md`）：pytest 269 / CI 5 连绿 / build+重启+health+公网冒烟 / E2E 48/48 复跑 / 工作区状态确认
+- HACKATHON_DELIVERY.md：轮12/13/14 入时间线、commit 22→25（全仓 84）、缺陷 60+→68、性能亮点行
+- CHANGELOG.md：补轮12/13/14 条目；轮9/10/11「未 commit」标注修正为实际 commit hash
+- `.audit/REPORTS_INDEX.md`：范围扩至轮1–15，新增轮12/13/14/15 章节
+
 ## 2026-08-10 · Hackathon 轮14 — 性能极限 + 打磨（d509a01）
 - 性能：vite manualChunks vendor 拆分（react→vendor-react、router→vendor-router），单次发版重下 gzip 75.9→19.7KB（**-74%**）；上传前图片压缩（utils/imageCompress.ts，长边>1600 降采样 + JPEG/WebP 0.8，≤256KB 跳过，扩展名随内容改写），实测 4.53MB→570KB（**-87.4%**）；API 4 列表端点瘦身为 10 字段 summary（helpers.api_event_summary，note 截断 80 字符）；api_event 移除 createdAt/updatedAt；EventsPage 懒加载 + 登录后预取 chunk
 - 修 P0：ImageBitmap.close() 在 drawImage 前调用导致所有上传误报「上传失败」（先绘制后 close，注释防回归）

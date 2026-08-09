@@ -1,9 +1,14 @@
 # REPORTS_INDEX.md — 审计报告清单
 
-项目：giftexchange（hackathon 轮1–轮15，omp 执行）
-更新：2026-08-10（轮15 最终全量回归）
+项目：giftexchange（hackathon 轮1–轮18，omp 执行）
+更新：2026-08-10（轮18 终局回归）
 
 全部报告位于 `.audit/`，按轮次排列：
+
+## 轮18 — 终局回归（2026-08-10）
+- `FINAL3_CHECK.md` — 终局全量回归核对（pytest 269 / CI 3 连绿 / build+重启+health+公网隧道 / E2E 48/48 复跑 / 公网终验 login / 工作区状态）
+- 本轮文档更新：`HACKATHON_DELIVERY.md`（轮15/16/17 入时间线、commit 28、全仓 87、真实负载「可上线」）、`CHANGELOG.md`（补轮15/16/17 条目）、`REPORTS_INDEX.md`（本文件）
+- 本轮复跑数据：`.audit/e2e-results.json`（主旅程 48 步，复跑后已还原）、`.audit/e2e-shots/`
 
 ## 轮17 — 收官功能补充（纯前端轮，2026-08-10）
 - `R17_REPORT.md` — 5 项收官功能：活动热度/已抽签角标、礼物墙统计卡（规格前提勘误：
@@ -69,6 +74,6 @@
 ---
 
 ## 支撑数据（非报告，供复现）
-- 测试：`tests/`（pytest，248 用例）；`stress_test.py`（压测脚本）
+- 测试：`tests/`（pytest，269 用例）；`stress_test.py`（压测脚本）
 - 脚本：`.audit/*.mjs`（puppeteer E2E/截图/扫描）、`/tmp/analyze_shot.py`（mimo-v2.5 视觉评审）
 - 截图目录：`e2e-shots/`、`e2e-edge-shots/`、`ux-shots/`、`mobile2-shots/`、`desktop-shots/`、`xbrowser-shots/`、`final-shots/`
