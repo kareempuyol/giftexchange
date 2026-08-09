@@ -356,6 +356,18 @@ def edit_event(user, code):
 @api.route("/events/<code>", methods=["DELETE"])
 @login_required
 def delete_event(user, code):
+    """硬删除活动（仅创建者，API 直达；前端 UI 无删除入口，只暴露归档）。
+
+    删除语义与归档互补（不重叠）：
+      - 硬删除（本路由）：物理删除 events 行，级联清理 participants/matches/gift_likes
+        （双引擎 FK ON DELETE CASCADE 兜底）+ 显式清理 notifications（无 event_id 外键，
+        必须显式删，否则留孤儿通知）。删除后数据不可恢复。
+      - 软删除（POST /events/<code>/archive）：仅 drawn 活动，置 archived=1，
+        所有关联数据原样保留，可 unarchive 恢复。
+    约定：open（未抽签）活动无历史数据价值 → 直接硬删除；drawn（已抽签）活动
+    前端引导走归档（数据保留）。两者在任一状态都可执行，语义由调用方选择；
+    无管理台删除入口（admin 角色仅管理 settings，不越权删他人活动）。
+    """
     with DB() as db:
         event = db.get("SELECT id FROM events WHERE code = ? AND creator_id = ?", (code, user["userId"]))
         if not event:
@@ -370,7 +382,15 @@ def delete_event(user, code):
 @api.route("/events/<code>/archive", methods=["POST"])
 @login_required
 def archive_event(user, code):
-    """归档活动：仅组织者；已抽签（drawn）才能归档，open 直接删除。归档只影响列表可见性。"""
+    """归档活动（软删除）：仅组织者；已抽签（drawn）才能归档，open 直接删除。
+
+    软删语义与 DELETE /events/<code>（硬删除）互补：
+    - 归档 = 软删除，数据（participants/matches/notifications/gift_likes）原样保留，
+      只影响列表可见性（mine/joined/public 隐藏，archived 列表可见，详情仍可访问），
+      可 unarchive 恢复。
+    - 硬删除 = 物理删除 + 级联清理，不可恢复；open 活动走硬删除。
+    drawn 活动数据有历史价值（晒图/物流），一律走归档，避免误删。
+    """
     try:
         with DB() as db:
             event = fetch_event(db, code)
@@ -620,8 +640,18 @@ def event_dashboard(user, code):
             )
             match_by_participant = {row["participant_id"]: row for row in rows}
             data = []
+            pending_shipments = 0
+            unposted_gifts = 0
             for row in participants_data:
                 match_row = match_by_participant.get(row["id"]) or {}
+                # 催办统计并入同一循环（matches 已按 receiver 全量拉齐，
+                # 与单独 COUNT 等价——每个 match 必有 receiver 参与者）：
+                # 已抽签未发货（shipment_status='pending'）/ 已发货未晒图（有物流且未签收）
+                if match_row.get("match_id"):
+                    if (match_row.get("shipment_status") or "pending") == "pending":
+                        pending_shipments += 1
+                    elif match_row.get("received_at") is None:
+                        unposted_gifts += 1
                 data.append(
                     {
                         "participantId": row["id"],
@@ -637,19 +667,6 @@ def event_dashboard(user, code):
                         "postedGift": bool(match_row.get("gift_rating") or match_row.get("gift_review") or match_row.get("gift_photo_url")),
                     }
                 )
-            # 催办统计（按 matches 聚合：已抽签未发货 / 已发货未晒图）
-            counts = db.get(
-                """
-                SELECT
-                  SUM(CASE WHEN shipment_status = 'pending' THEN 1 ELSE 0 END) AS pending_shipments,
-                  SUM(CASE WHEN shipment_status != 'pending' AND received_at IS NULL THEN 1 ELSE 0 END) AS unposted_gifts
-                FROM matches
-                WHERE event_id = ?
-                """,
-                (event["id"],),
-            )
-            pending_shipments = int(counts.get("pending_shipments") or 0)
-            unposted_gifts = int(counts.get("unposted_gifts") or 0)
             # 催办提醒
             reminders = []
             if event["status"] != "drawn":

@@ -51,19 +51,28 @@ def _create_index(name, table, columns):
     }
 
 
-def _index_exists(db, name):
-    """幂等迁移辅助：索引是否已存在（MySQL 走 information_schema，SQLite 走 sqlite_master）。"""
+def _index_exists(db, name, table=None):
+    """幂等迁移辅助：索引是否已存在（MySQL 走 information_schema，SQLite 走 sqlite_master）。
+
+    传入 table 时按表限定（MySQL 索引名仅表内唯一，跨表同名会误判为已存在而跳过建索引）。
+    """
     if db.engine == "mysql":
-        row = db.get(
+        sql = (
             "SELECT COUNT(*) AS count FROM information_schema.statistics "
-            "WHERE table_schema = DATABASE() AND index_name = ?",
-            (name,),
+            "WHERE table_schema = DATABASE() AND index_name = ?"
         )
+        params = [name]
+        if table:
+            sql += " AND table_name = ?"
+            params.append(table)
+        row = db.get(sql, tuple(params))
     else:
-        row = db.get(
-            "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'index' AND name = ?",
-            (name,),
-        )
+        sql = "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'index' AND name = ?"
+        params = [name]
+        if table:
+            sql += " AND tbl_name = ?"
+            params.append(table)
+        row = db.get(sql, tuple(params))
     return int(row["count"] or 0) > 0
 
 
@@ -222,7 +231,7 @@ def run_migrations_v2(db):
             elif op == "create_table":
                 db.execute(_engine_sql(db, statement["mysql"], statement["sqlite"]))
             elif op == "create_index":
-                if not _index_exists(db, statement["index"]):
+                if not _index_exists(db, statement["index"], statement["table"]):
                     db.execute(statement["sql"])
             else:
                 raise ValueError(f"未知迁移语句类型: {op!r}（MIGRATIONS 版本 {version}）")

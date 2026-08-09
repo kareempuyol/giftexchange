@@ -162,6 +162,56 @@ class TestRunMigrationsEntry:
             # 遗留兜底列也齐备（preference_size 等未入册列仍由 run_migrations 兜底）
             assert {"preference_size", "preference_color", "wish_links"} <= _columns(db, "participants")
 
+    def test_legacy_db_missing_index_dependency_columns(self, monkeypatch):
+        """老库缺 is_public/match_visibility（v11 复合索引的依赖列）时增量迁移不炸。
+
+        回归：历史列补齐必须先于版本化链执行，否则 v11 的
+        idx_events_status_public_archived（引用 events.is_public）会先于加列失败。
+        """
+        monkeypatch.setenv("DB_PATH", _new_db_path("gift_mig_depcol_"))
+        with DB() as db:
+            # 与 _legacy_schema 相同的全套基础表，但 events 不含 is_public/match_visibility
+            db.execute(
+                "CREATE TABLE users ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL, "
+                "password TEXT NOT NULL, display_name TEXT, avatar_url TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, "
+                "updated_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+            )
+            db.execute(
+                "CREATE TABLE events ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, "
+                "description TEXT DEFAULT '', budget_min INTEGER DEFAULT 0, creator_id INTEGER NOT NULL, "
+                "status TEXT DEFAULT 'open', sign_up_deadline TEXT DEFAULT '', "
+                "participant_count INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP, "
+                "updated_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+            )
+            db.execute(
+                "CREATE TABLE participants ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL, user_id INTEGER NOT NULL, "
+                "nickname TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+            )
+            db.execute(
+                "CREATE TABLE matches ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL, giver_id INTEGER NOT NULL, "
+                "receiver_id INTEGER NOT NULL, matched_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+            )
+            db.execute("CREATE TABLE app_settings (key_name TEXT PRIMARY KEY, value TEXT, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)")
+            db.execute(
+                "CREATE TABLE notifications ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, event_id INTEGER, match_id INTEGER, "
+                "type TEXT NOT NULL, title TEXT NOT NULL, message TEXT, read_at TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+            )
+            run_migrations(db)
+            # 依赖列补齐 + v11 索引全部落库
+            assert "is_public" in _columns(db, "events")
+            assert "match_visibility" in _columns(db, "events")
+            index_names = {
+                r["name"]
+                for r in db.all("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_%'")
+            }
+            assert "idx_events_status_public_archived" in index_names
+            assert len(index_names) == 10
+
     def test_migrations_list_shape(self):
         """MIGRATIONS 契约：版本号连续递增、唯一，每项含 name 与 up 列表。"""
         versions = [m["version"] for m in MIGRATIONS]

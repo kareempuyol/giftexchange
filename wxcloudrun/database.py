@@ -310,12 +310,13 @@ def init_schema():
 def run_migrations(db):
     """迁移入口（对外接口不变，init_schema 调用处不动）。
 
-    1. 版本化链（v1-v6）交给 migrations.run_migrations_v2：每个 ALTER 带 _column_exists
+    1. 未入册的历史列先补齐（_column_exists 守卫幂等，老库兜底，双引擎类型分离）。
+       —— 必须先于版本化链：v11 的复合索引（如 idx_events_status_public_archived
+       引用 events.is_public）依赖这些历史列存在；若老库缺列，索引创建会先失败。
+    2. 版本化链（v1-v11）交给 migrations.run_migrations_v2：每个 ALTER 带 _column_exists
        幂等守卫 + schema_migrations 记录，旧库重跑不报 duplicate column。
-    2. 未入册的历史列继续走 try/except 幂等 ALTER（老库兜底，双引擎类型分离）。
     3. 数据兜底：首个用户提权为管理员 + 存量活动补齐短码。
     """
-    run_migrations_v2(db)
     user_columns = [
         ("is_admin", "TINYINT DEFAULT 0" if db.engine == "mysql" else "INTEGER DEFAULT 0"),
         ("phone", "VARCHAR(50)" if db.engine == "mysql" else "TEXT"),
@@ -349,26 +350,21 @@ def run_migrations(db):
         ("preference_color", "VARCHAR(80)" if db.engine == "mysql" else "TEXT"),
         ("wish_links", "TEXT"),
     ]
-    for name, column_type in event_columns:
-        try:
-            db.execute(f"ALTER TABLE events ADD COLUMN {name} {column_type}")
-        except Exception:
-            pass
-    for name, column_type in participant_columns:
-        try:
-            db.execute(f"ALTER TABLE participants ADD COLUMN {name} {column_type}")
-        except Exception:
-            pass
-    for name, column_type in user_columns:
-        try:
-            db.execute(f"ALTER TABLE users ADD COLUMN {name} {column_type}")
-        except Exception:
-            pass
-    for name, column_type in match_columns:
-        try:
-            db.execute(f"ALTER TABLE matches ADD COLUMN {name} {column_type}")
-        except Exception:
-            pass
+    # 未入册的历史列：_column_exists 守卫幂等（不再 try/except 吞异常——
+    # 真实 SQL 错误会暴露而不是被静默跳过）
+    for table, columns in (
+        ("events", event_columns),
+        ("participants", participant_columns),
+        ("users", user_columns),
+        ("matches", match_columns),
+    ):
+        for name, column_type in columns:
+            if not _column_exists(db, table, name):
+                db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {column_type}")
+
+    # 版本化链（v1-v11）在历史列补齐之后应用：v11 复合索引引用 is_public 等历史列
+    run_migrations_v2(db)
+
     try:
         total = db.get("SELECT COUNT(*) AS count FROM users")["count"]
         admins = db.get("SELECT COUNT(*) AS count FROM users WHERE is_admin = 1")["count"]
