@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from flask import request
 
 from wxcloudrun.auth import check_password, hash_password, sign_token
-from wxcloudrun.database import DB
+from wxcloudrun.database import DB, integrity_errors
 from wxcloudrun.helpers import (
     SETTING_DEFINITIONS,
     _split_env,
@@ -66,10 +66,20 @@ def register():
 
         admin_by_env = username.lower() in _split_env("ADMIN_USERNAMES") or email.lower() in _split_env("ADMIN_EMAILS")
         is_admin = 1 if is_first_user or admin_by_env else 0
-        cur = db.execute(
-            "INSERT INTO users (username, email, password, display_name, is_admin) VALUES (?, ?, ?, ?, ?)",
-            (username, email, hash_password(password), username, is_admin),
-        )
+        try:
+            cur = db.execute(
+                "INSERT INTO users (username, email, password, display_name, is_admin) VALUES (?, ?, ?, ?, ?)",
+                (username, email, hash_password(password), username, is_admin),
+            )
+        except integrity_errors():
+            # 并发重复注册：另一请求已插入同 username/email（SELECT 预检存在竞态窗口），
+            # 落库后按唯一约束真值重查冲突字段，转 409（不吞成 500）
+            conflicts = []
+            if db.get("SELECT id FROM users WHERE username = ?", (username,)):
+                conflicts.append("username")
+            if db.get("SELECT id FROM users WHERE email = ?", (email,)):
+                conflicts.append("email")
+            return fail(" and ".join(conflicts) + " already exists", 409)
         user_id = cur.lastrowid
         row = current_user_row(db, user_id)
         return ok({"token": sign_token(user_id), "user": public_user(row)}, "Registered", 201)

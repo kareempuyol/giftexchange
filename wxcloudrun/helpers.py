@@ -21,7 +21,7 @@ from pathlib import Path
 from flask import Blueprint, request
 
 from wxcloudrun.auth import verify_token
-from wxcloudrun.database import DB
+from wxcloudrun.database import DB, integrity_errors
 from wxcloudrun.notify import notify
 from wxcloudrun.observability import log_event  # 结构化日志：路由模块可直接 from wxcloudrun.helpers import log_event
 from wxcloudrun.response import fail, ok
@@ -333,33 +333,53 @@ def add_participant(db, event_id, user_id, data=None):
     existing = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event_id, user_id))
     if existing:
         return existing["id"]
+    # 并发容量原子化（R4 修复）：先条件 UPDATE 占位（容量不足/已抽签时条件不成立、
+    # rowcount=0），再 INSERT participant，两步同一事务。SQLite 写锁串行化 / MySQL
+    # 行锁保证并发 join 不会同时通过容量校验——第二个 UPDATE 在第一个提交后重读
+    # participant_count。status='open' 同时封死 join 与 draw 的竞态窗口：并发抽签把
+    # 活动置 drawn 后，占位失败，不再向已抽签活动插入参与者。
+    # INSERT 撞唯一约束（并发重复加入同一用户）时抛异常让整个事务回滚，占位 +1 一并撤销。
     cur = db.execute(
-        """
-        INSERT INTO participants (
-            event_id, user_id, nickname, receiver_name, phone, address,
-            preference_likes, preference_dislikes, preference_notes,
-            preference_size, preference_color, wish_links
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            event_id,
-            user_id,
-            nickname,
-            payload["receiver_name"],
-            payload["phone"],
-            payload["address"],
-            payload["preference_likes"],
-            payload["preference_dislikes"],
-            payload["preference_notes"],
-            payload["preference_size"],
-            payload["preference_color"],
-            payload["wish_links"],
-        ),
-    )
-    db.execute(
-        "UPDATE events SET participant_count = participant_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE events SET participant_count = participant_count + 1, updated_at = CURRENT_TIMESTAMP "
+        "WHERE id = ? AND status = 'open' "
+        "AND (max_participants IS NULL OR participant_count < max_participants)",
         (event_id,),
     )
+    if cur.rowcount == 0:
+        event_row = db.get("SELECT status FROM events WHERE id = ?", (event_id,))
+        if event_row and event_row["status"] != "open":
+            raise ValueError("活动已截止报名")
+        raise ValueError("活动人数已满")
+    try:
+        cur = db.execute(
+            """
+            INSERT INTO participants (
+                event_id, user_id, nickname, receiver_name, phone, address,
+                preference_likes, preference_dislikes, preference_notes,
+                preference_size, preference_color, wish_links
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event_id,
+                user_id,
+                nickname,
+                payload["receiver_name"],
+                payload["phone"],
+                payload["address"],
+                payload["preference_likes"],
+                payload["preference_dislikes"],
+                payload["preference_notes"],
+                payload["preference_size"],
+                payload["preference_color"],
+                payload["wish_links"],
+            ),
+        )
+    except integrity_errors():
+        # 并发重复加入：另一请求已插入同 (event_id, user_id)。确认后按幂等处理
+        # （抛 ValueError 触发事务回滚，撤销本请求的容量占位；返回既有记录会提交脏 count）。
+        if db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event_id, user_id)):
+            raise ValueError("你已加入该活动")
+        raise
     return cur.lastrowid
 
 

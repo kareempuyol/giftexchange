@@ -1,7 +1,7 @@
 """礼物路由（received-gift、gift-wall、gift-wall/like、note、shipment）。"""
 from flask import request
 
-from wxcloudrun.database import DB
+from wxcloudrun.database import DB, integrity_errors
 from wxcloudrun.helpers import (
     api,
     api_gift_post,
@@ -336,10 +336,14 @@ def gift_wall_like(user, code):
                 (match_id, user["userId"]),
             )
             if not existing:
-                db.execute(
-                    "INSERT INTO gift_likes (match_id, user_id) VALUES (?, ?)",
-                    (match_id, user["userId"]),
-                )
+                try:
+                    db.execute(
+                        "INSERT INTO gift_likes (match_id, user_id) VALUES (?, ?)",
+                        (match_id, user["userId"]),
+                    )
+                except integrity_errors():
+                    # 并发重复点赞：UNIQUE(match_id, user_id) 兜底，幂等视为已点赞
+                    pass
             return ok(
                 {"matchId": match_id, "liked": True, "likeCount": gift_like_count(db, match_id)},
                 "Liked",

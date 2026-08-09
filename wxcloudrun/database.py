@@ -24,6 +24,20 @@ def using_mysql():
     return _mysql_config() is not None
 
 
+def integrity_errors():
+    """双引擎唯一约束冲突异常类型元组（并发去重/幂等兜底 catch 用）。
+
+    业务层不要直接 catch sqlite3/pymysql 具体类型：SQLite 是 sqlite3.IntegrityError，
+    MySQL 是 pymysql.err.IntegrityError，统一走本函数取当前引擎对应的类型。
+    """
+    types = [sqlite3.IntegrityError]
+    if using_mysql():
+        import pymysql
+
+        types.append(pymysql.err.IntegrityError)
+    return tuple(types)
+
+
 class DB:
     def __init__(self):
         self.engine = "mysql" if using_mysql() else "sqlite"
