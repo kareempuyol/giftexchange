@@ -45,30 +45,35 @@ export default function LoginPage() {
 
         <form onSubmit={onSubmit}>
           <div className="form-group">
+            <label className="sr-only" htmlFor="login-username">用户名</label>
             <input
+              id="login-username"
               className="form-input"
               placeholder="用户名"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
+              aria-describedby={error ? 'login-error' : undefined}
             />
           </div>
           <div className="form-group">
             <div className="pwd-wrap">
+              <label className="sr-only" htmlFor="login-password">密码</label>
               <input
+                id="login-password"
                 className="form-input"
                 type={showPwd ? 'text' : 'password'}
                 placeholder="密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                aria-describedby={error ? 'login-error' : undefined}
               />
               <button
                 type="button"
                 className="pwd-toggle"
                 onClick={() => setShowPwd(v => !v)}
                 aria-label={showPwd ? '隐藏密码' : '显示密码'}
-                tabIndex={-1}
               >
                 {showPwd ? '🙈' : '👁️'}
               </button>
@@ -78,7 +83,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+          {error && <div id="login-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
           <button className="btn btn-primary" type="submit" disabled={submitting}>
             {submitting ? '登录中…' : '登录'}

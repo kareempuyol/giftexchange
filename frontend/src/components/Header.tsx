@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api, NotificationItem } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { useToast } from '../components/Toast'
@@ -33,13 +33,20 @@ export default function Header() {
     return () => clearInterval(timer)
   }, [user])
 
-  // 点击外部关闭通知面板
+  // 点击外部关闭通知面板 + ESC 关闭
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false)
     }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowNotif(false)
+    }
     document.addEventListener('click', onClick)
-    return () => document.removeEventListener('click', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('click', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [])
 
   const markRead = async (id: number) => {
@@ -83,9 +90,9 @@ export default function Header() {
       <div className="app-header-inner">
         <Link to="/events" className="app-brand">🎁 互送礼物</Link>
 
-        <nav className="app-nav">
-          <Link to="/events" className="app-nav-link">我的活动</Link>
-          <Link to="/events/new" className="app-nav-link app-nav-cta">+ 创建</Link>
+        <nav className="app-nav" aria-label="主导航">
+          <Link to="/events" className="app-nav-link" aria-current={location.pathname === '/events' ? 'page' : undefined}>我的活动</Link>
+          <Link to="/events/new" className="app-nav-link app-nav-cta" aria-current={location.pathname.startsWith('/events/new') ? 'page' : undefined}>+ 创建</Link>
         </nav>
 
         <div className="app-header-right">
@@ -95,6 +102,9 @@ export default function Header() {
               className="notif-bell"
               onClick={() => setShowNotif(v => !v)}
               aria-label="通知"
+              aria-haspopup="true"
+              aria-expanded={showNotif}
+              aria-controls="notif-panel"
               title="通知"
             >
               🔔
@@ -102,7 +112,7 @@ export default function Header() {
             </button>
 
             {showNotif && (
-              <div className="notif-panel">
+              <div id="notif-panel" className="notif-panel" role="region" aria-label="通知面板">
                 <div className="notif-panel-header">
                   <span>通知</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -117,9 +127,26 @@ export default function Header() {
                 ) : notifs.length === 0 ? (
                   <div className="notif-empty">暂无通知</div>
                 ) : (
-                  <div className="notif-list">
+                <div className="notif-list">
                     {notifs.slice(0, 20).map(n => (
-                      <div key={n.id} className={`notif-item${n.read ? '' : ' unread'}`} onClick={() => markRead(n.id)}>
+                      <div
+                        key={n.id}
+                        className={`notif-item${n.read ? '' : ' unread'}`}
+                        onClick={() => markRead(n.id)}
+                        {...(n.eventCode
+                          ? {}
+                          : {
+                              role: 'button',
+                              tabIndex: 0,
+                              'aria-label': `标记已读：${n.title}`,
+                              onKeyDown: (e: React.KeyboardEvent) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  markRead(n.id)
+                                }
+                              },
+                            })}
+                      >
                         <div className="notif-title">{n.title}</div>
                         {n.message && <div className="notif-msg">{n.message}</div>}
                         <div className="notif-meta">

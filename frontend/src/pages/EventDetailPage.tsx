@@ -6,6 +6,7 @@ import Badge from '../components/Badge'
 import ImageUpload from '../components/ImageUpload'
 import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
+import Modal from '../components/Modal'
 import { formatDeadline, formatMoney } from '../utils/format'
 
 // 成员完成度状态徽标（joined < ready < shipped < posted）
@@ -265,12 +266,14 @@ export default function EventDetailPage() {
     (event.status === 'open' ? 'recruiting' : 'active')
 
   return (
-    <div className="page-container" style={{ maxWidth: 760 }}>
+    <div className="page-container page-container--wide">
       <div className="page-header">
         <h1 className="page-title">{event.title}</h1>
         <Link to="/events" className="btn btn-ghost btn-sm">返回</Link>
       </div>
 
+      <div className="detail-layout">
+      <div className="detail-col-left">
       <div className="gift-card" style={{ marginBottom: 16, overflow: 'hidden' }}>
         {/* 活动封面（登录态也展示） */}
         {event.coverImage && (
@@ -385,7 +388,7 @@ export default function EventDetailPage() {
               <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>活动管理台</Link>
               <button
                 className="btn btn-secondary"
-                style={{ flex: 1, color: 'var(--gift-warning)', borderColor: 'var(--gift-warning)' }}
+                style={{ flex: 1, color: 'var(--gift-warning-text)', borderColor: 'var(--gift-warning-text)' }}
                 onClick={() => setConfirmRedraw(true)}
               >
                 重新抽签
@@ -393,7 +396,7 @@ export default function EventDetailPage() {
             </div>
             <button
               className="btn btn-secondary"
-              style={{ marginTop: 8, width: '100%', color: 'var(--gift-error)', borderColor: 'var(--gift-error)' }}
+              style={{ marginTop: 8, width: '100%', color: 'var(--gift-error-text)', borderColor: 'var(--gift-error-text)' }}
               onClick={() => setConfirmArchive(true)}
             >
               归档活动
@@ -401,103 +404,93 @@ export default function EventDetailPage() {
           </div>
         )}
       </div>
+      </div>{/* detail-col-left */}
 
+      <div className="detail-col-right">
       {confirmDraw && (
-        <div className="modal-overlay" onClick={() => setConfirmDraw(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>确认抽签？</h3>
-            <p style={{ marginTop: 8 }}>
-              当前 <b>{event.participantCount}</b> 人参与。抽签后不可撤销，每个人将获得一个送礼对象。
+        <Modal title="确认抽签？" onClose={() => setConfirmDraw(false)}>
+          <p style={{ marginTop: 8 }}>
+            当前 <b>{event.participantCount}</b> 人参与。抽签后不可撤销，每个人将获得一个送礼对象。
+          </p>
+          {event.excludedPairs.length > 0 && (
+            <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning-text)' }}>
+              ⚠️ 已配置 {event.excludedPairs.length} 组互避规则，抽签时会避开这些配对
             </p>
-            {event.excludedPairs.length > 0 && (
-              <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning)' }}>
-                ⚠️ 已配置 {event.excludedPairs.length} 组互避规则，抽签时会避开这些配对
-              </p>
-            )}
-            <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
-              {participants.filter((p) => !p.contactComplete).length > 0 &&
-                `提示：${participants.filter((p) => !p.contactComplete).length} 人未填完整收件信息，抽签后对方可能收不到礼物。`}
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-secondary" onClick={() => setConfirmDraw(false)}>取消</button>
-              <button className="btn btn-primary" onClick={onDraw} disabled={drawing}>
-                {drawing ? '抽签中…' : '确认抽签'}
-              </button>
-            </div>
+          )}
+          <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-text-secondary)' }}>
+            {participants.filter((p) => !p.contactComplete).length > 0 &&
+              `提示：${participants.filter((p) => !p.contactComplete).length} 人未填完整收件信息，抽签后对方可能收不到礼物。`}
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn btn-secondary" onClick={() => setConfirmDraw(false)}>取消</button>
+            <button className="btn btn-primary" onClick={onDraw} disabled={drawing}>
+              {drawing ? '抽签中…' : '确认抽签'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {confirmRedraw && (
-        <div className="modal-overlay" onClick={() => setConfirmRedraw(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>重新抽签？</h3>
-            <p style={{ marginTop: 8 }}>
-              所有成员的任务将重置，已发货/已晒图的数据会清空，此操作不可撤销。
+        <Modal title="重新抽签？" onClose={() => setConfirmRedraw(false)}>
+          <p style={{ marginTop: 8 }}>
+            所有成员的任务将重置，已发货/已晒图的数据会清空，此操作不可撤销。
+          </p>
+          {event.excludedPairs.length > 0 && (
+            <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning-text)' }}>
+              ⚠️ 已配置 {event.excludedPairs.length} 组互避规则，重新抽签会继续避开这些配对
             </p>
-            {event.excludedPairs.length > 0 && (
-              <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning)' }}>
-                ⚠️ 已配置 {event.excludedPairs.length} 组互避规则，重新抽签会继续避开这些配对
-              </p>
-            )}
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmRedraw(false)} disabled={redrawing}>
-                取消
-              </button>
-              <button
-                className="btn btn-primary"
-                style={{ flex: 1, background: 'var(--gift-error)' }}
-                onClick={onRedraw}
-                disabled={redrawing}
-              >
-                {redrawing ? '重抽中…' : '确认重新抽签'}
-              </button>
-            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmRedraw(false)} disabled={redrawing}>
+              取消
+            </button>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1, background: 'var(--gift-error)' }}
+              onClick={onRedraw}
+              disabled={redrawing}
+            >
+              {redrawing ? '重抽中…' : '确认重新抽签'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {confirmArchive && (
-        <div className="modal-overlay" onClick={() => setConfirmArchive(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>归档活动？</h3>
-            <p style={{ marginTop: 8 }}>
-              归档后活动将从「我创建的」列表隐藏，进入「已归档」。详情页、礼物墙、管理台数据不受影响，可随时恢复。
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmArchive(false)} disabled={archiving}>
-                取消
-              </button>
-              <button
-                className="btn btn-primary"
-                style={{ flex: 1, background: 'var(--gift-error)' }}
-                onClick={onArchive}
-                disabled={archiving}
-              >
-                {archiving ? '归档中…' : '确认归档'}
-              </button>
-            </div>
+        <Modal title="归档活动？" onClose={() => setConfirmArchive(false)}>
+          <p style={{ marginTop: 8 }}>
+            归档后活动将从「我创建的」列表隐藏，进入「已归档」。详情页、礼物墙、管理台数据不受影响，可随时恢复。
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmArchive(false)} disabled={archiving}>
+              取消
+            </button>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1, background: 'var(--gift-error)' }}
+              onClick={onArchive}
+              disabled={archiving}
+            >
+              {archiving ? '归档中…' : '确认归档'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {confirmResetCode && (
-        <div className="modal-overlay" onClick={() => setConfirmResetCode(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>重置邀请码？</h3>
-            <p style={{ marginTop: 8 }}>
-              旧邀请码将立即失效，已转发的旧邀请链接将无法再进入活动，此操作不可撤销。
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmResetCode(false)} disabled={resetting}>
-                取消
-              </button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={onResetShortCode} disabled={resetting}>
-                {resetting ? '重置中…' : '确认重置'}
-              </button>
-            </div>
+        <Modal title="重置邀请码？" onClose={() => setConfirmResetCode(false)}>
+          <p style={{ marginTop: 8 }}>
+            旧邀请码将立即失效，已转发的旧邀请链接将无法再进入活动，此操作不可撤销。
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmResetCode(false)} disabled={resetting}>
+              取消
+            </button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={onResetShortCode} disabled={resetting}>
+              {resetting ? '重置中…' : '确认重置'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {joined && myMatch && event.status === 'drawn' && (
@@ -570,6 +563,8 @@ export default function EventDetailPage() {
           </div>
         </div>
       )}
+      </div>{/* detail-col-right */}
+      </div>{/* detail-layout */}
 
       <div className="gift-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -686,22 +681,19 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-        <h3>加入活动</h3>
-
-        {/* 步骤指示器 */}
-        <div className="step-indicator">
-          <div className={`step-dot${step === 1 ? ' active' : ''}${step === 2 ? ' done' : ''}`}>
-            <span>{step === 2 ? '✓' : '1'}</span>
-          </div>
-          <div className={`step-line${step === 2 ? ' done' : ''}`} />
-          <div className={`step-dot${step === 2 ? ' active' : ''}`}><span>2</span></div>
-          <div className="step-labels">
-            <span className={step === 1 ? 'current' : ''}>收件信息</span>
-            <span className={step === 2 ? 'current' : ''}>心愿单</span>
-          </div>
+    <Modal title="加入活动" onClose={onClose} maxWidth={520}>
+      {/* 步骤指示器 */}
+      <div className="step-indicator">
+        <div className={`step-dot${step === 1 ? ' active' : ''}${step === 2 ? ' done' : ''}`}>
+          <span>{step === 2 ? '✓' : '1'}</span>
         </div>
+        <div className={`step-line${step === 2 ? ' done' : ''}`} />
+        <div className={`step-dot${step === 2 ? ' active' : ''}`}><span>2</span></div>
+        <div className="step-labels">
+          <span className={step === 1 ? 'current' : ''} aria-current={step === 1 ? 'step' : undefined}>收件信息</span>
+          <span className={step === 2 ? 'current' : ''} aria-current={step === 2 ? 'step' : undefined}>心愿单</span>
+        </div>
+      </div>
 
         <form onSubmit={onSubmit}>
           {step === 1 ? (
@@ -710,18 +702,18 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
                 抽签后，送你礼物的人会看到这些信息来寄礼物
               </p>
               <div className="form-group">
-                <label className="form-label">收件人姓名 *</label>
-                <input className="form-input" placeholder="真实姓名" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} maxLength={120} />
+                <label className="form-label" htmlFor="join-receiver">收件人姓名 *</label>
+                <input id="join-receiver" className="form-input" placeholder="真实姓名" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} maxLength={120} aria-describedby={error ? 'join-error' : undefined} />
               </div>
               <div className="form-group">
-                <label className="form-label">联系电话 *</label>
-                <input className="form-input" type="tel" placeholder="手机号" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} />
+                <label className="form-label" htmlFor="join-phone">联系电话 *</label>
+                <input id="join-phone" className="form-input" type="tel" placeholder="手机号" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} aria-describedby={error ? 'join-error' : undefined} />
               </div>
               <div className="form-group">
-                <label className="form-label">收件地址 *</label>
-                <textarea className="form-textarea" placeholder="省市区 + 详细地址" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-address">收件地址 *</label>
+                <textarea id="join-address" className="form-textarea" placeholder="省市区 + 详细地址" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} aria-describedby={error ? 'join-error' : undefined} />
               </div>
-              {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+              {error && <div id="join-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1 }}>取消</button>
                 <button type="button" className="btn btn-primary" onClick={goNext} style={{ flex: 1 }}>下一步</button>
@@ -733,32 +725,32 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
                 让送礼的人更懂你（全部选填，但填得越多礼物越合心意 🎁）
               </p>
               <div className="form-group">
-                <label className="form-label">我喜欢的礼物</label>
-                <input className="form-input" placeholder="例如：咖啡、书、手作" value={likes} onChange={(e) => setLikes(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-likes">我喜欢的礼物</label>
+                <input id="join-likes" className="form-input" placeholder="例如：咖啡、书、手作" value={likes} onChange={(e) => setLikes(e.target.value)} maxLength={500} />
               </div>
               <div className="form-group">
-                <label className="form-label">我不想要的</label>
-                <input className="form-input" placeholder="例如：香水、毛绒玩具" value={dislikes} onChange={(e) => setDislikes(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-dislikes">我不想要的</label>
+                <input id="join-dislikes" className="form-input" placeholder="例如：香水、毛绒玩具" value={dislikes} onChange={(e) => setDislikes(e.target.value)} maxLength={500} />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label className="form-label">尺码（选填）</label>
-                  <input className="form-input" placeholder="如 M / 42 码" value={size} onChange={(e) => setSize(e.target.value)} maxLength={50} />
+                  <label className="form-label" htmlFor="join-size">尺码（选填）</label>
+                  <input id="join-size" className="form-input" placeholder="如 M / 42 码" value={size} onChange={(e) => setSize(e.target.value)} maxLength={50} />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label className="form-label">喜欢的颜色（选填）</label>
-                  <input className="form-input" placeholder="如 莫兰迪色系" value={color} onChange={(e) => setColor(e.target.value)} maxLength={80} />
+                  <label className="form-label" htmlFor="join-color">喜欢的颜色（选填）</label>
+                  <input id="join-color" className="form-input" placeholder="如 莫兰迪色系" value={color} onChange={(e) => setColor(e.target.value)} maxLength={80} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">心愿链接（选填，最多 3 个）</label>
-                <input className="form-input" placeholder="淘宝/京东等商品链接，逗号分隔" value={wishLinks} onChange={(e) => setWishLinks(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-wishlinks">心愿链接（选填，最多 3 个）</label>
+                <input id="join-wishlinks" className="form-input" placeholder="淘宝/京东等商品链接，逗号分隔" value={wishLinks} onChange={(e) => setWishLinks(e.target.value)} maxLength={500} />
               </div>
               <div className="form-group">
-                <label className="form-label">备注（选填）</label>
-                <textarea className="form-textarea" placeholder="其他想说的话" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
+                <label className="form-label" htmlFor="join-notes">备注（选填）</label>
+                <textarea id="join-notes" className="form-textarea" placeholder="其他想说的话" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
               </div>
-              {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+              {error && <div id="join-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => { setStep(1); setError('') }} style={{ flex: 1 }}>上一步</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting} style={{ flex: 1 }}>
@@ -768,8 +760,7 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
             </>
           )}
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -915,7 +906,7 @@ function ReceivedGiftSection({ code }: { code: string }) {
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                style={{ width: 'auto', color: 'var(--gift-error)' }}
+                style={{ width: 'auto', color: 'var(--gift-error-text)' }}
                 onClick={() => setConfirmDelete(true)}
               >
                 删除晒图
@@ -963,8 +954,9 @@ function ReceivedGiftSection({ code }: { code: string }) {
 
           {/* 评价 */}
           <div>
-            <label className="form-label">评价（选填）</label>
+            <label className="form-label" htmlFor="received-review">评价（选填）</label>
             <textarea
+              id="received-review"
               className="form-textarea"
               placeholder="收到礼物想说点什么？"
               value={review}
@@ -1034,27 +1026,24 @@ function ReceivedGiftSection({ code }: { code: string }) {
       )}
 
       {confirmDelete && (
-        <div className="modal-overlay" onClick={() => setConfirmDelete(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>删除晒图？</h3>
-            <p style={{ marginTop: 8 }}>
-              删除后你的评分、评价和照片会从礼物墙移除，礼物卡片将恢复未揭晓状态。此操作不可撤销。
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmDelete(false)} disabled={deleting}>
-                取消
-              </button>
-              <button
-                className="btn btn-primary"
-                style={{ flex: 1, background: 'var(--gift-error)' }}
-                onClick={onDelete}
-                disabled={deleting}
-              >
-                {deleting ? '删除中…' : '确认删除'}
-              </button>
-            </div>
+        <Modal title="删除晒图？" onClose={() => setConfirmDelete(false)}>
+          <p style={{ marginTop: 8 }}>
+            删除后你的评分、评价和照片会从礼物墙移除，礼物卡片将恢复未揭晓状态。此操作不可撤销。
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmDelete(false)} disabled={deleting}>
+              取消
+            </button>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1, background: 'var(--gift-error)' }}
+              onClick={onDelete}
+              disabled={deleting}
+            >
+              {deleting ? '删除中…' : '确认删除'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
@@ -1085,6 +1074,7 @@ function ShipmentProgress({ state }: { state: string }) {
         <div className="ship-progress-step-wrap" key={s.key}>
           <div
             className={`ship-progress-step${i < currentIndex ? ' done' : ''}${i === currentIndex ? ' active' : ''}`}
+            aria-current={i === currentIndex ? 'step' : undefined}
           >
             <div className="ship-progress-dot" aria-hidden="true">
               {i < currentIndex ? '✓' : s.icon}
@@ -1143,7 +1133,10 @@ function FlowSteps({
     <div className="flow-steps" role="list" aria-label="活动流程">
       {FLOW_STEPS.map((s, i) => (
         <div className="flow-step-wrap" key={s.key}>
-          <div className={`flow-step${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`}>
+          <div
+            className={`flow-step${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`}
+            aria-current={i === idx ? 'step' : undefined}
+          >
             <div className="flow-step-dot" aria-hidden="true">
               {i < idx ? '✓' : s.icon}
             </div>
@@ -1266,6 +1259,7 @@ function ShipmentSection({
               className="form-input"
               style={{ flex: '1 1 160px' }}
               placeholder="快递公司（选填）"
+              aria-label="快递公司（选填）"
               value={carrier}
               onChange={(e) => setCarrier(e.target.value)}
               maxLength={80}
@@ -1274,6 +1268,7 @@ function ShipmentSection({
               className="form-input"
               style={{ flex: '2 1 160px' }}
               placeholder="快递单号 *"
+              aria-label="快递单号（必填）"
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value)}
               maxLength={120}
@@ -1282,6 +1277,7 @@ function ShipmentSection({
           <input
             className="form-input"
             placeholder="附一句悄悄话（选填）💌"
+            aria-label="附一句悄悄话（选填）"
             value={secretNote}
             onChange={(e) => setSecretNote(e.target.value)}
             maxLength={500}

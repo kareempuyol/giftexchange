@@ -221,8 +221,9 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">活动名称 *</label>
+          <label className="form-label" htmlFor="ev-title">活动名称 *</label>
           <input
+            id="ev-title"
             className="form-input"
             placeholder="例如：圣诞礼物互赠"
             value={title}
@@ -232,8 +233,9 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">活动说明</label>
+          <label className="form-label" htmlFor="ev-note">活动说明</label>
           <textarea
+            id="ev-note"
             className="form-textarea"
             placeholder="写点规则或想说的话（选填）"
             value={note}
@@ -243,8 +245,9 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">预算上限（元）</label>
+          <label className="form-label" htmlFor="ev-budget">预算上限（元）</label>
           <input
+            id="ev-budget"
             className="form-input"
             type="number"
             min={0}
@@ -256,8 +259,9 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">报名截止日期</label>
+          <label className="form-label" htmlFor="ev-draw-date">报名截止日期</label>
           <input
+            id="ev-draw-date"
             className="form-input"
             type="datetime-local"
             value={drawDate}
@@ -267,8 +271,9 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">人数上限</label>
+          <label className="form-label" htmlFor="ev-max">人数上限</label>
           <input
+            id="ev-max"
             className="form-input"
             type="number"
             min={2}
@@ -281,8 +286,9 @@ export default function CreateEventPage() {
 
         {draftMembers.length > 0 && (
           <div className="form-group">
-            <label className="form-label">成员名单（每行一个用户名）</label>
+            <label className="form-label" htmlFor="ev-members">成员名单（每行一个用户名）</label>
             <textarea
+              id="ev-members"
               className="form-textarea"
               readOnly
               value={draftMembers.map((m) => m.username).join('\n')}
@@ -353,11 +359,12 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">互避规则（选填）</label>
+          <label className="form-label" htmlFor="ev-rules">互避规则（选填）</label>
           <div style={{ fontSize: 'var(--gift-font-xs)', color: 'var(--gift-text-secondary)', marginBottom: 8 }}>
             互避 = 这两人不会互送礼物（如情侣/夫妻）
           </div>
           <textarea
+            id="ev-rules"
             className="form-textarea"
             placeholder={'每行一对，用逗号分隔用户名\n例如：小明, 小红'}
             value={rulesText}
@@ -376,7 +383,7 @@ export default function CreateEventPage() {
           />
         </div>
 
-        {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+        {error && <div className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
         <button className="btn btn-primary" type="submit" disabled={submitting}>
           {submitting ? '创建中…' : '创建活动'}

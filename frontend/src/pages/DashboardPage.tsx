@@ -141,11 +141,11 @@ export default function DashboardPage() {
         <table className="dash-table">
           <thead>
             <tr>
-              <th>参与者</th>
-              <th>信息</th>
-              <th>发货</th>
-              <th>收货</th>
-              <th>晒图</th>
+              <th scope="col">参与者</th>
+              <th scope="col">信息</th>
+              <th scope="col">发货</th>
+              <th scope="col">收货</th>
+              <th scope="col">晒图</th>
             </tr>
           </thead>
           <tbody>

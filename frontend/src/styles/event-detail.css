@@ -1,4 +1,24 @@
 /* 活动详情页 */
+/* 桌面两栏（≥1024px）：左=活动信息/操作区，右=任务/晒图区；窄屏自然堆叠 */
+.detail-layout {
+  display: block;
+}
+.detail-col-left,
+.detail-col-right {
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--gift-space-lg);
+    align-items: start;
+  }
+  .detail-layout > .detail-col-left > .gift-card {
+    margin-bottom: 0;
+  }
+}
+
 .event-meta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -91,7 +111,7 @@
   transition: background var(--gift-motion-fast) var(--gift-ease);
 }
 .invite-code-btn:hover {
-  background: rgba(232, 85, 61, 0.08);
+  background: var(--gift-brand-light);
 }
 
 /* ===== 分步表单指示器 ===== */
@@ -123,7 +143,7 @@
 .step-dot.done {
   background: var(--gift-success);
   border-color: var(--gift-success);
-  color: var(--gift-text-on-primary);
+  color: var(--gift-white);
 }
 .step-line {
   flex: 1;
@@ -217,7 +237,7 @@
 .ship-progress-step.done .ship-progress-dot {
   background: var(--gift-success);
   border-color: var(--gift-success);
-  color: var(--gift-text-on-primary);
+  color: var(--gift-white);
   font-weight: var(--gift-font-bold);
   font-size: var(--gift-font-sm);
 }

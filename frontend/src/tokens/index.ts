@@ -25,7 +25,8 @@ export const primitive = {
     200: '#FFC4B8',
     300: '#FBA492',
     400: '#F57F68',
-    500: '#E8553D', // 主品牌色
+    // 500 主品牌色：#E8553D → #C93B24（WCAG AA 4.5:1：白字 5.08、浅底文字 4.61）
+    500: '#C93B24',
     600: '#D44028',
     700: '#B5341F',
     800: '#8F2A1A',
@@ -45,11 +46,11 @@ export const primitive = {
     900: '#1A1311', // 最深
   },
   // 功能色
-  gold: '#D4A017',   // 金色点缀（徽章/高亮）
-  success: '#2DA05A', // 成功
-  warning: '#E8930C', // 警告
-  error: '#D84040',  // 错误/危险
-  info: '#4A7FB5',   // 信息（新增，用于提示）
+  gold: '#A97A00',   // 金色点缀（徽章/高亮）— 调深保证图标 3:1
+  success: '#1B7A43', // 成功
+  warning: '#8A5E00', // 警告
+  error: '#C22F2F',  // 错误/危险
+  info: '#2F5F8F',   // 信息（新增，用于提示）
   white: '#FFFFFF',
   black: '#000000',
   // 透明色（用于遮罩等）
@@ -83,6 +84,11 @@ export const semantic = {
     errorBg: '#FCEBEB',
     info: primitive.info,
     infoBg: '#EAF1F8',
+    // 状态色文字变体：浅色主题与主色一致；暗色主题提亮（见 tokens.css）保证 AA
+    successText: primitive.success,
+    warningText: primitive.warning,
+    errorText: primitive.error,
+    infoText: primitive.info,
     overlay: primitive.overlay,
   },
   radius: {

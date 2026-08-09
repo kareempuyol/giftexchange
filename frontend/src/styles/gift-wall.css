@@ -42,7 +42,7 @@
 /* 解锁后的礼物卡片列表 */
 .gw-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: var(--gift-space-lg);
 }
 
@@ -103,7 +103,7 @@
   font-size: var(--gift-font-md);
   font-weight: var(--gift-font-bold);
   letter-spacing: 2px;
-  background: rgba(255, 255, 255, 0.16);
+  background: color-mix(in srgb, var(--gift-white) 16%, transparent);
   padding: var(--gift-space-xs) var(--gift-space-md);
   border-radius: var(--gift-radius-pill);
 }

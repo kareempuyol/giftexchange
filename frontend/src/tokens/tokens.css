@@ -10,7 +10,7 @@
   --gift-coral-200: #FFC4B8;
   --gift-coral-300: #FBA492;
   --gift-coral-400: #F57F68;
-  --gift-coral-500: #E8553D;
+  --gift-coral-500: #C93B24;
   --gift-coral-600: #D44028;
   --gift-coral-700: #B5341F;
   --gift-coral-800: #8F2A1A;
@@ -27,13 +27,19 @@
   --gift-warm-800: #2C211E;
   --gift-warm-900: #1A1311;
 
-  --gift-gold: #D4A017;
-  --gift-success: #2DA05A;
-  --gift-warning: #E8930C;
-  --gift-error: #D84040;
-  --gift-info: #4A7FB5;
+  --gift-gold: #A97A00;
+  --gift-success: #1B7A43;
+  --gift-warning: #8A5E00;
+  --gift-error: #C22F2F;
+  --gift-info: #2F5F8F;
   --gift-white: #FFFFFF;
   --gift-overlay: rgba(26, 19, 17, 0.5);
+
+  /* 状态色文字变体（浅色主题 = 主色；暗色主题提亮，供 -text 用法保证 AA） */
+  --gift-success-text: #1B7A43;
+  --gift-warning-text: #8A5E00;
+  --gift-error-text: #C22F2F;
+  --gift-info-text: #2F5F8F;
 
   /* ===== 语义色 ===== */
   --gift-bg: #FFFAF5;
@@ -45,9 +51,10 @@
   --gift-text-secondary: #7A6B5D;
   --gift-text-on-primary: #FFFFFF;
   --gift-text-disabled: #D5C9BB;
-  --gift-brand: #E8553D;
-  --gift-brand-hover: #D44028;
-  --gift-brand-active: #B5341F;
+  /* 品牌主色加深一档（#E8553D → #C93B24）：保证白字/链接文字 WCAG AA 4.5:1 */
+  --gift-brand: #C93B24;
+  --gift-brand-hover: #B5341F;
+  --gift-brand-active: #8F2A1A;
   --gift-brand-light: #FFF1EE;
   --gift-success-bg: #E7F5EC;
   --gift-warning-bg: #FDF3E3;
@@ -118,12 +125,18 @@
   --gift-border-strong: #4A3B33;
   --gift-text-primary: #F2ECE6;
   --gift-text-secondary: #B9A99C;
-  --gift-text-on-primary: #FFFFFF;
+  /* 暗色主题主色为亮珊瑚：按钮/圆点上的文字改用深色保证对比度（白字仅 2.2:1） */
+  --gift-text-on-primary: #2C211E;
   --gift-text-disabled: #5C5046;
   --gift-brand: #F57F68;
   --gift-brand-hover: #FBA492;
   --gift-brand-active: #E8553D;
   --gift-brand-light: #3A211A;
+  /* 暗色主题状态色文字提亮（背景用主色，文字用 -text 变体） */
+  --gift-success-text: #6FC99B;
+  --gift-warning-text: #E8B054;
+  --gift-error-text: #E57A7A;
+  --gift-info-text: #8FB8E8;
   --gift-success-bg: #17301F;
   --gift-warning-bg: #33260F;
   --gift-error-bg: #331A1A;

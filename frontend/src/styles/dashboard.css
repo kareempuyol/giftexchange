@@ -39,10 +39,10 @@
   color: var(--gift-text-primary);
 }
 .stat-num.warn {
-  color: var(--gift-warning);
+  color: var(--gift-warning-text);
 }
 .stat-num.danger {
-  color: var(--gift-error);
+  color: var(--gift-error-text);
 }
 .stat-label {
   font-size: var(--gift-font-xs);

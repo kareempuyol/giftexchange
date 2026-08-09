@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { api, ApiError, GiftWall, GiftWallItem, Participant } from '../api/client'
 import { useToast } from '../components/Toast'
 import PosterModal, { PosterData } from '../components/PosterModal'
+import Modal from '../components/Modal'
 
 export default function GiftWallPage() {
   const { code = '' } = useParams()
@@ -139,7 +140,7 @@ export default function GiftWallPage() {
   const pct = total > 0 ? Math.round((posted / total) * 100) : 0
 
   return (
-    <div className="page-container" style={{ maxWidth: 860 }}>
+    <div className="page-container page-container--wide">
       <div className="page-header">
         <h1 className="page-title">🎁 礼物墙</h1>
         <Link to={`/events/${code}`} className="btn btn-ghost btn-sm">返回</Link>
@@ -295,44 +296,41 @@ export default function GiftWallPage() {
       <PosterModal data={poster} onClose={() => setPoster(null)} />
 
       {replayOpen && (
-        <div className="modal-overlay" onClick={() => !replayBusy && setReplayOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>🔁 再开一局</h3>
-            <p style={{ marginTop: 8, color: 'var(--gift-text-secondary)' }}>
-              用当前活动的标题、预算和说明创建新活动
-            </p>
-            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 16, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={copyMembers}
-                onChange={(e) => setCopyMembers(e.target.checked)}
-                style={{ marginTop: 4, flexShrink: 0 }}
-              />
-              <span>
-                复制成员名单
-                <span className="form-hint" style={{ display: 'block' }}>
-                  带入上期成员用户名，方便复制邀请（不会自动加入）
-                </span>
+        <Modal title="🔁 再开一局" onClose={() => !replayBusy && setReplayOpen(false)}>
+          <p style={{ marginTop: 8, color: 'var(--gift-text-secondary)' }}>
+            用当前活动的标题、预算和说明创建新活动
+          </p>
+          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 16, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={copyMembers}
+              onChange={(e) => setCopyMembers(e.target.checked)}
+              style={{ marginTop: 4, flexShrink: 0 }}
+            />
+            <span>
+              复制成员名单
+              <span className="form-hint" style={{ display: 'block' }}>
+                带入上期成员用户名，方便复制邀请（不会自动加入）
               </span>
-            </label>
-            <p className="form-hint" style={{ marginTop: 10 }}>
-              互避规则暂不复制，新活动需重新配置
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button
-                className="btn btn-secondary"
-                style={{ flex: 1 }}
-                onClick={() => setReplayOpen(false)}
-                disabled={replayBusy}
-              >
-                取消
-              </button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={startReplay} disabled={replayBusy}>
-                {replayBusy ? '准备中…' : '确认再开一局'}
-              </button>
-            </div>
+            </span>
+          </label>
+          <p className="form-hint" style={{ marginTop: 10 }}>
+            互避规则暂不复制，新活动需重新配置
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button
+              className="btn btn-secondary"
+              style={{ flex: 1 }}
+              onClick={() => setReplayOpen(false)}
+              disabled={replayBusy}
+            >
+              取消
+            </button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={startReplay} disabled={replayBusy}>
+              {replayBusy ? '准备中…' : '确认再开一局'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

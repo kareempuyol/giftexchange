@@ -1,0 +1,13 @@
+[
+  "✅ login 连续 Tab 焦点可见",
+  "✅ 加入弹窗 role=dialog + 焦点入内 — {\"open\":true,\"label\":\"ok\",\"activeIn\":true}",
+  "✅ ESC 关闭弹窗 + 焦点不丢失 — {\"dialogGone\":true,\"focusBack\":true}",
+  "✅ 揭晓按钮可聚焦",
+  "✅ 揭晓按钮焦点可见 — outline=solid 2px",
+  "✅ Enter 揭晓卡片 + 内容可见 — {\"revealed\":true,\"bodyVisible\":true}",
+  "✅ 铃铛 aria-expanded=true + 面板 aria-label — {\"expanded\":\"true\",\"panel\":\"通知面板\"}",
+  "✅ ESC 关闭通知面板 — aria-expanded=false",
+  "✅ 弹窗聚焦元素数量 — {\"ok\":true,\"count\":3,\"last\":\"加入\"}",
+  "✅ Tab 从末尾循环回弹窗内",
+  "✅ prefers-reduced-motion 生效（动画时长≈0） — {\"reducedDur\":\"1e-05s\"}"
+]

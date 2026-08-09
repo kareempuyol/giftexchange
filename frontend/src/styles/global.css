@@ -61,6 +61,26 @@ textarea,
   touch-action: manipulation;
 }
 
+/* ===== 键盘焦点可见性（WCAG 2.4.7）：任何元素用键盘聚焦时显示清晰焦点环 ===== */
+:focus-visible {
+  outline: 2px solid var(--gift-brand);
+  outline-offset: 2px;
+  border-radius: var(--gift-radius-sm);
+}
+
+/* 视觉隐藏但保留给读屏（标签/说明文字用） */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ===== 通用布局 ===== */
 .page-container {
   max-width: 960px;
@@ -208,6 +228,10 @@ textarea,
   /* 键盘弹出时输入框自动滚入可见区，避免被键盘遮挡 */
   scroll-margin-bottom: 80px;
 }
+.form-input:focus-visible {
+  outline: 2px solid var(--gift-brand);
+  outline-offset: 1px;
+}
 
 /* 密码可见切换 */
 .pwd-wrap {
@@ -253,10 +277,14 @@ textarea,
   border-color: var(--gift-brand);
   scroll-margin-bottom: 80px;
 }
+.form-textarea:focus-visible {
+  outline: 2px solid var(--gift-brand);
+  outline-offset: 1px;
+}
 .form-error {
   margin-top: var(--gift-space-sm);
   font-size: var(--gift-font-xs);
-  color: var(--gift-error);
+  color: var(--gift-error-text);
 }
 .form-hint {
   margin-top: var(--gift-space-xs);
@@ -273,10 +301,10 @@ textarea,
   font-size: var(--gift-font-xs);
   font-weight: var(--gift-font-medium);
 }
-.badge-success { background: var(--gift-success-bg); color: var(--gift-success); }
-.badge-warning { background: var(--gift-warning-bg); color: var(--gift-warning); }
-.badge-error { background: var(--gift-error-bg); color: var(--gift-error); }
-.badge-info { background: var(--gift-info-bg); color: var(--gift-info); }
+.badge-success { background: var(--gift-success-bg); color: var(--gift-success-text); }
+.badge-warning { background: var(--gift-warning-bg); color: var(--gift-warning-text); }
+.badge-error { background: var(--gift-error-bg); color: var(--gift-error-text); }
+.badge-info { background: var(--gift-info-bg); color: var(--gift-info-text); }
 .badge-gold { background: var(--gift-brand-light); color: var(--gift-brand); }
 
 /* ===== 活动流程步骤条（活动级：招募 → 待抽签 → 送礼 → 完结）===== */
@@ -318,9 +346,9 @@ textarea,
   transition: all var(--gift-motion-normal) var(--gift-ease);
 }
 .flow-step.done .flow-step-dot {
-  background: var(--gift-success-bg);
+  background: var(--gift-success);
   border-color: var(--gift-success);
-  color: var(--gift-success);
+  color: var(--gift-white);
   font-weight: var(--gift-font-bold);
 }
 .flow-step.active .flow-step-dot {
@@ -448,6 +476,98 @@ textarea,
   }
   .gift-card {
     padding: var(--gift-space-lg);
+  }
+}
+
+/* ===== 桌面/平板深化 ===== */
+/* 宽版容器：礼物墙等需要多列的场景（桌面 4 列、平板 3 列） */
+.page-container--wide {
+  max-width: 1120px;
+}
+
+/* 活动列表卡片：宽屏 ≥1024px 两列栅格 */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gift-space-md);
+}
+@media (min-width: 1024px) {
+  .event-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+  .event-list .event-list-row {
+    min-width: 0;
+  }
+  .event-list .event-card {
+    height: 100%;
+  }
+}
+
+/* ===== 减少动效（WCAG 2.3.3）：揭晓翻转/星星散落/Toast/旋转全部禁用 ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .gw-mask {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ===== 打印（P2 基础版）：隐藏导航/操作按钮，礼物墙/海报可打印 ===== */
+@media print {
+  .app-header,
+  .notif-wrap,
+  .app-user,
+  .page-header .btn,
+  .btn,
+  .gw-mask,
+  .gw-reveal-stars,
+  .gw-like-btn,
+  .gw-blur-hint {
+    display: none !important;
+  }
+  body {
+    background: var(--gift-white);
+  }
+  .page-container {
+    max-width: none;
+    padding: 0;
+  }
+  .app-main {
+    min-height: 0;
+  }
+  /* 礼物墙：打印时全部内容可见（未揭晓卡片直接展示礼物内容） */
+  .gw-item-card:not(.revealed) .gw-item-body {
+    visibility: visible !important;
+  }
+  .gw-item-card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+  .gw-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* 海报弹窗：去掉遮罩/按钮，仅输出画布 */
+  .modal-overlay {
+    position: static;
+    background: none;
+    padding: 0;
+  }
+  .modal-overlay .modal {
+    max-width: 420px;
+    box-shadow: none;
+    padding: 0;
+  }
+  .modal-overlay .modal .btn {
+    display: none !important;
   }
 }
 

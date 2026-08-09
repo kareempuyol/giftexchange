@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client'
 import { useToast } from '../components/Toast'
 import { useAuth } from '../auth/AuthContext'
 import SafeImage from '../components/SafeImage'
+import Modal from '../components/Modal'
 
 interface Profile {
   id: number
@@ -230,6 +231,7 @@ export default function ProfilePage() {
             onClick={() => fileRef.current?.click()}
             disabled={avatarUploading}
             title="点击更换头像"
+            aria-label="更换头像"
             style={{
               width: 56, height: 56, borderRadius: '50%', background: 'var(--gift-brand-light)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
@@ -274,24 +276,24 @@ export default function ProfilePage() {
           保存后，加入新活动时会自动帮你填好收件信息 ✨
         </p>
         <div className="form-group">
-          <label className="form-label">昵称</label>
-          <input className="form-input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={120} />
+          <label className="form-label" htmlFor="profile-name">昵称</label>
+          <input id="profile-name" className="form-input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={120} />
         </div>
         <div className="form-group">
-          <label className="form-label">手机号</label>
-          <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} placeholder="手机号" />
+          <label className="form-label" htmlFor="profile-phone">手机号</label>
+          <input id="profile-phone" className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={50} placeholder="手机号" />
         </div>
         <div className="form-group">
-          <label className="form-label">常用收件人</label>
-          <input className="form-input" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} maxLength={50} placeholder="收礼人姓名" />
+          <label className="form-label" htmlFor="profile-receiver">常用收件人</label>
+          <input id="profile-receiver" className="form-input" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} maxLength={50} placeholder="收礼人姓名" />
         </div>
         <div className="form-group">
-          <label className="form-label">常用地址</label>
-          <textarea className="form-textarea" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} placeholder="收礼地址" style={{ minHeight: 60 }} />
+          <label className="form-label" htmlFor="profile-address">常用地址</label>
+          <textarea id="profile-address" className="form-textarea" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} placeholder="收礼地址" style={{ minHeight: 60 }} />
         </div>
         <div className="form-group">
-          <label className="form-label">礼物偏好</label>
-          <textarea className="form-textarea" value={giftPreference} onChange={(e) => setGiftPreference(e.target.value)} maxLength={500} placeholder="喜欢什么 / 不喜欢什么 / 尺码颜色等" style={{ minHeight: 60 }} />
+          <label className="form-label" htmlFor="profile-preference">礼物偏好</label>
+          <textarea id="profile-preference" className="form-textarea" value={giftPreference} onChange={(e) => setGiftPreference(e.target.value)} maxLength={500} placeholder="喜欢什么 / 不喜欢什么 / 尺码颜色等" style={{ minHeight: 60 }} />
         </div>
         <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
           {saving ? '保存中…' : '保存资料'}
@@ -345,16 +347,16 @@ export default function ProfilePage() {
       <div className="gift-card">
         <h3 style={{ marginBottom: 16 }}>修改密码</h3>
         <div className="form-group">
-          <label className="form-label">当前密码</label>
-          <input className="form-input" type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="输入当前密码" />
+          <label className="form-label" htmlFor="profile-old-pwd">当前密码</label>
+          <input id="profile-old-pwd" className="form-input" type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="输入当前密码" autoComplete="current-password" />
         </div>
         <div className="form-group">
-          <label className="form-label">新密码</label>
-          <input className="form-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="至少 6 位，含字母和数字" />
+          <label className="form-label" htmlFor="profile-new-pwd">新密码</label>
+          <input id="profile-new-pwd" className="form-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="至少 6 位，含字母和数字" autoComplete="new-password" />
         </div>
         <div className="form-group">
-          <label className="form-label">确认新密码</label>
-          <input className="form-input" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="再次输入新密码" />
+          <label className="form-label" htmlFor="profile-confirm-pwd">确认新密码</label>
+          <input id="profile-confirm-pwd" className="form-input" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="再次输入新密码" autoComplete="new-password" />
         </div>
         <button className="btn btn-secondary" onClick={changePassword} disabled={changingPwd}>
           {changingPwd ? '修改中…' : '修改密码'}
@@ -373,44 +375,43 @@ export default function ProfilePage() {
         <button
           className="btn btn-ghost"
           onClick={() => setShowDeactivate(true)}
-          style={{ width: '100%', color: 'var(--gift-error)', borderColor: 'var(--gift-error)' }}
+          style={{ width: '100%', color: 'var(--gift-error-text)', borderColor: 'var(--gift-error-text)' }}
         >
           注销账号
         </button>
       </div>
 
       {showDeactivate && (
-        <div className="modal-overlay" onClick={() => setShowDeactivate(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>注销账号？</h3>
-            <p style={{ marginTop: 8, fontSize: 13, color: 'var(--gift-text-secondary)' }}>
-              注销后账号将无法登录，收件地址等个人资料会被清除；活动与礼物墙数据会保留但不再关联你的身份。此操作不可撤销。
-            </p>
-            <div className="form-group" style={{ marginTop: 16 }}>
-              <label className="form-label">输入密码确认</label>
-              <input
-                className="form-input"
-                type="password"
-                value={deactivatePassword}
-                onChange={(e) => setDeactivatePassword(e.target.value)}
-                placeholder="当前登录密码"
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowDeactivate(false)}>
-                取消
-              </button>
-              <button
-                className="btn btn-primary"
-                style={{ flex: 1, background: 'var(--gift-error)' }}
-                onClick={deactivateAccount}
-                disabled={deactivating || !deactivatePassword}
-              >
-                {deactivating ? '注销中…' : '确认注销'}
-              </button>
-            </div>
+        <Modal title="注销账号？" onClose={() => setShowDeactivate(false)}>
+          <p style={{ marginTop: 8, fontSize: 13, color: 'var(--gift-text-secondary)' }}>
+            注销后账号将无法登录，收件地址等个人资料会被清除；活动与礼物墙数据会保留但不再关联你的身份。此操作不可撤销。
+          </p>
+          <div className="form-group" style={{ marginTop: 16 }}>
+            <label className="form-label" htmlFor="deactivate-pwd">输入密码确认</label>
+            <input
+              id="deactivate-pwd"
+              className="form-input"
+              type="password"
+              value={deactivatePassword}
+              onChange={(e) => setDeactivatePassword(e.target.value)}
+              placeholder="当前登录密码"
+              autoComplete="current-password"
+            />
           </div>
-        </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+            <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowDeactivate(false)}>
+              取消
+            </button>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1, background: 'var(--gift-error)' }}
+              onClick={deactivateAccount}
+              disabled={deactivating || !deactivatePassword}
+            >
+              {deactivating ? '注销中…' : '确认注销'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   )

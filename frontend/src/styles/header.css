@@ -5,7 +5,7 @@
   z-index: 100;
   background: var(--gift-card);
   border-bottom: 1px solid var(--gift-border);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--gift-shadow-card);
   /* 刘海屏：顶栏背景延伸到安全区外，内容不被刘海遮挡 */
   padding-top: env(safe-area-inset-top, 0px);
 }
@@ -99,7 +99,7 @@
   padding: 0 4px;
   border-radius: 9px;
   background: var(--gift-error);
-  color: #fff;
+  color: var(--gift-white);
   font-size: 11px;
   font-weight: var(--gift-font-bold);
   display: flex;

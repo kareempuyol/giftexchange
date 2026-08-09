@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import SafeImage from '../components/SafeImage'
 import { useToast } from '../components/Toast'
+import Modal from '../components/Modal'
 import { formatDeadline, formatMoney } from '../utils/format'
 
 function statusBadge(status: string) {
@@ -280,6 +281,7 @@ export default function EventsPage() {
           <button
             key={key}
             className={`btn btn-ghost btn-sm${tab === key ? ' tab-active' : ''}`}
+            aria-pressed={tab === key}
             onClick={() => { setTab(key); setSearch('') }}
           >
             {label}
@@ -288,6 +290,7 @@ export default function EventsPage() {
         {(tab === 'mine' || tab === 'archived') && (
           <button
             className={`btn btn-ghost btn-sm${tab === 'archived' ? ' tab-active' : ''}`}
+            aria-pressed={tab === 'archived'}
             onClick={() => { setTab('archived'); setSearch('') }}
           >
             已归档
@@ -297,7 +300,9 @@ export default function EventsPage() {
 
       {tab === 'public' && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <label className="sr-only" htmlFor="events-search">搜索活动</label>
           <input
+            id="events-search"
             className="form-input"
             style={{ flex: 1 }}
             placeholder="搜索活动名称 / 邀请码"
@@ -358,9 +363,9 @@ export default function EventsPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="event-list">
           {events.map((ev) => (
-            <div key={ev.code} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div key={ev.code} className="event-list-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <Link to={`/events/${ev.code}`} className="event-card" style={{ flex: 1, minWidth: 0 }}>
                 {ev.coverImage && (
                   <SafeImage
@@ -400,32 +405,31 @@ export default function EventsPage() {
       )}
 
       {joinOpen && (
-        <div className="modal-overlay" onClick={() => setJoinOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>用邀请码加入</h3>
-            <p style={{ marginTop: 8, color: 'var(--gift-text-secondary)' }}>
-              输入朋友分享的 6 位邀请码，即可进入活动
-            </p>
-            <input
-              className="form-input"
-              style={{ marginTop: 12 }}
-              placeholder="例如：ABC123"
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onJoinByCode()}
-              maxLength={40}
-              autoFocus
-            />
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setJoinOpen(false)}>
-                取消
-              </button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={onJoinByCode}>
-                加入
-              </button>
-            </div>
+        <Modal title="用邀请码加入" onClose={() => setJoinOpen(false)}>
+          <p style={{ marginTop: 8, color: 'var(--gift-text-secondary)' }}>
+            输入朋友分享的 6 位邀请码，即可进入活动
+          </p>
+          <label className="sr-only" htmlFor="join-code-input">邀请码</label>
+          <input
+            id="join-code-input"
+            className="form-input"
+            style={{ marginTop: 12 }}
+            placeholder="例如：ABC123"
+            value={joinCode}
+            onChange={(e) => setJoinCode(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && onJoinByCode()}
+            maxLength={40}
+            autoFocus
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setJoinOpen(false)}>
+              取消
+            </button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={onJoinByCode}>
+              加入
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

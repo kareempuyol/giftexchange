@@ -1,0 +1,90 @@
+[
+  {
+    "name": "01-events",
+    "url": "/events",
+    "scrollW": 1280,
+    "clientW": 1280,
+    "gwCols": null,
+    "detailDisplay": null,
+    "eventListDisplay": "grid",
+    "h1": 1,
+    "hScroll": false
+  },
+  {
+    "name": "02-create",
+    "url": "/events/new",
+    "scrollW": 1280,
+    "clientW": 1280,
+    "gwCols": null,
+    "detailDisplay": null,
+    "eventListDisplay": null,
+    "h1": 1,
+    "hScroll": false
+  },
+  {
+    "name": "03-detail-drawn",
+    "url": "/events/c78a347a-0fdc-420b-9296-021572cbdda2",
+    "scrollW": 1280,
+    "clientW": 1280,
+    "gwCols": null,
+    "detailDisplay": "grid",
+    "eventListDisplay": null,
+    "h1": 1,
+    "hScroll": false
+  },
+  {
+    "name": "04-detail-open",
+    "url": "/events/221056af-5780-4a53-9b41-7d453b88340c",
+    "scrollW": 1280,
+    "clientW": 1280,
+    "gwCols": null,
+    "detailDisplay": "grid",
+    "eventListDisplay": null,
+    "h1": 1,
+    "hScroll": false
+  },
+  {
+    "name": "05-giftwall",
+    "url": "/events/edb25dfe-2bbb-4309-8a2c-7db586eccbe6/gift-wall",
+    "scrollW": 1280,
+    "clientW": 1280,
+    "gwCols": 4,
+    "detailDisplay": null,
+    "eventListDisplay": null,
+    "h1": 1,
+    "hScroll": false
+  },
+  {
+    "name": "06-dashboard",
+    "url": "/events/c78a347a-0fdc-420b-9296-021572cbdda2/dashboard",
+    "scrollW": 1280,
+    "clientW": 1280,
+    "gwCols": null,
+    "detailDisplay": null,
+    "eventListDisplay": null,
+    "h1": 1,
+    "hScroll": false
+  },
+  {
+    "name": "07-profile",
+    "url": "/profile",
+    "scrollW": 1280,
+    "clientW": 1280,
+    "gwCols": null,
+    "detailDisplay": null,
+    "eventListDisplay": null,
+    "h1": 1,
+    "hScroll": false
+  },
+  {
+    "name": "08-login",
+    "url": "/login",
+    "scrollW": 1280,
+    "clientW": 1280,
+    "gwCols": null,
+    "detailDisplay": null,
+    "eventListDisplay": null,
+    "h1": 1,
+    "hScroll": false
+  }
+]

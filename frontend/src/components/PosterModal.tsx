@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import SharePoster, { PosterData, downloadPoster } from './SharePoster'
+import Modal from './Modal'
 
 /** 海报预览弹窗：内联预览 + 下载 */
 export default function PosterModal({ data, onClose }: { data: PosterData | null; onClose: () => void }) {
@@ -9,11 +10,12 @@ export default function PosterModal({ data, onClose }: { data: PosterData | null
   if (!data) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 460, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginBottom: 12 }}>
-          {data.kind === 'invite' ? '📣 邀请海报' : '🏆 高光海报'}
-        </h3>
+    <Modal
+      title={data.kind === 'invite' ? '📣 邀请海报' : '🏆 高光海报'}
+      onClose={onClose}
+      maxWidth={460}
+    >
+      <div style={{ textAlign: 'center' }}>
         <div ref={(el) => { if (el) canvasRef.current = el.querySelector('canvas') as HTMLCanvasElement }}>
           <SharePoster data={data} />
         </div>
@@ -37,6 +39,6 @@ export default function PosterModal({ data, onClose }: { data: PosterData | null
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

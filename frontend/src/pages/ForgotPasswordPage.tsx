@@ -86,17 +86,20 @@ export default function ForgotPasswordPage() {
         {!generatedCode ? (
           <form onSubmit={requestCode}>
             <div className="form-group">
+              <label className="sr-only" htmlFor="forgot-account">用户名或邮箱</label>
               <input
+                id="forgot-account"
                 className="form-input"
                 placeholder="用户名或邮箱"
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
                 autoComplete="username"
+                aria-describedby={error ? 'forgot-error' : undefined}
               />
               <div className="form-hint">输入注册时使用的用户名或邮箱</div>
             </div>
 
-            {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+            {error && <div id="forgot-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
             <button className="btn btn-primary" type="submit" disabled={submitting}>
               {submitting ? '生成中…' : '获取重置码'}
@@ -120,7 +123,9 @@ export default function ForgotPasswordPage() {
             </div>
 
             <div className="form-group">
+              <label className="sr-only" htmlFor="forgot-code">6 位重置码</label>
               <input
+                id="forgot-code"
                 className="form-input"
                 placeholder="6 位重置码"
                 value={code}
@@ -128,24 +133,27 @@ export default function ForgotPasswordPage() {
                 maxLength={6}
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                aria-describedby={error ? 'forgot-error' : undefined}
               />
             </div>
             <div className="form-group">
               <div className="pwd-wrap">
+                <label className="sr-only" htmlFor="forgot-new">新密码</label>
                 <input
+                  id="forgot-new"
                   className="form-input"
                   type={showPwd ? 'text' : 'password'}
                   placeholder="新密码"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   autoComplete="new-password"
+                  aria-describedby={error ? 'forgot-error' : undefined}
                 />
                 <button
                   type="button"
                   className="pwd-toggle"
                   onClick={() => setShowPwd(v => !v)}
                   aria-label={showPwd ? '隐藏密码' : '显示密码'}
-                  tabIndex={-1}
                 >
                   {showPwd ? '🙈' : '👁️'}
                 </button>
@@ -154,30 +162,32 @@ export default function ForgotPasswordPage() {
             </div>
             <div className="form-group">
               <div className="pwd-wrap">
+                <label className="sr-only" htmlFor="forgot-confirm">确认新密码</label>
                 <input
+                  id="forgot-confirm"
                   className="form-input"
                   type={showConfirm ? 'text' : 'password'}
                   placeholder="确认新密码"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   autoComplete="new-password"
+                  aria-describedby={confirm && newPassword !== confirm ? 'forgot-mismatch' : error ? 'forgot-error' : undefined}
                 />
                 <button
                   type="button"
                   className="pwd-toggle"
                   onClick={() => setShowConfirm(v => !v)}
                   aria-label={showConfirm ? '隐藏密码' : '显示密码'}
-                  tabIndex={-1}
                 >
                   {showConfirm ? '🙈' : '👁️'}
                 </button>
               </div>
               {confirm && newPassword !== confirm && (
-                <div className="form-error">两次输入的密码不一致</div>
+                <div id="forgot-mismatch" className="form-error" role="alert">两次输入的密码不一致</div>
               )}
             </div>
 
-            {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+            {error && <div id="forgot-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
             <button className="btn btn-primary" type="submit" disabled={submitting}>
               {submitting ? '重置中…' : '重置密码'}

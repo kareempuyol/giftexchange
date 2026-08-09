@@ -53,34 +53,43 @@ export default function RegisterPage() {
 
         <form onSubmit={onSubmit}>
           <div className="form-group">
+            <label className="sr-only" htmlFor="register-username">用户名</label>
             <input
+              id="register-username"
               className="form-input"
               placeholder="用户名"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              aria-describedby={error ? 'register-error' : undefined}
             />
             <div className="form-hint">至少 2 个字符</div>
           </div>
           <div className="form-group">
+            <label className="sr-only" htmlFor="register-email">邮箱</label>
             <input
+              id="register-email"
               className="form-input"
               type="email"
               placeholder="邮箱"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              aria-describedby={error ? 'register-error' : undefined}
             />
             <div className="form-hint">用于登录和找回密码</div>
           </div>
           <div className="form-group">
             <div className="pwd-wrap">
+              <label className="sr-only" htmlFor="register-password">密码</label>
               <input
+                id="register-password"
                 className="form-input"
                 type={showPwd ? 'text' : 'password'}
                 placeholder="密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                aria-describedby={error ? 'register-error' : undefined}
               />
-              <button type="button" className="pwd-toggle" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? '隐藏密码' : '显示密码'} tabIndex={-1}>
+              <button type="button" className="pwd-toggle" onClick={() => setShowPwd(v => !v)} aria-label={showPwd ? '隐藏密码' : '显示密码'}>
                 {showPwd ? '🙈' : '👁️'}
               </button>
             </div>
@@ -88,23 +97,26 @@ export default function RegisterPage() {
           </div>
           <div className="form-group">
             <div className="pwd-wrap">
+              <label className="sr-only" htmlFor="register-confirm">确认密码</label>
               <input
+                id="register-confirm"
                 className="form-input"
                 type={showConfirm ? 'text' : 'password'}
                 placeholder="确认密码"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
+                aria-describedby={confirm && password !== confirm ? 'register-mismatch' : error ? 'register-error' : undefined}
               />
-              <button type="button" className="pwd-toggle" onClick={() => setShowConfirm(v => !v)} aria-label={showConfirm ? '隐藏密码' : '显示密码'} tabIndex={-1}>
+              <button type="button" className="pwd-toggle" onClick={() => setShowConfirm(v => !v)} aria-label={showConfirm ? '隐藏密码' : '显示密码'}>
                 {showConfirm ? '🙈' : '👁️'}
               </button>
             </div>
             {confirm && password !== confirm && (
-              <div className="form-error">两次输入的密码不一致</div>
+              <div id="register-mismatch" className="form-error" role="alert">两次输入的密码不一致</div>
             )}
           </div>
 
-          {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}
+          {error && <div id="register-error" className="form-error" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
           <button className="btn btn-primary" type="submit" disabled={submitting}>
             {submitting ? '注册中…' : '注册'}
