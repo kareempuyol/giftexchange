@@ -110,6 +110,33 @@ class TestReadAll:
         assert all(item["read"] for item in data["items"])
 
 
+class TestReadIds:
+    def test_read_selected_ids_marks_only_those(self, client):
+        """批量 ids 已读：只标记指定通知，其余保持未读（前端单条点击走此路径）。"""
+        headers, uid = register_and_login(client, "rid")
+        from wxcloudrun.database import DB
+
+        with DB() as db:
+            seed_notification(db, uid, "draw_result")
+            seed_notification(db, uid, "gift_posted")
+            seed_notification(db, uid, "deadline_24h")
+
+        data = get_notifs(client, headers)
+        assert data["unread"] == 3
+        first_id = data["items"][0]["id"]
+        second_id = data["items"][1]["id"]
+
+        r = client.post("/api/notifications/read", json={"ids": [first_id, second_id]}, headers=headers)
+        assert r.status_code == 200, r.get_json()
+
+        data = get_notifs(client, headers)
+        assert data["unread"] == 1
+        by_id = {item["id"]: item for item in data["items"]}
+        assert by_id[first_id]["read"] is True
+        assert by_id[second_id]["read"] is True
+        assert by_id[[i for i in by_id if i not in (first_id, second_id)][0]]["read"] is False
+
+
 class TestClear:
     def test_clear_removes_read_keeps_unread(self, client):
         headers, uid = register_and_login(client, "cl")

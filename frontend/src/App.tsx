@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { ToastProvider } from './components/Toast'
@@ -7,11 +8,12 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import EventsPage from './pages/EventsPage'
-import EventDetailPage from './pages/EventDetailPage'
-import CreateEventPage from './pages/CreateEventPage'
-import DashboardPage from './pages/DashboardPage'
-import GiftWallPage from './pages/GiftWallPage'
-import ProfilePage from './pages/ProfilePage'
+// 非首屏页面按路由分包（React.lazy）：详情页含海报/qrcode 依赖，首屏不加载
+const EventDetailPage = lazy(() => import('./pages/EventDetailPage'))
+const CreateEventPage = lazy(() => import('./pages/CreateEventPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const GiftWallPage = lazy(() => import('./pages/GiftWallPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -40,7 +42,8 @@ export default function App() {
       <ToastProvider>
         {/* App 级错误边界：任何页面渲染崩溃都不白屏 */}
         <ErrorBoundary>
-          <Routes>
+          <Suspense fallback={<div className="page-loading"><span className="spinner" aria-hidden="true" />加载中…</div>}>
+            <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -54,6 +57,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/events" replace />} />
             <Route path="*" element={<Navigate to="/events" replace />} />
           </Routes>
+          </Suspense>
         </ErrorBoundary>
       </ToastProvider>
     </AuthProvider>

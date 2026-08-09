@@ -43,7 +43,7 @@ export default function Header() {
 
   const markRead = async (id: number) => {
     try {
-      await api.post('/notifications/read', { id })
+      await api.post('/notifications/read', { ids: [id] })
       setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
       setUnread(prev => Math.max(0, prev - 1))
     } catch { /* 静默 */ }

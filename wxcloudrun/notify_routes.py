@@ -32,10 +32,14 @@ def read_notifications(user):
     ids = data.get("ids") or []
     with DB() as db:
         if ids:
-            for item_id in ids:
+            # 批量标记已读：单条 UPDATE ... IN 代替逐条 UPDATE（N+1 消除）
+            for chunk_start in range(0, len(ids), 500):
+                chunk = ids[chunk_start:chunk_start + 500]
+                placeholders = ",".join("?" for _ in chunk)
                 db.execute(
-                    "UPDATE notifications SET read_at = COALESCE(read_at, CURRENT_TIMESTAMP) WHERE id = ? AND user_id = ?",
-                    (item_id, user["userId"]),
+                    f"UPDATE notifications SET read_at = COALESCE(read_at, CURRENT_TIMESTAMP) "
+                    f"WHERE id IN ({placeholders}) AND user_id = ?",
+                    tuple(chunk) + (user["userId"],),
                 )
         else:
             db.execute(

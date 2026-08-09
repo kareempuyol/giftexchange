@@ -40,6 +40,33 @@ def _add_column(table, column, mysql, sqlite):
     return {"op": "add_column", "table": table, "column": column, "mysql": mysql, "sqlite": sqlite}
 
 
+def _create_index(name, table, columns):
+    """声明式建索引描述符：CREATE INDEX IF NOT EXISTS（MySQL 8+ / SQLite 同语法；
+    MySQL 5.7 无 IF NOT EXISTS，由执行前的 _index_exists 守卫保证幂等）。"""
+    return {
+        "op": "create_index",
+        "index": name,
+        "table": table,
+        "sql": f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({', '.join(columns)})",
+    }
+
+
+def _index_exists(db, name):
+    """幂等迁移辅助：索引是否已存在（MySQL 走 information_schema，SQLite 走 sqlite_master）。"""
+    if db.engine == "mysql":
+        row = db.get(
+            "SELECT COUNT(*) AS count FROM information_schema.statistics "
+            "WHERE table_schema = DATABASE() AND index_name = ?",
+            (name,),
+        )
+    else:
+        row = db.get(
+            "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'index' AND name = ?",
+            (name,),
+        )
+    return int(row["count"] or 0) > 0
+
+
 def _create_table(mysql, sqlite):
     """声明式建表描述符：CREATE TABLE IF NOT EXISTS 双方言。"""
     return {"op": "create_table", "mysql": mysql, "sqlite": sqlite}
@@ -145,6 +172,22 @@ MIGRATIONS = [
             _add_column("events", "archived", mysql="TINYINT DEFAULT 0", sqlite="INTEGER DEFAULT 0"),
         ],
     },
+    {
+        "version": 11,
+        "name": "性能索引：events/participants/matches/notifications/gift_likes 高频查询列",
+        "up": [
+            _create_index("idx_events_short_code", "events", ["short_code"]),
+            _create_index("idx_events_creator_archived", "events", ["creator_id", "archived"]),
+            _create_index("idx_events_status_public_archived", "events", ["status", "is_public", "archived"]),
+            _create_index("idx_participants_user", "participants", ["user_id"]),
+            _create_index("idx_matches_event", "matches", ["event_id"]),
+            _create_index("idx_matches_giver", "matches", ["giver_id"]),
+            _create_index("idx_matches_receiver", "matches", ["receiver_id"]),
+            _create_index("idx_notifications_user_created", "notifications", ["user_id", "created_at"]),
+            _create_index("idx_notifications_user_read", "notifications", ["user_id", "read_at"]),
+            _create_index("idx_gift_likes_user", "gift_likes", ["user_id"]),
+        ],
+    },
 ]
 
 
@@ -178,6 +221,9 @@ def run_migrations_v2(db):
                     )
             elif op == "create_table":
                 db.execute(_engine_sql(db, statement["mysql"], statement["sqlite"]))
+            elif op == "create_index":
+                if not _index_exists(db, statement["index"]):
+                    db.execute(statement["sql"])
             else:
                 raise ValueError(f"未知迁移语句类型: {op!r}（MIGRATIONS 版本 {version}）")
         db.execute(

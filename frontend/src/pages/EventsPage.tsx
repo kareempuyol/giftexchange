@@ -197,6 +197,7 @@ export default function EventsPage() {
                   <img
                     src={ev.coverImage}
                     alt=""
+                    loading="lazy"
                     style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                   />
