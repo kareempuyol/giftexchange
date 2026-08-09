@@ -58,13 +58,13 @@ def draw(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("Only the event creator can draw", 403)
+                return fail("仅创建者可抽签", 403)
             if event["status"] == "drawn":
-                return fail("This event has already been drawn", 409)
+                return fail("该活动已抽签", 409)
 
             rows = participant_rows(db, event["id"])
             if len(rows) < 2:
-                return fail("At least 2 people are required to draw")
+                return fail("至少需要 2 人才能抽签")
             excluded = parse_excluded_pairs(event.get("excluded_pairs"))
             n = len(rows)
             # 预判：数学上无解的组合在抽签前直接拒绝，给出明确提示
@@ -84,7 +84,7 @@ def draw(user, code):
                 (event["id"],),
             )
             if cur_status.rowcount == 0:
-                return fail("Draw already completed", 409)
+                return fail("活动已抽签完成", 409)
 
             # 只有抢锁成功的请求才写 matches（DELETE 旧 + INSERT 新，随 with DB() 事务一并提交）
             matches = _insert_matches(db, event["id"], shuffled)
@@ -108,13 +108,13 @@ def redraw(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("Only the event creator can redraw", 403)
+                return fail("仅创建者可重新抽签", 403)
             if event["status"] != "drawn":
                 return fail("活动尚未抽签", 400)
 
             rows = participant_rows(db, event["id"])
             if len(rows) < 2:
-                return fail("At least 2 people are required to draw")
+                return fail("至少需要 2 人才能抽签")
             excluded = parse_excluded_pairs(event.get("excluded_pairs"))
             n = len(rows)
             # 预判：数学上无解的组合在删除旧结果前直接拒绝，旧 matches 保留
@@ -153,7 +153,7 @@ def event_matches(user, code):
             is_creator = event["creator_id"] == user["userId"]
             is_public = (event.get("match_visibility") or "private") == "public"
             if not is_creator and (not is_public or not participant):
-                return fail("Match list is private", 403)
+                return fail("抽签结果仅创建者可见", 403)
 
             rows = db.all(
                 """

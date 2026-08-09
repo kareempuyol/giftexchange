@@ -107,12 +107,12 @@ def login_required(fn):
     def wrapper(*args, **kwargs):
         user = current_user()
         if not user:
-            return fail("Please sign in first", 401, -2)
+            return fail("请先登录", 401, -2)
         # 已注销用户：JWT 仍有效期内也立即失效（账号注销 P0）
         with DB() as db:
             row = db.get("SELECT deactivated FROM users WHERE id = ?", (user["userId"],))
             if not row:
-                return fail("Please sign in first", 401, -2)
+                return fail("请先登录", 401, -2)
             if row.get("deactivated"):
                 return fail("账号已注销", 401, -2)
         return fn(user, *args, **kwargs)
@@ -126,7 +126,7 @@ def admin_required(fn):
         with DB() as db:
             row = current_user_row(db, user["userId"])
             if not is_user_admin(row):
-                return fail("Admin permission required", 403)
+                return fail("需要管理员权限", 403)
         return fn(user, *args, **kwargs)
 
     return login_required(wrapper)

@@ -117,22 +117,22 @@ def update_received_gift(user, code):
     try:
         rating_value = int(rating)
     except Exception:
-        return fail("Rating is required")
+        return fail("请给出评分")
     if rating_value < 1 or rating_value > 5:
-        return fail("Rating must be 1-5")
+        return fail("评分需在 1-5 之间")
     if len(review) > 500:
-        return fail("Review is too long")
+        return fail("评价内容过长")
     if privacy not in {"photo", "text", "blur"}:
-        return fail("Invalid privacy")
+        return fail("晒图隐私设置无效")
     if photo_url and not image_ref_valid(photo_url):
-        return fail("Photo is too large")
+        return fail("照片过大")
 
     try:
         with DB() as db:
             event = fetch_event(db, code)
             me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
             if not me:
-                return fail("You are not a participant of this event", 403)
+                return fail("你不是该活动的参与者", 403)
             cur = db.execute(
                 """
                 UPDATE matches
@@ -143,7 +143,7 @@ def update_received_gift(user, code):
                 (rating_value, review, photo_url, privacy, match_id, event["id"], me["id"]),
             )
             if cur.rowcount == 0:
-                return fail("Match not found")
+                return fail("未找到对应的送礼任务")
             row = db.get(
                 """
                 SELECT m.*, giver.user_id AS giver_user_id, receiver.user_id AS receiver_user_id,
@@ -184,7 +184,7 @@ def update_received_gift(user, code):
                         "礼物墙已解锁 🎉",
                         "所有礼物都已晒出，快去礼物墙看看吧！",
                     )
-            return ok(gift_post(row), "Gift post saved")
+            return ok(gift_post(row), "晒图已保存")
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -208,7 +208,7 @@ def delete_received_gift(user, code):
             event = fetch_event(db, code)
             me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
             if not me:
-                return fail("You are not a participant of this event", 403)
+                return fail("你不是该活动的参与者", 403)
             cur = db.execute(
                 """
                 UPDATE matches
@@ -219,10 +219,10 @@ def delete_received_gift(user, code):
                 (match_id, event["id"], me["id"]),
             )
             if cur.rowcount == 0:
-                return fail("Match not found", 404)
+                return fail("未找到对应的送礼任务", 404)
             # 晒图已删：残留点赞一并清掉（卡片恢复未揭晓状态，点赞失去意义）
             db.execute("DELETE FROM gift_likes WHERE match_id = ?", (match_id,))
-            return ok(None, "Gift post deleted")
+            return ok(None, "晒图已删除")
     except ValueError as exc:
         return fail(str(exc), 404)
 
@@ -234,7 +234,7 @@ def gift_wall(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if not gift_wall_allowed(db, event, user["userId"]):
-                return fail("No permission", 403)
+                return fail("无权访问", 403)
             counts = db.get(
                 """
                 SELECT COUNT(*) AS total,
@@ -322,12 +322,12 @@ def gift_wall_like(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if not gift_wall_allowed(db, event, user["userId"]):
-                return fail("No permission", 403)
+                return fail("无权访问", 403)
             if not db.get(
                 "SELECT id FROM matches WHERE id = ? AND event_id = ?",
                 (match_id, event["id"]),
             ):
-                return fail("Match not found", 404)
+                return fail("未找到对应的送礼任务", 404)
             existing = db.get(
                 "SELECT id FROM gift_likes WHERE match_id = ? AND user_id = ?",
                 (match_id, user["userId"]),
@@ -357,12 +357,12 @@ def gift_wall_unlike(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if not gift_wall_allowed(db, event, user["userId"]):
-                return fail("No permission", 403)
+                return fail("无权访问", 403)
             if not db.get(
                 "SELECT id FROM matches WHERE id = ? AND event_id = ?",
                 (match_id, event["id"]),
             ):
-                return fail("Match not found", 404)
+                return fail("未找到对应的送礼任务", 404)
             db.execute(
                 "DELETE FROM gift_likes WHERE match_id = ? AND user_id = ?",
                 (match_id, user["userId"]),
@@ -388,10 +388,10 @@ def update_note(user, code):
             event = fetch_event(db, code)
             me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
             if not me:
-                return fail("You are not a participant of this event", 403)
+                return fail("你不是该活动的参与者", 403)
             cur = db.execute("UPDATE matches SET note = ? WHERE id = ? AND giver_id = ?", (note, match_id, me["id"]))
             if cur.rowcount == 0:
-                return fail("Match not found")
+                return fail("未找到对应的送礼任务")
             return ok(None, "Note saved")
     except ValueError as exc:
         return fail(str(exc), 404)
@@ -407,22 +407,22 @@ def update_shipment(user, code):
     status = str(data.get("status") or "").strip() or ("shipped" if tracking_number else "pending")
 
     if status not in {"pending", "shipped", "delivered"}:
-        return fail("Invalid shipment status")
+        return fail("发货状态无效")
     if not match_id:
         return fail("matchId is required")
     if status != "pending" and not tracking_number:
-        return fail("Tracking number is required")
+        return fail("请填写快递单号")
     if len(carrier) > 80:
-        return fail("Carrier is too long")
+        return fail("快递公司名称过长")
     if len(tracking_number) > 120:
-        return fail("Tracking number is too long")
+        return fail("快递单号过长")
 
     try:
         with DB() as db:
             event = fetch_event(db, code)
             me = db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
             if not me:
-                return fail("You are not a participant of this event", 403)
+                return fail("你不是该活动的参与者", 403)
             old_row = db.get(
                 """
                 SELECT carrier, tracking_number, tracking_summary
@@ -432,7 +432,7 @@ def update_shipment(user, code):
                 (match_id, event["id"], me["id"]),
             )
             if not old_row:
-                return fail("Match not found")
+                return fail("未找到对应的送礼任务")
             shipment_changed = (old_row.get("carrier") or "") != carrier or (old_row.get("tracking_number") or "") != tracking_number
 
             # 物流自动跟踪：填了单号且配置了 KDNiao 时查询，失败静默降级
@@ -460,7 +460,7 @@ def update_shipment(user, code):
                 (status, carrier, tracking_number, tracking_summary, status, match_id, event["id"], me["id"]),
             )
             if cur.rowcount == 0:
-                return fail("Match not found")
+                return fail("未找到对应的送礼任务")
 
             row = db.get(
                 """
@@ -483,6 +483,6 @@ def update_shipment(user, code):
                     "你的礼物已发货",
                     f"{row.get('giver_display_name') or row.get('giver_username')} 已填写快递信息，请留意收件。",
                 )
-            return ok(api_shipment(row), "Shipment saved")
+            return ok(api_shipment(row), "发货信息已保存")
     except ValueError as exc:
         return fail(str(exc), 404)

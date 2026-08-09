@@ -140,7 +140,7 @@ class TestDeleteGift:
         r = delete_gift(client, h1, code, m1["id"])
         assert r.status_code == 200, r.get_json()
         assert r.get_json()["code"] == 0
-        assert "deleted" in r.get_json()["message"].lower()
+        assert "删除" in r.get_json()["message"]
 
         # 礼物墙：posted 计数 -1，未解锁
         assert wall_posted(client, h1, code) == 0

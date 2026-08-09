@@ -119,7 +119,7 @@ class TestDrawApi:
         # 已抽签再抽：409 幂等保护，且不重复写 matches（仍 3 条）
         r2 = draw(client, h1, code)
         assert r2.status_code == 409, r2.get_json()
-        assert "already been drawn" in r2.get_json()["message"]
+        assert "已抽签" in r2.get_json()["message"]
         rm = client.get(f"/api/events/{code}/matches", headers=h1)
         assert len(rm.get_json()["data"]) == 3
 

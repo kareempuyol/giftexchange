@@ -197,7 +197,7 @@ class TestGiftPrivacy:
         m = matches_for_user(client, h1, code, uid1)
         r = put_gift(client, h1, code, m["id"], {"matchId": m["id"], "rating": 5, "privacy": "vip"})
         assert r.status_code == 400, r.get_json()
-        assert "Invalid privacy" in r.get_json()["message"]
+        assert "隐私设置无效" in r.get_json()["message"]
 
         # 非法提交后仍可正常提交（未被写入）
         r = put_gift(client, h1, code, m["id"], {"matchId": m["id"], "rating": 5, "review": "修正后晒出", "privacy": "text"})

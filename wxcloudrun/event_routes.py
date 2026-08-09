@@ -43,26 +43,26 @@ def create_event(user):
     excluded_pairs = json.dumps(excluded_pairs_raw, ensure_ascii=False) if excluded_pairs_raw else "[]"
 
     if not title:
-        return fail("Event title is required")
+        return fail("请填写活动名称")
     if len(title) > 100:
-        return fail("Event title is too long")
+        return fail("活动名称过长")
     if budget < 0:
-        return fail("Budget cannot be negative")
+        return fail("预算不能为负数")
     if len(note) > 500:
-        return fail("Note is too long")
+        return fail("活动说明过长")
     if match_visibility not in {"private", "public"}:
-        return fail("Invalid match visibility")
+        return fail("匹配可见性设置无效")
     if max_participants is not None:
         try:
             max_participants = int(max_participants)
         except (ValueError, TypeError):
-            return fail("Invalid max participants")
+            return fail("人数上限设置无效")
         if max_participants < 2:
-            return fail("Max participants must be at least 2")
+            return fail("人数上限至少为 2")
         if max_participants > 999:
-            return fail("Max participants is too large")
+            return fail("人数上限过大")
     if cover_image and not image_ref_valid(cover_image):
-        return fail("Cover image is too large")
+        return fail("封面图过大")
 
     with DB() as db:
         code = str(uuid.uuid4())
@@ -269,7 +269,7 @@ def edit_event(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("Only the event creator can edit", 403)
+                return fail("仅创建者可编辑活动", 403)
 
             data = body()
             fields = {}
@@ -278,16 +278,16 @@ def edit_event(user, code):
             if "title" in data:
                 title = str(data["title"] or "").strip()
                 if not title:
-                    return fail("Event title cannot be empty")
+                    return fail("活动名称不能为空")
                 if len(title) > 100:
-                    return fail("Event title is too long")
+                    return fail("活动名称过长")
                 fields["name"] = title
                 params.append(title)
 
             if "coverImage" in data:
                 cover = str(data["coverImage"] or "").strip()
                 if cover and not image_ref_valid(cover):
-                    return fail("Cover image is too large")
+                    return fail("封面图过大")
                 fields["cover_image"] = cover
                 params.append(cover)
 
@@ -297,9 +297,9 @@ def edit_event(user, code):
                     try:
                         dt = parse_datetime(draw)
                         if dt <= datetime.now(timezone.utc):
-                            return fail("Deadline must be in the future")
+                            return fail("截止时间必须晚于当前时间")
                     except Exception:
-                        return fail("Invalid date format")
+                        return fail("日期格式无效")
                 fields["sign_up_deadline"] = draw
                 params.append(draw)
 
@@ -309,11 +309,11 @@ def edit_event(user, code):
                     try:
                         max_p = int(max_p)
                     except (ValueError, TypeError):
-                        return fail("Invalid max participants")
+                        return fail("人数上限设置无效")
                     if max_p < 2:
-                        return fail("Max participants must be at least 2")
+                        return fail("人数上限至少为 2")
                     if max_p > 999:
-                        return fail("Max participants is too large")
+                        return fail("人数上限过大")
                     current_count = int(event.get("participant_count") or 0)
                     if max_p < current_count:
                         return fail(f"Cannot set max below current participant count ({current_count})")
@@ -330,7 +330,7 @@ def edit_event(user, code):
                 params.append(fields["excluded_pairs"])
 
             if not fields:
-                return fail("No fields to update")
+                return fail("没有需要更新的内容")
 
             assignments = ", ".join(f"{col} = ?" for col in fields)
             params.append(code)
@@ -349,7 +349,7 @@ def delete_event(user, code):
     with DB() as db:
         event = db.get("SELECT id FROM events WHERE code = ? AND creator_id = ?", (code, user["userId"]))
         if not event:
-            return fail("Event not found or no permission", 403)
+            return fail("活动不存在或无权访问", 403)
         db.execute("DELETE FROM events WHERE id = ?", (event["id"],))
         return ok(None, "Event deleted")
 
@@ -362,7 +362,7 @@ def archive_event(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("Only the event creator can archive", 403)
+                return fail("仅创建者可归档活动", 403)
             if event["status"] != "drawn":
                 return fail("未抽签活动请直接删除", 400)
             db.execute("UPDATE events SET archived = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (event["id"],))
@@ -379,7 +379,7 @@ def unarchive_event(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("Only the event creator can unarchive", 403)
+                return fail("仅创建者可恢复活动", 403)
             db.execute("UPDATE events SET archived = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (event["id"],))
             return ok(api_event(fetch_event(db, code)), "Event unarchived")
     except ValueError as exc:
@@ -394,7 +394,7 @@ def reset_short_code(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("Only the event creator can reset the short code", 403)
+                return fail("仅创建者可重置邀请码", 403)
             new_code = generate_short_code(db)
             db.execute("UPDATE events SET short_code = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (new_code, event["id"]))
             return ok({"code": event["code"], "shortCode": new_code}, "Short code reset")
@@ -409,12 +409,12 @@ def join_event(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["status"] != "open":
-                return fail("Event is closed")
+                return fail("活动已截止报名")
             max_ppl = event.get("max_participants")
             if max_ppl is not None and int(event.get("participant_count") or 0) >= int(max_ppl):
-                return fail("Event is full")
+                return fail("活动人数已满")
             if db.get("SELECT id FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"])):
-                return fail("You have already joined this event")
+                return fail("你已加入该活动")
             data = body()
             participant_id = add_participant(db, event["id"], user["userId"], data)
             if data.get("updateProfile"):
@@ -463,12 +463,12 @@ def leave_event(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] == user["userId"]:
-                return fail("Creator cannot leave; delete the event instead")
+                return fail("创建者不能退出，请删除活动")
             if event["status"] != "open":
-                return fail("Event has already been drawn")
+                return fail("活动已抽签")
             cur = db.execute("DELETE FROM participants WHERE event_id = ? AND user_id = ?", (event["id"], user["userId"]))
             if cur.rowcount == 0:
-                return fail("You have not joined this event")
+                return fail("你尚未加入该活动")
             db.execute(
                 "UPDATE events SET participant_count = participant_count - 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND participant_count > 0",
                 (event["id"],),
@@ -558,7 +558,7 @@ def remind_members(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("Only the event creator can remind members", 403)
+                return fail("仅创建者可催办成员", 403)
             rows = participant_rows(db, event["id"])
             match_by_participant = {m["participant_id"]: m for m in _member_match_rows(db, event["id"])}
             name = event["name"]
@@ -589,7 +589,7 @@ def event_dashboard(user, code):
         with DB() as db:
             event = fetch_event(db, code)
             if event["creator_id"] != user["userId"]:
-                return fail("Only the event creator can view dashboard", 403)
+                return fail("仅创建者可查看仪表盘", 403)
             participants_data = participant_rows(db, event["id"])
             rows = db.all(
                 """

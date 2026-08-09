@@ -36,22 +36,22 @@ def register():
     password = str(data.get("password") or "")
 
     if not username or not email or not password:
-        return fail("Username, email and password are required")
+        return fail("用户名、邮箱和密码为必填项")
     if len(username) < 2 or len(username) > 50:
-        return fail("Username length must be 2-50 characters")
+        return fail("用户名长度需为 2-50 个字符")
     if "@" not in email or "." not in email or len(email) > 254:
-        return fail("Invalid email")
+        return fail("邮箱格式不正确")
     if len(password) < 6 or len(password) > 128:
-        return fail("Password length must be 6-128 characters")
+        return fail("密码长度需为 6-128 个字符")
     if not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
-        return fail("Password must contain letters and numbers")
+        return fail("密码必须同时包含字母和数字")
 
     with DB() as db:
         user_count = db.get("SELECT COUNT(*) AS count FROM users")["count"]
         registration_enabled = setting_value(db, "registration_enabled").lower() == "true"
         is_first_user = int(user_count) == 0
         if not registration_enabled and not is_first_user:
-            return fail("Registration is closed", 403)
+            return fail("注册已关闭", 403)
 
         conflicts = []
         if db.get("SELECT id FROM users WHERE username = ?", (username,)):
@@ -78,7 +78,7 @@ def login():
     username = str(data.get("username") or "").strip()
     password = str(data.get("password") or "")
     if not username or not password:
-        return fail("Username and password are required")
+        return fail("用户名和密码为必填项")
 
     # 登录限速：按 IP+用户名 双重限制，防暴力破解
     client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
@@ -90,12 +90,12 @@ def login():
         row = db.get("SELECT * FROM users WHERE username = ?", (username,))
         if not row:
             record_failed_login(client_ip, username)
-            return fail("Invalid username or password", 401)
+            return fail("用户名或密码错误", 401)
         if row.get("deactivated"):
             return fail("账号已注销", 401)
         if not check_password(password, row["password"]):
             record_failed_login(client_ip, username)
-            return fail("Invalid username or password", 401)
+            return fail("用户名或密码错误", 401)
         clear_login_attempts(client_ip, username)
         return ok({"token": sign_token(row["id"]), "user": public_user(row)}, "Signed in")
 
@@ -216,11 +216,11 @@ def update_profile(user):
         "gift_preference": str(data.get("giftPreference") or data.get("gift_preference") or "").strip(),
     }
     if len(fields["display_name"]) > 120:
-        return fail("Display name is too long")
+        return fail("昵称过长")
     if len(fields["phone"]) > 50:
-        return fail("Phone is too long")
+        return fail("手机号过长")
     if len(fields["address"]) > 500:
-        return fail("Address is too long")
+        return fail("地址过长")
 
     with DB() as db:
         db.execute(
@@ -251,18 +251,18 @@ def change_password(user):
     old_password = str(data.get("oldPassword") or "")
     new_password = str(data.get("newPassword") or "")
     if not old_password or not new_password:
-        return fail("Old and new password are required")
+        return fail("旧密码和新密码为必填项")
     if len(new_password) < 6 or len(new_password) > 128:
-        return fail("New password length must be 6-128 characters")
+        return fail("新密码长度需为 6-128 个字符")
     if not any(c.isalpha() for c in new_password) or not any(c.isdigit() for c in new_password):
-        return fail("New password must contain letters and numbers")
+        return fail("新密码必须同时包含字母和数字")
 
     with DB() as db:
         row = db.get("SELECT * FROM users WHERE id = ?", (user["userId"],))
         if not row:
-            return fail("User not found", 404)
+            return fail("用户不存在", 404)
         if not check_password(old_password, row["password"]):
-            return fail("Old password is incorrect", 400)
+            return fail("旧密码不正确", 400)
         db.execute("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                    (hash_password(new_password), user["userId"]))
         return ok(None, "Password changed")
