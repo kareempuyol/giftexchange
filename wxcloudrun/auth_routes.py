@@ -1,5 +1,6 @@
 """认证与账户路由（auth/*、profile、admin/settings、登录限速）。"""
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
 
 from flask import request
@@ -9,7 +10,6 @@ from wxcloudrun.database import DB
 from wxcloudrun.helpers import (
     SETTING_DEFINITIONS,
     _split_env,
-    absolute_app_url,
     admin_required,
     api,
     body,
@@ -23,10 +23,8 @@ from wxcloudrun.helpers import (
     rate_limit_login,
     record_failed_login,
     save_setting,
-    send_reset_email,
     setting_value,
     settings_payload,
-    token_hash,
 )
 
 
@@ -97,66 +95,87 @@ def login():
         return ok({"token": sign_token(row["id"]), "user": public_user(row)}, "Signed in")
 
 
+# ===== 找回密码限速（内存滑动窗口：IP+用户名 每小时最多 5 次）=====
+_FORGOT_WINDOW_SECONDS = 60 * 60
+_FORGOT_MAX_PER_KEY = 5
+_forgot_attempts = {}  # (client_ip, account) -> [timestamp, ...]
+
+
+def _forgot_rate_limited(client_ip, account):
+    """检查并记录一次请求。返回 True 表示超过限速应拒绝（429）。"""
+    now = time.time()
+    stamps = _forgot_attempts.setdefault((client_ip, account), [])
+    stamps[:] = [t for t in stamps if now - t < _FORGOT_WINDOW_SECONDS]
+    if len(stamps) >= _FORGOT_MAX_PER_KEY:
+        return True
+    stamps.append(now)
+    return False
+
+
 @api.route("/auth/forgot-password", methods=["POST"])
 def forgot_password():
+    """生成 6 位数字重置码（15 分钟有效，单用户单码，新码覆盖旧码）。
+
+    本项目无邮件/短信通道，演示模式直接返回 {code, expiresIn} 给前端；
+    生产环境应改为异步发送（邮件/短信），且响应体不返回 code。
+    """
     data = body()
+    username = str(data.get("username") or "").strip()
     email = str(data.get("email") or "").strip().lower()
-    generic = ok(None, "If the email exists, a reset link will be sent")
-    if not email:
-        return generic
+    if not username and not email:
+        return fail("用户名或邮箱不能为空")
+
+    account = username or email
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
+    if _forgot_rate_limited(client_ip, account):
+        return fail("请求过于频繁，请 1 小时后再试", 429)
 
     with DB() as db:
-        if setting_value(db, "password_reset_enabled").lower() != "true":
-            return fail("Password reset is not enabled", 403)
-
-        row = db.get("SELECT id, email FROM users WHERE email = ?", (email,))
+        if username:
+            row = db.get("SELECT id FROM users WHERE username = ?", (username,))
+        else:
+            row = db.get("SELECT id FROM users WHERE email = ?", (email,))
         if not row:
-            return generic
+            # 统一提示，不泄露账号是否注册
+            return fail("账号不存在或未注册", 404)
 
-        raw_token = secrets.token_urlsafe(32)
-        expires = datetime.now(timezone.utc) + timedelta(minutes=30)
+        code = f"{secrets.randbelow(10**6):06d}"
+        expires = datetime.now(timezone.utc) + timedelta(minutes=15)
         db.execute(
-            "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
-            (row["id"], token_hash(raw_token), expires.isoformat()),
+            "UPDATE users SET reset_code = ?, reset_code_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (code, expires.isoformat(), row["id"]),
         )
-        reset_url = f"{absolute_app_url(db)}/reset-password?token={raw_token}"
-        try:
-            send_reset_email(db, row["email"], reset_url)
-        except Exception:
-            db.conn.rollback()
-            return fail("Email service is unavailable", 503)
-        return generic
+        return ok({"code": code, "expiresIn": 15 * 60}, "重置码已生成")
 
 
 @api.route("/auth/reset-password", methods=["POST"])
 def reset_password():
     data = body()
-    raw_token = str(data.get("token") or "").strip()
-    password = str(data.get("password") or "")
-    if not raw_token or not password:
-        return fail("Token and password are required")
-    if len(password) < 6 or len(password) > 128:
-        return fail("Password length must be 6-128 characters")
-    if not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
-        return fail("Password must contain letters and numbers")
+    username = str(data.get("username") or "").strip()
+    code = str(data.get("code") or "").strip()
+    new_password = str(data.get("newPassword") or "")
+    if not username or not code or not new_password:
+        return fail("用户名、重置码和新密码均为必填")
+    if len(code) != 6 or not code.isdigit():
+        return fail("重置码无效，请检查后重试", 400)
+    if len(new_password) < 6 or len(new_password) > 128:
+        return fail("新密码长度需为 6-128 位")
+    if not any(c.isalpha() for c in new_password) or not any(c.isdigit() for c in new_password):
+        return fail("新密码需包含字母和数字")
 
     with DB() as db:
-        row = db.get(
-            """
-            SELECT id, user_id, expires_at, used_at
-            FROM password_reset_tokens
-            WHERE token_hash = ?
-            """,
-            (token_hash(raw_token),),
-        )
-        if not row or row.get("used_at"):
-            return fail("Reset link is invalid or expired", 400)
-        expires_at = parse_datetime(row["expires_at"])
+        row = db.get("SELECT id, reset_code, reset_code_expires_at FROM users WHERE username = ?", (username,))
+        if not row or not row.get("reset_code") or row["reset_code"] != code:
+            return fail("重置码错误或已失效，请重新获取", 400)
+        expires_at = parse_datetime(row["reset_code_expires_at"])
         if expires_at < datetime.now(timezone.utc):
-            return fail("Reset link is invalid or expired", 400)
-        db.execute("UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (hash_password(password), row["user_id"]))
-        db.execute("UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?", (row["id"],))
-        return ok(None, "Password updated")
+            return fail("重置码已过期，请重新获取", 400)
+        db.execute(
+            "UPDATE users SET password = ?, reset_code = NULL, reset_code_expires_at = NULL, "
+            "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (hash_password(new_password), row["id"]),
+        )
+        return ok(None, "密码重置成功，请用新密码登录")
 
 
 @api.route("/auth/me")

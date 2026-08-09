@@ -4,6 +4,7 @@ import { ToastProvider } from './components/Toast'
 import Header from './components/Header'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import EventsPage from './pages/EventsPage'
 import EventDetailPage from './pages/EventDetailPage'
 import CreateEventPage from './pages/CreateEventPage'
@@ -39,6 +40,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/events" element={<RequireAuth><Layout><EventsPage /></Layout></RequireAuth>} />
           <Route path="/events/new" element={<RequireAuth><Layout><CreateEventPage /></Layout></RequireAuth>} />
           <Route path="/events/:code" element={<Layout><EventDetailPage /></Layout>} />

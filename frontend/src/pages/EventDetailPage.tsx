@@ -21,6 +21,8 @@ export default function EventDetailPage() {
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [confirmDraw, setConfirmDraw] = useState(false)
   const [drawing, setDrawing] = useState(false)
+  const [confirmRedraw, setConfirmRedraw] = useState(false)
+  const [redrawing, setRedrawing] = useState(false)
   const [poster, setPoster] = useState<PosterData | null>(null)
 
   const isOwner = user?.id === event?.ownerId
@@ -67,6 +69,20 @@ export default function EventDetailPage() {
       toast(err instanceof ApiError ? err.message : '抽签失败', 'error')
     } finally {
       setDrawing(false)
+    }
+  }
+
+  const onRedraw = async () => {
+    setRedrawing(true)
+    try {
+      await api.post(`/events/${code}/redraw`)
+      toast('已重新抽签！请查看新的任务')
+      setConfirmRedraw(false)
+      load()
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : '重新抽签失败', 'error')
+    } finally {
+      setRedrawing(false)
     }
   }
 
@@ -252,6 +268,19 @@ export default function EventDetailPage() {
             </button>
           </div>
         )}
+
+        {isOwner && event.status === 'drawn' && (
+          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+            <Link to={`/events/${code}/dashboard`} className="btn btn-secondary" style={{ flex: 1 }}>活动管理台</Link>
+            <button
+              className="btn btn-secondary"
+              style={{ flex: 1, color: 'var(--gift-warning)', borderColor: 'var(--gift-warning)' }}
+              onClick={() => setConfirmRedraw(true)}
+            >
+              重新抽签
+            </button>
+          </div>
+        )}
       </div>
 
       {confirmDraw && (
@@ -274,6 +303,35 @@ export default function EventDetailPage() {
               <button className="btn btn-secondary" onClick={() => setConfirmDraw(false)}>取消</button>
               <button className="btn btn-primary" onClick={onDraw} disabled={drawing}>
                 {drawing ? '抽签中…' : '确认抽签'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmRedraw && (
+        <div className="modal-overlay" onClick={() => setConfirmRedraw(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>重新抽签？</h3>
+            <p style={{ marginTop: 8 }}>
+              所有成员的任务将重置，已发货/已晒图的数据会清空，此操作不可撤销。
+            </p>
+            {event.excludedPairs.length > 0 && (
+              <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning)' }}>
+                ⚠️ 已配置 {event.excludedPairs.length} 组互避规则，重新抽签会继续避开这些配对
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmRedraw(false)} disabled={redrawing}>
+                取消
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1, background: 'var(--gift-error)' }}
+                onClick={onRedraw}
+                disabled={redrawing}
+              >
+                {redrawing ? '重抽中…' : '确认重新抽签'}
               </button>
             </div>
           </div>

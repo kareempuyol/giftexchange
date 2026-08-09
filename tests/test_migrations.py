@@ -1,7 +1,7 @@
 """迁移管理（轻量版本化迁移）测试。
 
 验证：
-- 全新库（init_schema 建表后）跑 run_migrations_v2 → 6 个迁移全部应用（schema_migrations 6 行）
+- 全新库（init_schema 建表后）跑 run_migrations_v2 → 7 个迁移全部应用（schema_migrations 7 行）
 - 再跑一次 → 0 个新应用（幂等）
 - 模拟旧库已有列（先建表 + 旧 run_migrations 加过列再跑）→ 跳过已存在的列不报错、缺失列照常补齐
 - run_migrations（对外入口）连续跑不重复应用
@@ -75,15 +75,15 @@ def _legacy_schema(db):
 
 class TestRunMigrationsV2:
     def test_fresh_db_applies_all_migrations(self, monkeypatch):
-        """全新库（init_schema 建表后）：6 个迁移全部应用并记录。"""
+        """全新库（init_schema 建表后）：7 个迁移全部应用并记录。"""
         monkeypatch.setenv("DB_PATH", _new_db_path("gift_mig_fresh_"))
         init_schema()  # 建表 + run_migrations（内部跑版本化链）
         with DB() as db:
             # 清空记录，直接验证 run_migrations_v2 的“本次应用数”语义
             db.execute("DELETE FROM schema_migrations")
-            assert run_migrations_v2(db) == 6
+            assert run_migrations_v2(db) == 7
             rows = db.all("SELECT version, name FROM schema_migrations ORDER BY version")
-            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6]
+            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7]
             assert all(r["name"] for r in rows)
             # 版本化链涉及的列/表齐备
             for table, column in [
@@ -95,6 +95,8 @@ class TestRunMigrationsV2:
                 ("users", "openid"),
                 ("users", "unionid"),
                 ("users", "session_key"),
+                ("users", "reset_code"),
+                ("users", "reset_code_expires_at"),
                 ("matches", "gift_privacy"),
             ]:
                 assert column in _columns(db, table), f"{table}.{column} 缺失"
@@ -107,14 +109,14 @@ class TestRunMigrationsV2:
         with DB() as db:
             assert run_migrations_v2(db) == 0
             rows = db.all("SELECT version FROM schema_migrations ORDER BY version")
-            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6]
+            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7]
 
     def test_legacy_db_with_existing_columns_skips_duplicates(self, monkeypatch):
         """旧库模拟：表已建、short_code 已存在 → 跳过不报 duplicate column，缺失列照常补齐。"""
         monkeypatch.setenv("DB_PATH", _new_db_path("gift_mig_legacy_"))
         with DB() as db:
             _legacy_schema(db)
-            assert run_migrations_v2(db) == 6  # 全部记录，且不抛异常
+            assert run_migrations_v2(db) == 7  # 全部记录，且不抛异常
             events_cols = _columns(db, "events")
             # 未重复加列：short_code 在 pragma_table_info 里只出现一次
             dup = db.get("SELECT COUNT(*) AS count FROM pragma_table_info('events') WHERE name = 'short_code'")
@@ -135,7 +137,7 @@ class TestRunMigrationsEntry:
             run_migrations(db)  # 版本化链 + 遗留 ALTER + 数据兜底，不抛异常
         with DB() as db:
             rows = db.all("SELECT version FROM schema_migrations ORDER BY version")
-            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6]
+            assert [r["version"] for r in rows] == [1, 2, 3, 4, 5, 6, 7]
             # 遗留兜底列也齐备（preference_size 等未入册列仍由 run_migrations 兜底）
             assert {"preference_size", "preference_color", "wish_links"} <= _columns(db, "participants")
 

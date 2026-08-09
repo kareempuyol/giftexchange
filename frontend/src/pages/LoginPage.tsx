@@ -73,6 +73,9 @@ export default function LoginPage() {
                 {showPwd ? '🙈' : '👁️'}
               </button>
             </div>
+            <div style={{ marginTop: 8, textAlign: 'right' }}>
+              <Link to="/forgot-password" className="form-hint">忘记密码？</Link>
+            </div>
           </div>
 
           {error && <div className="form-error" style={{ marginBottom: 12 }}>{error}</div>}

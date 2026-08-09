@@ -116,6 +116,14 @@ MIGRATIONS = [
             _add_column("matches", "gift_privacy", mysql="VARCHAR(24) DEFAULT 'photo'", sqlite="TEXT DEFAULT 'photo'"),
         ],
     },
+    {
+        "version": 7,
+        "name": "users.reset_code/reset_code_expires_at 找回密码数字码（P0 忘记密码）",
+        "up": [
+            _add_column("users", "reset_code", mysql="VARCHAR(6)", sqlite="TEXT"),
+            _add_column("users", "reset_code_expires_at", mysql="DATETIME", sqlite="TEXT"),
+        ],
+    },
 ]
 
 
