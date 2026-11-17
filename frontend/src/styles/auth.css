@@ -65,3 +65,13 @@
   font-size: var(--gift-font-sm);
   color: var(--gift-text-secondary);
 }
+
+/* 「忘记密码？」：品牌色+下划线+44px 热区（原 form-hint 灰色小字易被忽略） */
+.auth-card a.form-hint {
+  display: inline-block;
+  color: var(--gift-brand);
+  text-decoration: underline;
+  min-height: 44px;
+  line-height: 44px;
+  font-weight: var(--gift-font-medium);
+}

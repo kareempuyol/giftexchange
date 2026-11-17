@@ -240,6 +240,16 @@ textarea,
   opacity: 1;
 }
 
+/* 暗色主题：输入框边框与背景对比不足（深色下 --gift-border 太弱），加深边界 */
+:root[data-theme=dark] .form-input,
+:root[data-theme=dark] .form-textarea {
+  border-color: var(--gift-border-strong);
+}
+:root[data-theme=dark] .form-input:focus,
+:root[data-theme=dark] .form-textarea:focus {
+  border-color: var(--gift-brand);
+}
+
 /* 密码可见切换 */
 .pwd-wrap {
   position: relative;

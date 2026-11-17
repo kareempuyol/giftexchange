@@ -181,6 +181,12 @@ const U = {
   carol: { username: `e2e_carol_${ts}`, email: `e2e_carol_${ts}@test.com`, pwd: 'Carol123' },
 }
 const EVENT_TITLE = `E2E 全旅程测试 ${new Date().toLocaleDateString('zh-CN')}`
+// 动态未来截止日期（硬编码日期会过期→被"过去截止"校验拦截→创建失败级联，教训 2026-08→11）
+const DEADLINE_DT = (() => {
+  const d = new Date(Date.now() + 45 * 24 * 3600 * 1000)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T20:00`
+})()
 let eventShortCode = ''
 let eventCode = ''
 
@@ -253,9 +259,9 @@ try {
     await A.page.goto(`${BASE}/events/new`, { waitUntil: 'networkidle2' })
     await waitText(A.page, '创建活动')
     await reactType(A.page, 'input[placeholder*="圣诞礼物互赠"]', EVENT_TITLE)
-    await reactType(A.page, 'input[placeholder="写点规则或想说的话（选填）"]', '这是 E2E 全旅程测试活动，大家互相送惊喜 🎁')
+    await reactType(A.page, 'textarea[placeholder="写点规则或想说的话（选填）"]', '这是 E2E 全旅程测试活动，大家互相送惊喜 🎁')
     await reactType(A.page, 'input[type="number"]', '100')
-    await reactType(A.page, 'input[type="datetime-local"]', '2026-08-20T20:00')
+    await reactType(A.page, 'input[type="datetime-local"]', DEADLINE_DT)
     await shot(A.page, '03-create-event-form-filled')
     await clickText(A.page, '创建活动', 'button')
     const ok = await waitFor(A.page, () => /\/events\/[^/]+$/.test(location.pathname) && !!document.querySelector('.invite-code-btn'), 15000)
