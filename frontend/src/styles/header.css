@@ -239,6 +239,15 @@
   white-space: nowrap;
 }
 
+/* 退出：次要动作，弱化颜色避免与品牌主色混淆/误触 */
+.app-logout {
+  color: var(--gift-text-secondary);
+  font-weight: var(--gift-font-normal);
+}
+.app-logout:hover:not(:disabled) {
+  color: var(--gift-error-text);
+}
+
 /* 移动端：显示头像入口（不隐藏），用户名文字隐藏 */
 @media (max-width: 640px) {
   .app-username-text {

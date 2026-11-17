@@ -608,6 +608,24 @@ export default function EventDetailPage() {
               ))}
           </div>
           <div style={{ marginTop: 12, padding: 12, background: 'var(--gift-bg-muted)', borderRadius: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <b style={{ fontSize: 14, color: 'var(--gift-text-secondary)' }}>{t('收件信息')}</b>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ width: 'auto', flexShrink: 0 }}
+                onClick={async () => {
+                  const text = `${myMatch.contact.receiverName}\n${myMatch.contact.phone}\n${myMatch.contact.address}`
+                  try {
+                    await navigator.clipboard.writeText(text)
+                    toast(t('收件信息已复制，去下单吧 🛒'))
+                  } catch {
+                    toast(t('复制失败，请长按手动选择'), 'error')
+                  }
+                }}
+              >
+                {t('📋 复制收件信息')}
+              </button>
+            </div>
             <p><b>{t('收件人：')}</b>{myMatch.contact.receiverName}</p>
             <p><b>{t('电话：')}</b>{myMatch.contact.phone}</p>
             <p><b>{t('地址：')}</b>{myMatch.contact.address}</p>

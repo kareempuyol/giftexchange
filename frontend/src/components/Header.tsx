@@ -190,7 +190,7 @@ export default function Header() {
               )}
               <span className="app-username-text">{user.displayName || user.username}</span>
             </Link>
-            <button className="btn btn-ghost btn-sm" onClick={onLogout}>{t('退出')}</button>
+            <button className="btn btn-ghost btn-sm app-logout" onClick={onLogout}>{t('退出')}</button>
           </div>
         </div>
       </div>

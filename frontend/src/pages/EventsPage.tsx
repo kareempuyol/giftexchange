@@ -326,7 +326,7 @@ export default function EventsPage() {
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="tabs-row" style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {([
           ['mine', t('我创建的')],
           ['joined', t('我参与的')],

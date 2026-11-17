@@ -243,7 +243,7 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-note">{t('活动说明')}</label>
+          <label className="form-label" htmlFor="ev-note">{t('活动说明（选填）')}</label>
           <textarea
             id="ev-note"
             className="form-textarea"
@@ -269,7 +269,7 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-draw-date">{t('报名截止日期')}</label>
+          <label className="form-label" htmlFor="ev-draw-date">{t('报名截止日期（选填）')}</label>
           <input
             id="ev-draw-date"
             className="form-input"
@@ -281,7 +281,7 @@ export default function CreateEventPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="ev-max">{t('人数上限')}</label>
+          <label className="form-label" htmlFor="ev-max">{t('人数上限（选填）')}</label>
           <input
             id="ev-max"
             className="form-input"

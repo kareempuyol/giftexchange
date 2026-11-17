@@ -103,9 +103,12 @@
   font-size: var(--gift-font-md);
   font-weight: var(--gift-font-bold);
   letter-spacing: 2px;
-  background: color-mix(in srgb, var(--gift-white) 16%, transparent);
+  /* 核心交互提示：白底品牌字，对比度足够（半透明叠色在橙色遮罩上偏弱） */
+  background: var(--gift-white);
+  color: var(--gift-coral-700);
   padding: var(--gift-space-xs) var(--gift-space-md);
   border-radius: var(--gift-radius-pill);
+  box-shadow: 0 2px 8px rgba(26, 19, 17, 0.18);
 }
 
 /* 揭晓：遮罩 3D 翻走（Flip，0.55s 更可感知） */

@@ -1,28 +1,213 @@
 {
-  "runAt": "2026-08-09T19:02:35.619Z",
-  "eventCode": "914dcf67-ae6b-4a8a-9814-ea6f2daa070f",
-  "eventShortCode": "5LP2BQ",
+  "runAt": "2026-11-17T17:28:03.361Z",
+  "eventCode": "new",
+  "eventShortCode": "",
   "users": {
     "alice": {
-      "username": "e2e_alice_msm64kxg",
-      "email": "e2e_alice_msm64kxg@test.com",
+      "username": "e2e_alice_mwkyfc04",
+      "email": "e2e_alice_mwkyfc04@test.com",
       "pwd": "Alice123"
     },
     "bob": {
-      "username": "e2e_bob_msm64kxg",
-      "email": "e2e_bob_msm64kxg@test.com",
+      "username": "e2e_bob_mwkyfc04",
+      "email": "e2e_bob_mwkyfc04@test.com",
       "pwd": "Bob12345"
     },
     "carol": {
-      "username": "e2e_carol_msm64kxg",
-      "email": "e2e_carol_msm64kxg@test.com",
+      "username": "e2e_carol_mwkyfc04",
+      "email": "e2e_carol_mwkyfc04@test.com",
       "pwd": "Carol123"
     }
   },
-  "totalSteps": 48,
-  "passed": 48,
-  "failed": 0,
-  "defects": [],
+  "totalSteps": 43,
+  "passed": 17,
+  "failed": 26,
+  "defects": [
+    {
+      "step": "2",
+      "name": "创建后跳转活动详情页",
+      "severity": "P1",
+      "message": "url=http://127.0.0.1:8080/events/new"
+    },
+    {
+      "step": "2",
+      "name": "邀请短码可见",
+      "severity": "P1",
+      "message": "shortCode="
+    },
+    {
+      "step": "2",
+      "name": "详情页显示活动标题",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "2",
+      "name": "组织者加入活动（创建者需主动加入）",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "3",
+      "name": "复制邀请链接反馈",
+      "severity": "P1",
+      "message": "toast=\"\""
+    },
+    {
+      "step": "4",
+      "name": "游客落地页展示",
+      "severity": "P1",
+      "message": "url=http://127.0.0.1:8080/login?from=events%2F"
+    },
+    {
+      "step": "4",
+      "name": "游客落地页标题正确",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "4",
+      "name": "B 加入成功（你已加入）",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "5",
+      "name": "C 加入成功",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "5",
+      "name": "组织者看到 3 名参与者",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "6",
+      "name": "抽签完成提示",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "6",
+      "name": "状态变为已抽签",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "7",
+      "name": "A 看到我的送礼任务",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "7",
+      "name": "A 有明确送礼对象",
+      "severity": "P1",
+      "message": "receiver=\"\""
+    },
+    {
+      "step": "7",
+      "name": "B 看到我的送礼任务",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "7",
+      "name": "B 有明确送礼对象",
+      "severity": "P1",
+      "message": "receiver=\"\""
+    },
+    {
+      "step": "7",
+      "name": "C 看到我的送礼任务",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "7",
+      "name": "C 有明确送礼对象",
+      "severity": "P1",
+      "message": "receiver=\"\""
+    },
+    {
+      "step": "8",
+      "name": "发货保存成功",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "9a. Alice 晒图（仅文字）",
+      "name": "异常",
+      "severity": "P0",
+      "message": "No element found for selector: button[aria-label=\"5 星\"]",
+      "shot": "D-9a.-Alice-晒图（仅文字）.png"
+    },
+    {
+      "step": "9b. B 晒图（仅文字）",
+      "name": "异常",
+      "severity": "P0",
+      "message": "No element found for selector: button[aria-label=\"4 星\"]",
+      "shot": "D-9b.-B-晒图（仅文字）.png"
+    },
+    {
+      "step": "9c. C 晒图（公开照片）",
+      "name": "异常",
+      "severity": "P0",
+      "message": "No element found for selector: button[aria-label=\"5 星\"]",
+      "shot": "D-9c.-C-晒图（公开照片）.png"
+    },
+    {
+      "step": "10",
+      "name": "礼物墙已解锁（3/3 晒图）",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "10. 礼物墙解锁与海报",
+      "name": "异常",
+      "severity": "P0",
+      "message": "No element found for selector: .gw-mask",
+      "shot": "D-10.-礼物墙解锁与海报.png"
+    },
+    {
+      "step": "13",
+      "name": "铃铛有未读角标",
+      "severity": "P1",
+      "message": "badge=\"\""
+    },
+    {
+      "step": "13",
+      "name": "通知面板有通知条目",
+      "severity": "P1",
+      "message": "items=0"
+    },
+    {
+      "step": "14",
+      "name": "归档 tab 中可见活动",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "14",
+      "name": "归档 tab 标记已归档",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "14",
+      "name": "恢复活动成功",
+      "severity": "P1",
+      "message": ""
+    },
+    {
+      "step": "14",
+      "name": "恢复后回到「我创建的」",
+      "severity": "P1",
+      "message": ""
+    }
+  ],
   "results": [
     {
       "step": "1",
@@ -37,37 +222,37 @@
     {
       "step": "2",
       "name": "创建后跳转活动详情页",
-      "pass": true
+      "pass": false
     },
     {
       "step": "2",
       "name": "邀请短码可见",
-      "pass": true
+      "pass": false
     },
     {
       "step": "2",
       "name": "详情页显示活动标题",
-      "pass": true
+      "pass": false
     },
     {
       "step": "2",
       "name": "组织者加入活动（创建者需主动加入）",
-      "pass": true
+      "pass": false
     },
     {
       "step": "3",
       "name": "复制邀请链接反馈",
-      "pass": true
+      "pass": false
     },
     {
       "step": "4",
       "name": "游客落地页展示",
-      "pass": true
+      "pass": false
     },
     {
       "step": "4",
       "name": "游客落地页标题正确",
-      "pass": true
+      "pass": false
     },
     {
       "step": "4",
@@ -82,92 +267,67 @@
     {
       "step": "4",
       "name": "B 加入成功（你已加入）",
-      "pass": true
+      "pass": false
     },
     {
       "step": "5",
       "name": "C 加入成功",
-      "pass": true
+      "pass": false
     },
     {
       "step": "5",
       "name": "组织者看到 3 名参与者",
-      "pass": true
+      "pass": false
     },
     {
       "step": "6",
       "name": "抽签完成提示",
-      "pass": true
+      "pass": false
     },
     {
       "step": "6",
       "name": "状态变为已抽签",
-      "pass": true
+      "pass": false
     },
     {
       "step": "7",
       "name": "A 看到我的送礼任务",
-      "pass": true
+      "pass": false
     },
     {
       "step": "7",
       "name": "A 有明确送礼对象",
-      "pass": true
+      "pass": false
     },
     {
       "step": "7",
       "name": "B 看到我的送礼任务",
-      "pass": true
+      "pass": false
     },
     {
       "step": "7",
       "name": "B 有明确送礼对象",
-      "pass": true
+      "pass": false
     },
     {
       "step": "7",
       "name": "C 看到我的送礼任务",
-      "pass": true
+      "pass": false
     },
     {
       "step": "7",
       "name": "C 有明确送礼对象",
-      "pass": true
+      "pass": false
     },
     {
       "step": "8",
       "name": "发货保存成功",
-      "pass": true
-    },
-    {
-      "step": "9",
-      "name": "Alice 晒图成功（仅文字模式）",
-      "pass": true
-    },
-    {
-      "step": "9",
-      "name": "B 晒图成功（仅文字模式）",
-      "pass": true
-    },
-    {
-      "step": "9",
-      "name": "C 晒图成功（公开照片）",
-      "pass": true
+      "pass": false
     },
     {
       "step": "10",
       "name": "礼物墙已解锁（3/3 晒图）",
-      "pass": true
-    },
-    {
-      "step": "10",
-      "name": "点击揭晓礼物卡片",
-      "pass": true
-    },
-    {
-      "step": "10",
-      "name": "高光海报弹窗",
-      "pass": true
+      "pass": false
     },
     {
       "step": "11",
@@ -217,12 +377,12 @@
     {
       "step": "13",
       "name": "铃铛有未读角标",
-      "pass": true
+      "pass": false
     },
     {
       "step": "13",
       "name": "通知面板有通知条目",
-      "pass": true
+      "pass": false
     },
     {
       "step": "13",
@@ -247,22 +407,22 @@
     {
       "step": "14",
       "name": "归档 tab 中可见活动",
-      "pass": true
+      "pass": false
     },
     {
       "step": "14",
       "name": "归档 tab 标记已归档",
-      "pass": true
+      "pass": false
     },
     {
       "step": "14",
       "name": "恢复活动成功",
-      "pass": true
+      "pass": false
     },
     {
       "step": "14",
       "name": "恢复后回到「我创建的」",
-      "pass": true
+      "pass": false
     }
   ]
 }

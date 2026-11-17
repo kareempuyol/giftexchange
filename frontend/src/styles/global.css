@@ -232,6 +232,12 @@ textarea,
   outline: 2px solid var(--gift-brand);
   outline-offset: 1px;
 }
+/* placeholder 统一使用次要文字色（浏览器默认灰对比度不足） */
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--gift-text-secondary);
+  opacity: 1;
+}
 
 /* 密码可见切换 */
 .pwd-wrap {

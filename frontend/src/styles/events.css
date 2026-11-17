@@ -54,9 +54,26 @@
 }
 
 .tab-active {
-  background: var(--gift-brand-light);
+  background: var(--gift-brand);
+  color: var(--gift-text-on-primary);
+  font-weight: var(--gift-font-bold);
+  box-shadow: 0 1px 4px rgba(201, 59, 36, 0.28);
+}
+
+/* 未选中 tab：浅底 + 边框，明确是可点的筛选 chip（而非纯文字链接） */
+.tabs-row .btn-ghost {
+  background: var(--gift-bg-muted);
+  color: var(--gift-text-primary);
+  border: 1px solid var(--gift-border);
+}
+.tabs-row .btn-ghost:hover:not(.tab-active) {
+  border-color: var(--gift-brand);
   color: var(--gift-brand);
-  font-weight: var(--gift-font-medium);
+}
+.tabs-row .btn-ghost.tab-active {
+  background: var(--gift-brand);
+  color: var(--gift-text-on-primary);
+  border-color: var(--gift-brand);
 }
 
 /* 空状态副文案 */
