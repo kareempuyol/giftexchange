@@ -182,13 +182,14 @@ textarea,
   background: var(--gift-brand-active);
 }
 .btn-secondary {
-  background: var(--gift-bg-muted);
+  background: var(--gift-card);
   color: var(--gift-text-primary);
-  border: 1px solid var(--gift-border);
+  border: 1.5px solid var(--gift-border-strong);
 }
 .btn-secondary:hover:not(:disabled) {
-  border-color: var(--gift-border-strong);
-  background: var(--gift-warm-200);
+  border-color: var(--gift-brand);
+  color: var(--gift-brand);
+  background: var(--gift-brand-light);
 }
 .btn-ghost {
   background: transparent;
@@ -432,9 +433,10 @@ textarea,
   color: var(--gift-text-secondary);
 }
 .empty-state .empty-title {
-  font-size: var(--gift-font-lg);
-  font-weight: var(--gift-font-medium);
+  font-size: var(--gift-font-xl);
+  font-weight: var(--gift-font-bold);
   margin-bottom: var(--gift-space-sm);
+  color: var(--gift-text-primary);
 }
 
 /* ===== Toast 提示 ===== */

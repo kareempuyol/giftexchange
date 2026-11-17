@@ -393,7 +393,7 @@ export default function EventsPage() {
             <>
               <p className="empty-sub">{t('发起一个互送礼物活动，邀请朋友一起玩 🎁')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', marginTop: 12 }}>
-                <Link to="/events/new" className="btn btn-primary btn-sm" style={{ width: 'auto' }}>
+                <Link to="/events/new" className="btn btn-primary" style={{ width: 'auto', padding: '0 28px' }}>
                   {t('创建第一个活动')}
                 </Link>
                 <button
