@@ -181,6 +181,21 @@ export interface EventInfo {
   maxParticipants?: number | null
   excludedPairs: number[][]
   archived: boolean
+  /** 我在活动里的收件信息/心愿单（参与者才有；编辑表单预填用） */
+  myContact?: MyContact | null
+}
+
+/** 参与者收件信息 + 心愿单（活动维度，区别于 profile 的常用信息） */
+export interface MyContact {
+  receiverName: string
+  phone: string
+  address: string
+  preferenceLikes: string
+  preferenceDislikes: string
+  preferenceNotes: string
+  preferenceSize: string
+  preferenceColor: string
+  wishLinks: string
 }
 
 /**

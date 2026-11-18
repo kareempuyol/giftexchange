@@ -1,0 +1,1 @@
+import{j as n}from"./vendor-react-vAgv50Jx.js";function r({children:e,tone:s="info"}){return n.jsxDEV("span",{className:`badge badge-${s}`,children:e},void 0,!1,{fileName:"/Users/hubertliu/giftexchange/frontend/src/components/Badge.tsx",lineNumber:9,columnNumber:10},this)}export{r as B};

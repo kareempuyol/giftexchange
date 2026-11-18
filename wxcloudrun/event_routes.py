@@ -26,6 +26,7 @@ from wxcloudrun.helpers import (
     participant_payload,
     participant_rows,
     parse_datetime,
+    validate_participant_payload,
 )
 
 
@@ -241,6 +242,8 @@ def event_detail(user, code):
                 return fail("活动不存在或无权访问", 403)
             payload = api_event(event)
             payload["flowState"] = _event_flow_state(db, event)
+            # 我在活动里的收件信息（参与者才有；编辑表单预填 + 「我的收件信息」卡片用）
+            payload["myContact"] = _my_contact_payload(db, event["id"], user["userId"])
             return ok(payload)
     except ValueError as exc:
         return fail(str(exc), 404)
@@ -521,6 +524,104 @@ def leave_event(user, code):
             return ok(None, "Left event")
     except ValueError as exc:
         return fail(str(exc), 404)
+
+
+@api.route("/events/<code>/my-contact", methods=["PUT"])
+@login_required
+def update_my_contact(user, code):
+    """更新我在该活动里的收件信息/心愿单（创建者自动加入/漏填后可随时补）。
+
+    与 join 不同：不要求活动 open（自己的数据随时可改，抽签后送礼人看到的是
+    更新后的值），但必须是参与者。复用 participant_payload/validate 与 join
+    同一套校验；updateProfile=true 时同步回写个人常用信息（与 join 语义一致）。
+    """
+    try:
+        with DB() as db:
+            event = fetch_event(db, code)
+            participant = db.get(
+                "SELECT id FROM participants WHERE event_id = ? AND user_id = ?",
+                (event["id"], user["userId"]),
+            )
+            if not participant:
+                return fail("你还没加入该活动", 403)
+            data = body()
+            user_row = current_user_row(db, user["userId"])
+            payload = participant_payload(user_row, data)
+            error = validate_participant_payload(payload)
+            if error:
+                raise ValueError(error)
+            db.execute(
+                """
+                UPDATE participants
+                SET receiver_name = ?, phone = ?, address = ?, preference_likes = ?,
+                    preference_dislikes = ?, preference_notes = ?, preference_size = ?,
+                    preference_color = ?, wish_links = ?
+                WHERE id = ?
+                """,
+                (
+                    payload["receiver_name"],
+                    payload["phone"],
+                    payload["address"],
+                    payload["preference_likes"],
+                    payload["preference_dislikes"],
+                    payload["preference_notes"],
+                    payload["preference_size"],
+                    payload["preference_color"],
+                    payload["wish_links"],
+                    participant["id"],
+                ),
+            )
+            if data.get("updateProfile"):
+                db.execute(
+                    """
+                    UPDATE users
+                    SET receiver_name = ?, phone = ?, address = ?, gift_preference = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (
+                        payload["receiver_name"],
+                        payload["phone"],
+                        payload["address"],
+                        payload["preference_likes"],
+                        user["userId"],
+                    ),
+                )
+            return ok({"eventCode": code, "myContact": _my_contact_payload(db, event["id"], user["userId"])}, "Contact updated")
+    except ValueError as exc:
+        message = str(exc)
+        return fail(message, 404 if message == "活动不存在或已失效" else 400)
+
+
+def _my_contact_payload(db, event_id, user_id):
+    """我在活动里的收件信息（给前端编辑表单预填；仅本人可见的接口使用）。"""
+    row = db.get(
+        """
+        SELECT receiver_name, phone, address, preference_likes, preference_dislikes,
+               preference_notes, preference_size, preference_color, wish_links
+        FROM participants WHERE event_id = ? AND user_id = ?
+        """,
+        (event_id, user_id),
+    )
+    if not row:
+        return None
+    # wish_links 存 JSON 数组字符串，转成文本域格式（换行分隔）供编辑表单往返
+    wish_raw = row["wish_links"] or "[]"
+    try:
+        wish_items = json.loads(wish_raw)
+        wish_text = "\n".join(str(x) for x in wish_items) if isinstance(wish_items, list) else str(wish_items)
+    except (ValueError, TypeError):
+        wish_text = str(wish_raw)
+    return {
+        "receiverName": row["receiver_name"] or "",
+        "phone": row["phone"] or "",
+        "address": row["address"] or "",
+        "preferenceLikes": row["preference_likes"] or "",
+        "preferenceDislikes": row["preference_dislikes"] or "",
+        "preferenceNotes": row["preference_notes"] or "",
+        "preferenceSize": row["preference_size"] or "",
+        "preferenceColor": row["preference_color"] or "",
+        "wishLinks": wish_text,
+    }
 
 
 def _member_match_rows(db, event_id):

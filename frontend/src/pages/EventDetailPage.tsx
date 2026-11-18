@@ -1,7 +1,7 @@
 // 文案暂未接入 i18n（示范迁移仅 Header/登录页/Toast 公共文案）：后续按 i18n.ts 迁移指南接入
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, ApiError, EventInfo, EventPreview, GiftPrivacy, MemberStatus, Participant, MyMatch, ReceivedGift, User } from '../api/client'
+import { api, ApiError, EventInfo, EventPreview, GiftPrivacy, MemberStatus, MyContact, Participant, MyMatch, ReceivedGift, User } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import ImageUpload from '../components/ImageUpload'
@@ -39,6 +39,8 @@ export default function EventDetailPage() {
   const [loadError, setLoadError] = useState('')
   const [loadErrStatus, setLoadErrStatus] = useState(0)
   const [showJoinForm, setShowJoinForm] = useState(false)
+  // 「完善收件信息」编辑模式：创建者自动加入/漏填后补填（用户反馈的入口缺口）
+  const [showEditContact, setShowEditContact] = useState(false)
   const [confirmDraw, setConfirmDraw] = useState(false)
   const [drawing, setDrawing] = useState(false)
   const [confirmRedraw, setConfirmRedraw] = useState(false)
@@ -574,6 +576,39 @@ export default function EventDetailPage() {
         </Modal>
       )}
 
+      {/* 我的收件信息：创建者自动加入/漏填后可随时补（用户反馈「去哪里填」的入口） */}
+      {joined && event.myContact && (
+        <div className="gift-card" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <h2 className="section-title" style={{ margin: 0 }}>{t('📮 我的收件信息')}</h2>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ width: 'auto', flexShrink: 0 }}
+              onClick={() => setShowEditContact(true)}
+            >
+              {event.myContact.phone && event.myContact.address ? t('编辑') : t('去填写')}
+            </button>
+          </div>
+          {!event.myContact.phone || !event.myContact.address ? (
+            <p style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-warning-text)' }}>
+              {t('⚠️ 还没填收件信息——送礼人找不到你，礼物会寄丢哦')}
+            </p>
+          ) : (
+            <div style={{ marginTop: 8, fontSize: 14, color: 'var(--gift-text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span>{t('收件人：')}<b style={{ color: 'var(--gift-text-primary)' }}>{event.myContact.receiverName || '—'}</b></span>
+              <span>{t('电话：')}<b style={{ color: 'var(--gift-text-primary)' }}>{event.myContact.phone}</b></span>
+              <span>{t('地址：')}<b style={{ color: 'var(--gift-text-primary)' }}>{event.myContact.address}</b></span>
+              {event.myContact.preferenceLikes && (
+                <span>{t('喜好：')}<b style={{ color: 'var(--gift-text-primary)' }}>{event.myContact.preferenceLikes}</b></span>
+              )}
+            </div>
+          )}
+          <p style={{ marginTop: 8, fontSize: 12, color: 'var(--gift-text-secondary)' }}>
+            {t('抽签后送礼人按这个地址寄礼物；改了会实时同步给对方')}
+          </p>
+        </div>
+      )}
+
       {joined && myMatch && event.status === 'drawn' && (
         <div className="gift-card" style={{ marginBottom: 16 }}>
           <h2 className="section-title">{t('🎯 我的送礼任务')}</h2>
@@ -725,26 +760,54 @@ export default function EventDetailPage() {
         />
       )}
 
+      {showEditContact && event.myContact && (
+        <JoinForm
+          code={code}
+          mode="edit"
+          initial={event.myContact}
+          onClose={() => setShowEditContact(false)}
+          onJoined={() => {
+            setShowEditContact(false)
+            load()
+            toast(t('收件信息已保存'))
+          }}
+        />
+      )}
+
       <PosterModal data={poster} onClose={() => setPoster(null)} />
     </div>
   )
 }
 
-function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => void; onJoined: () => void }) {
+function JoinForm({
+  code,
+  mode = 'join',
+  initial,
+  onClose,
+  onJoined,
+}: {
+  code: string
+  /** join=加入活动；edit=编辑我的收件信息（创建者自动加入后补填入口） */
+  mode?: 'join' | 'edit'
+  /** 编辑模式预填数据（活动维度的 myContact） */
+  initial?: MyContact
+  onClose: () => void
+  onJoined: () => void
+}) {
   const { toast } = useToast()
   useLocale()
   const [step, setStep] = useState<1 | 2>(1)
-  // 第一步：收件信息
-  const [receiverName, setReceiverName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [address, setAddress] = useState('')
+  // 第一步：收件信息（编辑模式从 initial 预填；join 模式从个人资料预填走 useEffect）
+  const [receiverName, setReceiverName] = useState(initial?.receiverName || '')
+  const [phone, setPhone] = useState(initial?.phone || '')
+  const [address, setAddress] = useState(initial?.address || '')
   // 第二步：心愿单（结构化）
-  const [likes, setLikes] = useState('')
-  const [dislikes, setDislikes] = useState('')
-  const [size, setSize] = useState('')
-  const [color, setColor] = useState('')
-  const [wishLinks, setWishLinks] = useState('')
-  const [notes, setNotes] = useState('')
+  const [likes, setLikes] = useState(initial?.preferenceLikes || '')
+  const [dislikes, setDislikes] = useState(initial?.preferenceDislikes || '')
+  const [size, setSize] = useState(initial?.preferenceSize || '')
+  const [color, setColor] = useState(initial?.preferenceColor || '')
+  const [wishLinks, setWishLinks] = useState(initial?.wishLinks || '')
+  const [notes, setNotes] = useState(initial?.preferenceNotes || '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [prefilled, setPrefilled] = useState(false)
@@ -790,7 +853,7 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
     setSubmitting(true)
     setError('')
     try {
-      await api.post(`/events/${code}/join`, {
+      const payload = {
         receiverName,
         phone,
         address,
@@ -800,17 +863,23 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
         preferenceColor: color,
         wishLinks: wishLinks.split(/[,，\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 3),
         preferenceNotes: notes,
-      })
+      }
+      if (mode === 'edit') {
+        // 编辑我的收件信息：PUT（不要求活动 open，抽签后送礼人同步看到新值）
+        await api.put(`/events/${code}/my-contact`, payload)
+      } else {
+        await api.post(`/events/${code}/join`, payload)
+      }
       onJoined()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('加入失败'))
+      setError(err instanceof ApiError ? err.message : mode === 'edit' ? t('保存失败') : t('加入失败'))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Modal title={t('加入活动')} onClose={onClose} maxWidth={520}>
+    <Modal title={mode === 'edit' ? t('完善收件信息') : t('加入活动')} onClose={onClose} maxWidth={520}>
       {/* 步骤指示器 */}
       <div className="step-indicator">
         <div className={`step-dot${step === 1 ? ' active' : ''}${step === 2 ? ' done' : ''}`}>
@@ -889,7 +958,7 @@ function JoinForm({ code, onClose, onJoined }: { code: string; onClose: () => vo
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => { setStep(1); setError('') }} style={{ flex: 1 }}>{t('上一步')}</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting} style={{ flex: 1 }}>
-                  {submitting ? t('提交中…') : t('确认加入')}
+                  {submitting ? t('提交中…') : mode === 'edit' ? t('保存') : t('确认加入')}
                 </button>
               </div>
             </>
